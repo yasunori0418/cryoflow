@@ -10,6 +10,9 @@ dependencies = [
     "cryoflow-sample-plugin",
 ]
 
+[project.scripts]
+cryoflow = "cryoflow_core.cli:app"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
