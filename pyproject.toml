@@ -27,6 +27,9 @@ cryoflow-sample-plugin = { workspace = true }
 [tool.pytest.ini_options]
 testpaths = ["packages/cryoflow-core/tests"]
 
+[tool.ruff]
+line-length = 120
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
