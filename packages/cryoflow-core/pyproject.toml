@@ -5,6 +5,8 @@ description = "Core framework for cryoflow"
 requires-python = ">=3.14"
 dependencies = [
     "typer>=0.21.1",
+    "pydantic>=2.10",
+    "xdg-base-dirs>=6.0.2",
 ]
 
 [build-system]
