@@ -6,6 +6,7 @@ from typing import Annotated
 import typer
 
 from cryoflow_core.config import ConfigLoadError, get_default_config_path, load_config
+from cryoflow_core.loader import PluginLoadError, load_plugins
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -45,3 +46,12 @@ def run(
     for plugin in cfg.plugins:
         status = "enabled" if plugin.enabled else "disabled"
         typer.echo(f"    - {plugin.name} ({plugin.module}) [{status}]")
+
+    try:
+        pm = load_plugins(cfg, config_path)
+    except PluginLoadError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=1)
+
+    enabled_count = sum(1 for p in cfg.plugins if p.enabled)
+    typer.echo(f"Loaded {enabled_count} plugin(s) successfully.")

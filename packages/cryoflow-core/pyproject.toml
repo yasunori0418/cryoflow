@@ -7,6 +7,9 @@ dependencies = [
     "typer>=0.21.1",
     "pydantic>=2.10",
     "xdg-base-dirs>=6.0.2",
+    "pluggy>=1.5.0",
+    "returns>=0.23.0",
+    "polars>=1.37.1",
 ]
 
 [build-system]
