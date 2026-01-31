@@ -31,6 +31,9 @@ testpaths = ["packages/cryoflow-core/tests"]
 target-version = "py314"
 line-length = 120
 
+[tool.ruff.format]
+quote-style = "single"
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
