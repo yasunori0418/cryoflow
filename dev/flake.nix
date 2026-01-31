@@ -39,6 +39,7 @@
               ruff
               pyright
             ];
+            UV_PYTHON_PREFERENCE = "only-system";
           };
         };
     };
