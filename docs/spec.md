@@ -40,21 +40,27 @@ Apache Arrow (IPC/Parquet) 形式のデータを入力とし、ユーザー定�
 ### 3.1 データモデル (Pydantic)
 
 ```python
-from pydantic import BaseModel, Field, FilePath
-from typing import List, Dict, Any, Optional
+from pathlib import Path
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 class PluginConfig(BaseModel):
     name: str
     module: str  # importlibで読み込むパス
     enabled: bool = True
-    options: Dict[str, Any] = Field(default_factory=dict) # プラグイン固有設定
+    options: dict[str, Any] = Field(default_factory=dict) # プラグイン固有設定
 
-class GlobalConfig(BaseModel):
-    input_path: FilePath
+class CryoflowConfig(BaseModel):
+    input_path: Path  # FilePathだとファイル存在チェックが入るためPathを使用
     output_target: str
-    plugins: List[PluginConfig]
-
+    plugins: list[PluginConfig]
 ```
+
+> **実装時の変更点**:
+> - `GlobalConfig` → `CryoflowConfig` にリネーム（より明確な名前）
+> - `input_path` の型を `FilePath` → `Path` に変更（設定ロード時にファイル存在を強制しないため）
+> - Python 3.14 ビルトイン型（`list`, `dict`）を使用（`typing.List`, `typing.Dict` は非推奨）
 
 ### 3.2 プラグイン基底クラス (ABC)
 
@@ -62,16 +68,17 @@ class GlobalConfig(BaseModel):
 
 ```python
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Any
+
 import polars as pl
 from returns.result import Result
 
 # データ型エイリアス
-FrameData = Union[pl.LazyFrame, pl.DataFrame]
+FrameData = pl.LazyFrame | pl.DataFrame
 
 class BasePlugin(ABC):
     """全てのプラグインの基底クラス"""
-    def __init__(self, options: Dict[str, Any]):
+    def __init__(self, options: dict[str, Any]):
         self.options = options
 
     @abstractmethod
@@ -80,7 +87,7 @@ class BasePlugin(ABC):
         pass
 
     @abstractmethod
-    def dry_run(self, schema: Dict[str, pl.DataType]) -> Result[Dict[str, pl.DataType], Exception]:
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
         """スキーマのみを受け取り、処理後の予想スキーマを返す（またはエラー）"""
         pass
 
@@ -95,7 +102,6 @@ class OutputPlugin(BasePlugin):
     @abstractmethod
     def execute(self, df: FrameData) -> Result[None, Exception]:
         pass
-
 ```
 
 ### 3.3 Hook 仕様 (pluggy hookspec)
@@ -105,15 +111,14 @@ import pluggy
 
 hookspec = pluggy.HookspecMarker("cryoflow")
 
-class cryoflowSpecs:
+class CryoflowSpecs:
     @hookspec
-    def register_transform_plugins(self) -> List[TransformPlugin]:
+    def register_transform_plugins(self) -> list[TransformPlugin]:
         """変換プラグインのインスタンスを返す"""
 
     @hookspec
-    def register_output_plugins(self) -> List[OutputPlugin]:
+    def register_output_plugins(self) -> list[OutputPlugin]:
         """出力プラグインのインスタンスを返す"""
-
 ```
 
 ---
