@@ -58,6 +58,10 @@ Config Load -> Plugin Discovery -> Pipeline Construction -> Execution / Output
 
 詳細は `docs/implements_step_plan.md` を参照。
 
+## Git規約
+
+- コミットメッセージは英語で記述する
+
 ## ドキュメント
 
 - `docs/spec.md`: 仕様書（インターフェース設計、データモデル、Hook仕様を含む）
