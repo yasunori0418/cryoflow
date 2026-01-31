@@ -141,14 +141,14 @@ def main() -> None:
     print(f"Size:    {output_path.stat().st_size / (1024 * 1024):.2f} MB")
     print(f"Rows:    {df.height}")
     print(f"Columns: {df.width}")
-    print(f"\nSchema:")
+    print("\nSchema:")
     for name, dtype in df.schema.items():
         print(f"  {name}: {dtype}")
-    print(f"\nPreview (first 10 rows):")
+    print("\nPreview (first 10 rows):")
     print(df.head(10))
-    print(f"\nSensor type distribution:")
+    print("\nSensor type distribution:")
     print(df.group_by("sensor_type").len().sort("sensor_type"))
-    print(f"\nStatus distribution:")
+    print("\nStatus distribution:")
     print(df.group_by("status").len().sort("status"))
 
 

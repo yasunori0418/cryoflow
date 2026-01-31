@@ -100,10 +100,10 @@ def main() -> None:
     print(f"IPC:     {ipc_path}")
 
     print(f"\nRows: {df.height}, Columns: {df.width}")
-    print(f"\nSchema:")
+    print("\nSchema:")
     for name, dtype in df.schema.items():
         print(f"  {name}: {dtype}")
-    print(f"\nPreview (first 5 rows):")
+    print("\nPreview (first 5 rows):")
     print(df.head(5))
 
 
