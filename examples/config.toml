@@ -1,0 +1,8 @@
+input_path = "data/input.parquet"
+output_target = "data/output.parquet"
+
+[[plugins]]
+name = "sample-transform"
+module = "cryoflow_sample_plugin.transform"
+enabled = true
+options = { column_name = "value", multiplier = 2 }
