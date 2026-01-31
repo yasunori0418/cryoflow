@@ -36,7 +36,7 @@ class TestABCInstantiation:
 
         class PartialPlugin(TransformPlugin):
             def name(self) -> str:
-                return "partial"
+                return 'partial'
 
         with pytest.raises(TypeError):
             PartialPlugin({})
@@ -49,12 +49,12 @@ class TestABCInstantiation:
 
 class TestOptionsStorage:
     def test_transform_plugin_stores_options(self):
-        opts = {"threshold": 10}
+        opts = {'threshold': 10}
         p = DummyTransformPlugin(opts)
         assert p.options is opts
 
     def test_output_plugin_stores_options(self):
-        opts = {"format": "csv"}
+        opts = {'format': 'csv'}
         p = DummyOutputPlugin(opts)
         assert p.options is opts
 
@@ -87,7 +87,7 @@ class TestExecute:
         assert isinstance(result, Failure)
         exc = result.failure()
         assert isinstance(exc, ValueError)
-        assert "intentional failure" in str(exc)
+        assert 'intentional failure' in str(exc)
 
     def test_output_success(self, sample_lazyframe):
         p = DummyOutputPlugin({})
@@ -104,20 +104,20 @@ class TestExecute:
 class TestDryRun:
     def test_transform_dry_run_success(self):
         p = DummyTransformPlugin({})
-        schema = {"a": pl.Int64, "b": pl.Utf8}
+        schema = {'a': pl.Int64, 'b': pl.Utf8}
         result = p.dry_run(schema)
         assert isinstance(result, Success)
         assert result.unwrap() == schema
 
     def test_transform_dry_run_failure(self):
         p = FailingTransformPlugin({})
-        schema = {"a": pl.Int64}
+        schema = {'a': pl.Int64}
         result = p.dry_run(schema)
         assert isinstance(result, Failure)
 
     def test_output_dry_run_success(self):
         p = DummyOutputPlugin({})
-        schema = {"a": pl.Int64}
+        schema = {'a': pl.Int64}
         result = p.dry_run(schema)
         assert isinstance(result, Success)
 

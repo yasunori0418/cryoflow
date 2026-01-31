@@ -12,7 +12,7 @@ class DotpathTransformPlugin(TransformPlugin):
     """Simple transform plugin for dotpath loading tests."""
 
     def name(self) -> str:
-        return "dotpath_transform"
+        return 'dotpath_transform'
 
     def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         return Success(df)

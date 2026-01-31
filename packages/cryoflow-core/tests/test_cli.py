@@ -26,17 +26,17 @@ class TestHelpDisplay:
         result = runner.invoke(app, [])
         # Typer with no_args_is_help may return 0 or 2 depending on version
         assert result.exit_code in (0, 2)
-        assert "Usage" in result.output or "usage" in result.output.lower()
+        assert 'Usage' in result.output or 'usage' in result.output.lower()
 
     def test_help_flag(self):
-        result = runner.invoke(app, ["--help"])
+        result = runner.invoke(app, ['--help'])
         assert result.exit_code == 0
-        assert "Usage" in result.output
+        assert 'Usage' in result.output
 
     def test_run_help(self):
-        result = runner.invoke(app, ["run", "--help"])
+        result = runner.invoke(app, ['run', '--help'])
         assert result.exit_code == 0
-        assert "--config" in result.output
+        assert '--config' in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -46,58 +46,58 @@ class TestHelpDisplay:
 
 class TestRunSuccess:
     def test_run_with_valid_config(self, tmp_path):
-        config_file = tmp_path / "config.toml"
+        config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch("cryoflow_core.cli.load_plugins") as mock_load:
-            mock_load.return_value = pluggy.PluginManager("cryoflow")
-            result = runner.invoke(app, ["run", "--config", str(config_file)])
+        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         assert result.exit_code == 0
-        assert "Config loaded" in result.output
+        assert 'Config loaded' in result.output
 
     def test_output_contains_input_path(self, tmp_path):
-        config_file = tmp_path / "config.toml"
+        config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch("cryoflow_core.cli.load_plugins") as mock_load:
-            mock_load.return_value = pluggy.PluginManager("cryoflow")
-            result = runner.invoke(app, ["run", "--config", str(config_file)])
+        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            result = runner.invoke(app, ['run', '--config', str(config_file)])
 
-        assert "input_path" in result.output
-        assert "/data/input.parquet" in result.output
+        assert 'input_path' in result.output
+        assert '/data/input.parquet' in result.output
 
     def test_output_contains_output_target(self, tmp_path):
-        config_file = tmp_path / "config.toml"
+        config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch("cryoflow_core.cli.load_plugins") as mock_load:
-            mock_load.return_value = pluggy.PluginManager("cryoflow")
-            result = runner.invoke(app, ["run", "--config", str(config_file)])
+        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            result = runner.invoke(app, ['run', '--config', str(config_file)])
 
-        assert "output_target" in result.output
-        assert "/data/output.parquet" in result.output
+        assert 'output_target' in result.output
+        assert '/data/output.parquet' in result.output
 
     def test_output_contains_plugin_count(self, tmp_path):
-        config_file = tmp_path / "config.toml"
+        config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch("cryoflow_core.cli.load_plugins") as mock_load:
-            mock_load.return_value = pluggy.PluginManager("cryoflow")
-            result = runner.invoke(app, ["run", "--config", str(config_file)])
+        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            result = runner.invoke(app, ['run', '--config', str(config_file)])
 
-        assert "1 plugin(s)" in result.output
+        assert '1 plugin(s)' in result.output
 
     def test_minimal_config(self, tmp_path):
-        config_file = tmp_path / "config.toml"
+        config_file = tmp_path / 'config.toml'
         config_file.write_text(MINIMAL_TOML)
 
-        with patch("cryoflow_core.cli.load_plugins") as mock_load:
-            mock_load.return_value = pluggy.PluginManager("cryoflow")
-            result = runner.invoke(app, ["run", "--config", str(config_file)])
+        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         assert result.exit_code == 0
-        assert "0 plugin(s)" in result.output
+        assert '0 plugin(s)' in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -107,26 +107,26 @@ class TestRunSuccess:
 
 class TestRunErrors:
     def test_nonexistent_file(self, tmp_path):
-        result = runner.invoke(app, ["run", "--config", str(tmp_path / "nonexistent.toml")])
+        result = runner.invoke(app, ['run', '--config', str(tmp_path / 'nonexistent.toml')])
         assert result.exit_code != 0
 
     def test_config_load_error(self, tmp_path):
-        config_file = tmp_path / "bad.toml"
-        config_file.write_text("invalid = [[[")
+        config_file = tmp_path / 'bad.toml'
+        config_file.write_text('invalid = [[[')
 
-        result = runner.invoke(app, ["run", "--config", str(config_file)])
+        result = runner.invoke(app, ['run', '--config', str(config_file)])
         assert result.exit_code == 1
 
     def test_plugin_load_error(self, tmp_path):
-        config_file = tmp_path / "config.toml"
+        config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch("cryoflow_core.cli.load_plugins") as mock_load:
-            mock_load.side_effect = PluginLoadError("plugin failed to load")
-            result = runner.invoke(app, ["run", "--config", str(config_file)])
+        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+            mock_load.side_effect = PluginLoadError('plugin failed to load')
+            result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         assert result.exit_code == 1
-        assert "plugin failed to load" in result.output
+        assert 'plugin failed to load' in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -136,26 +136,26 @@ class TestRunErrors:
 
 class TestDefaultConfigPath:
     def test_default_config_path_used(self, tmp_path):
-        config_file = tmp_path / "config.toml"
+        config_file = tmp_path / 'config.toml'
         config_file.write_text(MINIMAL_TOML)
 
         with (
             patch(
-                "cryoflow_core.cli.get_default_config_path",
+                'cryoflow_core.cli.get_default_config_path',
                 return_value=config_file,
             ) as mock_default,
-            patch("cryoflow_core.cli.load_plugins") as mock_load,
+            patch('cryoflow_core.cli.load_plugins') as mock_load,
         ):
-            mock_load.return_value = pluggy.PluginManager("cryoflow")
+            mock_load.return_value = pluggy.PluginManager('cryoflow')
             # Invoke without --config so default path is used
             # We also need to patch load_config to use our file
-            with patch("cryoflow_core.cli.load_config") as mock_load_config:
+            with patch('cryoflow_core.cli.load_config') as mock_load_config:
                 mock_load_config.return_value = CryoflowConfig(
-                    input_path="/data/in.parquet",
-                    output_target="/data/out.parquet",
+                    input_path='/data/in.parquet',
+                    output_target='/data/out.parquet',
                     plugins=[],
                 )
-                result = runner.invoke(app, ["run"])
+                result = runner.invoke(app, ['run'])
 
             mock_default.assert_called_once()
         assert result.exit_code == 0

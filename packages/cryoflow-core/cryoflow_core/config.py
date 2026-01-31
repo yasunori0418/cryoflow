@@ -31,7 +31,7 @@ class ConfigLoadError(Exception):
 
 def get_default_config_path() -> Path:
     """Return the default config file path following XDG Base Directory spec."""
-    return xdg_config_home() / "cryoflow" / "config.toml"
+    return xdg_config_home() / 'cryoflow' / 'config.toml'
 
 
 def load_config(config_path: Path) -> CryoflowConfig:
@@ -48,19 +48,19 @@ def load_config(config_path: Path) -> CryoflowConfig:
             or Pydantic validation fails.
     """
     if not config_path.exists():
-        raise ConfigLoadError(f"Config file not found: {config_path}")
+        raise ConfigLoadError(f'Config file not found: {config_path}')
 
     try:
         raw = config_path.read_bytes()
     except OSError as e:
-        raise ConfigLoadError(f"Failed to read config file: {e}") from e
+        raise ConfigLoadError(f'Failed to read config file: {e}') from e
 
     try:
         data = tomllib.loads(raw.decode())
     except tomllib.TOMLDecodeError as e:
-        raise ConfigLoadError(f"Failed to parse TOML config: {e}") from e
+        raise ConfigLoadError(f'Failed to parse TOML config: {e}') from e
 
     try:
         return CryoflowConfig(**data)
     except Exception as e:
-        raise ConfigLoadError(f"Config validation failed: {e}") from e
+        raise ConfigLoadError(f'Config validation failed: {e}') from e

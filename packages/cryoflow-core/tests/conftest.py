@@ -23,7 +23,7 @@ class DummyTransformPlugin(TransformPlugin):
     """Identity transform plugin that returns input unchanged."""
 
     def name(self) -> str:
-        return "dummy_transform"
+        return 'dummy_transform'
 
     def execute(self, df: FrameData) -> Success[FrameData]:
         return Success(df)
@@ -36,7 +36,7 @@ class DummyOutputPlugin(OutputPlugin):
     """No-op output plugin."""
 
     def name(self) -> str:
-        return "dummy_output"
+        return 'dummy_output'
 
     def execute(self, df: FrameData) -> Success[None]:
         return Success(None)
@@ -49,23 +49,23 @@ class FailingTransformPlugin(TransformPlugin):
     """Transform plugin that always fails."""
 
     def name(self) -> str:
-        return "failing_transform"
+        return 'failing_transform'
 
     def execute(self, df: FrameData) -> Failure[Exception]:
-        return Failure(ValueError("intentional failure"))
+        return Failure(ValueError('intentional failure'))
 
     def dry_run(self, schema: dict[str, pl.DataType]) -> Failure[Exception]:
-        return Failure(ValueError("intentional dry_run failure"))
+        return Failure(ValueError('intentional dry_run failure'))
 
 
 class BrokenInitPlugin(TransformPlugin):
     """Plugin that raises during __init__."""
 
     def __init__(self, options: dict[str, Any]) -> None:
-        raise RuntimeError("broken init")
+        raise RuntimeError('broken init')
 
     def name(self) -> str:
-        return "broken_init"
+        return 'broken_init'
 
     def execute(self, df: FrameData) -> Success[FrameData]:
         return Success(df)
@@ -135,7 +135,7 @@ key = "value"
 @pytest.fixture()
 def valid_config_file(tmp_path):
     """Create a temporary valid TOML config file."""
-    p = tmp_path / "config.toml"
+    p = tmp_path / 'config.toml'
     p.write_text(VALID_TOML)
     return p
 
@@ -143,7 +143,7 @@ def valid_config_file(tmp_path):
 @pytest.fixture()
 def minimal_config_file(tmp_path):
     """Create a temporary minimal TOML config file."""
-    p = tmp_path / "config.toml"
+    p = tmp_path / 'config.toml'
     p.write_text(MINIMAL_TOML)
     return p
 
@@ -151,7 +151,7 @@ def minimal_config_file(tmp_path):
 @pytest.fixture()
 def invalid_syntax_config_file(tmp_path):
     """Create a temporary TOML config file with syntax errors."""
-    p = tmp_path / "config.toml"
+    p = tmp_path / 'config.toml'
     p.write_text(INVALID_TOML_SYNTAX)
     return p
 
@@ -159,7 +159,7 @@ def invalid_syntax_config_file(tmp_path):
 @pytest.fixture()
 def missing_fields_config_file(tmp_path):
     """Create a temporary TOML config file with missing required fields."""
-    p = tmp_path / "config.toml"
+    p = tmp_path / 'config.toml'
     p.write_text(MISSING_FIELDS_TOML)
     return p
 
@@ -167,7 +167,7 @@ def missing_fields_config_file(tmp_path):
 @pytest.fixture()
 def multi_plugin_config_file(tmp_path):
     """Create a temporary TOML config file with multiple plugins."""
-    p = tmp_path / "config.toml"
+    p = tmp_path / 'config.toml'
     p.write_text(MULTI_PLUGIN_TOML)
     return p
 
@@ -180,10 +180,10 @@ def multi_plugin_config_file(tmp_path):
 @pytest.fixture()
 def sample_lazyframe():
     """Return a sample Polars LazyFrame."""
-    return pl.LazyFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
+    return pl.LazyFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']})
 
 
 @pytest.fixture()
 def sample_dataframe():
     """Return a sample Polars DataFrame."""
-    return pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
+    return pl.DataFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']})

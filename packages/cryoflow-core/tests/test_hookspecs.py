@@ -15,10 +15,10 @@ from .conftest import DummyOutputPlugin, DummyTransformPlugin
 
 class TestMarkers:
     def test_hookspec_project_name(self):
-        assert hookspec.project_name == "cryoflow"
+        assert hookspec.project_name == 'cryoflow'
 
     def test_hookimpl_project_name(self):
-        assert hookimpl.project_name == "cryoflow"
+        assert hookimpl.project_name == 'cryoflow'
 
 
 # ---------------------------------------------------------------------------
@@ -28,11 +28,11 @@ class TestMarkers:
 
 class TestCryoflowSpecsMethods:
     def test_has_register_transform_plugins(self):
-        assert hasattr(CryoflowSpecs, "register_transform_plugins")
+        assert hasattr(CryoflowSpecs, 'register_transform_plugins')
         assert callable(CryoflowSpecs.register_transform_plugins)
 
     def test_has_register_output_plugins(self):
-        assert hasattr(CryoflowSpecs, "register_output_plugins")
+        assert hasattr(CryoflowSpecs, 'register_output_plugins')
         assert callable(CryoflowSpecs.register_output_plugins)
 
 
@@ -44,7 +44,7 @@ class TestCryoflowSpecsMethods:
 class TestPluggyIntegration:
     def test_hookspec_registration_and_call(self):
         """Register hookspec, add hookimpl, call hook, verify results."""
-        pm = pluggy.PluginManager("cryoflow")
+        pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
 
         transform = DummyTransformPlugin({})
@@ -62,7 +62,7 @@ class TestPluggyIntegration:
         assert flat[0] is transform
 
     def test_output_hookimpl(self):
-        pm = pluggy.PluginManager("cryoflow")
+        pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
 
         output = DummyOutputPlugin({})
@@ -80,11 +80,11 @@ class TestPluggyIntegration:
 
     def test_multiple_hookimpls(self):
         """Multiple hookimpls should all contribute to the result."""
-        pm = pluggy.PluginManager("cryoflow")
+        pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
 
-        t1 = DummyTransformPlugin({"id": "1"})
-        t2 = DummyTransformPlugin({"id": "2"})
+        t1 = DummyTransformPlugin({'id': '1'})
+        t2 = DummyTransformPlugin({'id': '2'})
 
         class Impl1:
             @hookimpl

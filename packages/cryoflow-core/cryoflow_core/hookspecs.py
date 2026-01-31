@@ -4,8 +4,8 @@ import pluggy
 
 from cryoflow_core.plugin import OutputPlugin, TransformPlugin
 
-hookspec = pluggy.HookspecMarker("cryoflow")
-hookimpl = pluggy.HookimplMarker("cryoflow")
+hookspec = pluggy.HookspecMarker('cryoflow')
+hookimpl = pluggy.HookimplMarker('cryoflow')
 
 
 class CryoflowSpecs:

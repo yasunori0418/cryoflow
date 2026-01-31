@@ -20,7 +20,7 @@ class PluginLoadError(Exception):
 
 def _is_filesystem_path(module_str: str) -> bool:
     """Determine if a module string refers to a filesystem path."""
-    return "/" in module_str or "\\" in module_str or module_str.endswith(".py") or module_str.startswith(".")
+    return '/' in module_str or '\\' in module_str or module_str.endswith('.py') or module_str.startswith('.')
 
 
 def _resolve_module_path(module_str: str, config_dir: Path) -> Path:
@@ -37,7 +37,7 @@ def _resolve_module_path(module_str: str, config_dir: Path) -> Path:
         path = config_dir / path
     resolved = path.resolve()
     if not resolved.exists():
-        raise PluginLoadError(f"Plugin file does not exist: {resolved}")
+        raise PluginLoadError(f'Plugin file does not exist: {resolved}')
     return resolved
 
 
@@ -47,7 +47,7 @@ def _load_module_from_path(name: str, path: Path) -> Any:
     Raises:
         PluginLoadError: If the module cannot be loaded.
     """
-    module_name = f"cryoflow_plugin_{name}"
+    module_name = f'cryoflow_plugin_{name}'
     spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
         raise PluginLoadError(f"Plugin '{name}': failed to create module spec from {path}")
@@ -159,7 +159,7 @@ def load_plugins(
         PluginLoadError: If any enabled plugin fails to load.
     """
     if pm is None:
-        pm = pluggy.PluginManager("cryoflow")
+        pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
 
     config_dir = config_path.parent.resolve()
@@ -179,7 +179,7 @@ def load_plugins(
                 all_outputs.append(inst)
 
     relay = _PluginHookRelay(all_transforms, all_outputs)
-    pm.register(relay, name="cryoflow_plugin_relay")
+    pm.register(relay, name='cryoflow_plugin_relay')
 
     return pm
 
