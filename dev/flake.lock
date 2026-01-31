@@ -52,12 +52,15 @@
     "pyproject-build-systems": {
       "inputs": {
         "nixpkgs": [
+          "root",
           "nixpkgs"
         ],
         "pyproject-nix": [
+          "root",
           "pyproject-nix"
         ],
         "uv2nix": [
+          "root",
           "uv2nix"
         ]
       },
@@ -78,6 +81,7 @@
     "pyproject-nix": {
       "inputs": {
         "nixpkgs": [
+          "root",
           "nixpkgs"
         ]
       },
@@ -99,17 +103,39 @@
       "inputs": {
         "flake-parts": "flake-parts",
         "nixpkgs": "nixpkgs",
+        "root": "root_2"
+      }
+    },
+    "root_2": {
+      "inputs": {
+        "flake-parts": [
+          "flake-parts"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
         "pyproject-build-systems": "pyproject-build-systems",
         "pyproject-nix": "pyproject-nix",
         "uv2nix": "uv2nix"
-      }
+      },
+      "locked": {
+        "path": "../",
+        "type": "path"
+      },
+      "original": {
+        "path": "../",
+        "type": "path"
+      },
+      "parent": []
     },
     "uv2nix": {
       "inputs": {
         "nixpkgs": [
+          "root",
           "nixpkgs"
         ],
         "pyproject-nix": [
+          "root",
           "pyproject-nix"
         ]
       },

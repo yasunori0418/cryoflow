@@ -13,6 +13,7 @@
     uv2nix = {
       url = "github:pyproject-nix/uv2nix";
       inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     # Build system support
@@ -20,6 +21,7 @@
       url = "github:pyproject-nix/build-system-pkgs";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.uv2nix.follows = "uv2nix";
     };
   };
 
@@ -49,34 +51,34 @@
           # system,
           ...
         }:
-        {
-          packages =
-            let
-              # 1. Load project metadata
-              workspace = inputs.uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
+        let
+          # 1. Load project metadata
+          workspace = inputs.uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
 
-              # 2. Specifying Python interpreter
-              python = pkgs.python314;
+          # 2. Specifying Python interpreter
+          python = pkgs.python314;
 
-              # 3. Generate Nix overlay from `uv.lock`
-              overlay = inputs.uv2nix.lib.workspace.mkOverlay {
-                inherit workspace;
-              };
+          # 3. Generate Nix overlay from `uv.lock`
+          overlay = workspace.mkPyprojectOverlay {
+            sourcePreference = "wheel";
+          };
 
-              # 4. Building a Python package set
-              pythonSet = python.pkgs.overrideScope (
+          # 4. Building a Python package set
+          pythonSet =
+            (pkgs.callPackage inputs.pyproject-nix.build.packages {
+              inherit python;
+            }).overrideScope
+              (
                 pkgs.lib.composeManyExtensions [
-                  inputs.pyproject-build-systems.overlays.default
+                  inputs.pyproject-build-systems.overlays.wheel
                   overlay
                 ]
               );
-            in
-            {
-              default =
-                (pythonSet.mkPythonEditablePackage {
-                  root = ./.;
-                }).packages;
-            };
+        in
+        {
+          packages = {
+            default = pythonSet.mkVirtualEnv "cryoflow-env" workspace.deps.default;
+          };
         };
     };
 }
