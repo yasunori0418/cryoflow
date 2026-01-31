@@ -20,3 +20,8 @@ members = ["packages/*"]
 [tool.uv.sources]
 cryoflow-core = { workspace = true }
 cryoflow-sample-plugin = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
