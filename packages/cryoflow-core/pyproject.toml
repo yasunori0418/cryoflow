@@ -1,0 +1,12 @@
+[project]
+name = "cryoflow-core"
+version = "0.0.1"
+description = "Core framework for cryoflow"
+requires-python = ">=3.14"
+dependencies = [
+    "typer>=0.21.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
