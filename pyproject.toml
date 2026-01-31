@@ -28,6 +28,7 @@ cryoflow-sample-plugin = { workspace = true }
 testpaths = ["packages/cryoflow-core/tests"]
 
 [tool.ruff]
+target-version = "py314"
 line-length = 120
 
 [dependency-groups]
