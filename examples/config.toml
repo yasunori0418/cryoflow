@@ -1,5 +1,5 @@
-input_path = "data/input.parquet"
-output_target = "data/output.parquet"
+input_path = "examples/data/sample_sales.parquet"
+output_target = "examples/data/output.parquet"
 
 [[plugins]]
 name = "sample-transform"
