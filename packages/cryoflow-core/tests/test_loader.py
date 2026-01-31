@@ -3,6 +3,7 @@
 import sys
 import types
 from pathlib import Path
+from unittest.mock import patch
 
 import pluggy
 import pytest
@@ -186,6 +187,16 @@ class TestLoadModuleFromPath:
         bad_file.write_text(SYNTAX_ERROR_SOURCE)
         with pytest.raises(PluginLoadError, match="failed to execute module"):
             _load_module_from_path("bad_plugin", bad_file)
+
+    def test_spec_none_raises(self, plugin_py_file):
+        with patch(
+            "cryoflow_core.loader.importlib.util.spec_from_file_location",
+            return_value=None,
+        ):
+            with pytest.raises(
+                PluginLoadError, match="failed to create module spec"
+            ):
+                _load_module_from_path("spec_none", plugin_py_file)
 
     def test_syntax_error_cleans_sys_modules(self, tmp_path):
         bad_file = tmp_path / "bad.py"
@@ -386,6 +397,24 @@ class TestLoadPlugins:
         config_file.write_text("")
         with pytest.raises(PluginLoadError):
             load_plugins(cfg, config_file)
+
+    def test_dotpath_plugin_loaded(self, tmp_path):
+        """Test the dotpath branch of _load_single_plugin (loader.py:158)."""
+        cfg = self._make_config(
+            [
+                PluginConfig(
+                    name="dotpath_plugin",
+                    module="tests.dotpath_test_plugin",
+                    enabled=True,
+                )
+            ]
+        )
+        config_file = tmp_path / "config.toml"
+        config_file.write_text("")
+        pm = load_plugins(cfg, config_file)
+        transforms = get_transform_plugins(pm)
+        assert len(transforms) == 1
+        assert transforms[0].name() == "dotpath_transform"
 
     def test_both_plugin_types(self, tmp_path, both_plugins_py_file):
         cfg = self._make_config(

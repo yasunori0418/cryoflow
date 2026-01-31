@@ -131,6 +131,14 @@ class TestLoadConfig:
         with pytest.raises(ConfigLoadError, match="Config validation failed"):
             load_config(missing_fields_config_file)
 
+    def test_read_error(self, tmp_path):
+        config_file = tmp_path / "unreadable.toml"
+        config_file.write_text("dummy")
+        config_file.chmod(0o000)
+        with pytest.raises(ConfigLoadError, match="Failed to read config file"):
+            load_config(config_file)
+        config_file.chmod(0o644)  # restore for cleanup
+
     def test_multi_plugin(self, multi_plugin_config_file):
         cfg = load_config(multi_plugin_config_file)
         assert len(cfg.plugins) == 3
