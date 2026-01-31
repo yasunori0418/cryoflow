@@ -24,6 +24,9 @@ members = ["packages/*"]
 cryoflow-core = { workspace = true }
 cryoflow-sample-plugin = { workspace = true }
 
+[tool.pytest.ini_options]
+testpaths = ["packages/cryoflow-core/tests"]
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
