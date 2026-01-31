@@ -93,9 +93,7 @@ class TestCryoflowConfig:
 class TestGetDefaultConfigPath:
     def test_returns_xdg_path(self):
         fake_home = Path("/tmp/fakexdg")
-        with patch(
-            "cryoflow_core.config.xdg_config_home", return_value=fake_home
-        ):
+        with patch("cryoflow_core.config.xdg_config_home", return_value=fake_home):
             result = get_default_config_path()
         assert result == fake_home / "cryoflow" / "config.toml"
 

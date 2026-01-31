@@ -20,12 +20,7 @@ class PluginLoadError(Exception):
 
 def _is_filesystem_path(module_str: str) -> bool:
     """Determine if a module string refers to a filesystem path."""
-    return (
-        "/" in module_str
-        or "\\" in module_str
-        or module_str.endswith(".py")
-        or module_str.startswith(".")
-    )
+    return "/" in module_str or "\\" in module_str or module_str.endswith(".py") or module_str.startswith(".")
 
 
 def _resolve_module_path(module_str: str, config_dir: Path) -> Path:
@@ -55,18 +50,14 @@ def _load_module_from_path(name: str, path: Path) -> Any:
     module_name = f"cryoflow_plugin_{name}"
     spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
-        raise PluginLoadError(
-            f"Plugin '{name}': failed to create module spec from {path}"
-        )
+        raise PluginLoadError(f"Plugin '{name}': failed to create module spec from {path}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
     try:
         spec.loader.exec_module(module)
     except Exception as e:
         del sys.modules[module_name]
-        raise PluginLoadError(
-            f"Plugin '{name}': failed to execute module: {e}"
-        ) from e
+        raise PluginLoadError(f"Plugin '{name}': failed to execute module: {e}") from e
     return module
 
 
@@ -79,14 +70,10 @@ def _load_module_from_dotpath(name: str, module_path: str) -> Any:
     try:
         return importlib.import_module(module_path)
     except ImportError as e:
-        raise PluginLoadError(
-            f"Plugin '{name}': module '{module_path}' not found"
-        ) from e
+        raise PluginLoadError(f"Plugin '{name}': module '{module_path}' not found") from e
 
 
-def _discover_plugin_classes(
-    name: str, module: Any
-) -> list[type[BasePlugin]]:
+def _discover_plugin_classes(name: str, module: Any) -> list[type[BasePlugin]]:
     """Discover BasePlugin subclasses in a loaded module.
 
     Raises:
@@ -102,15 +89,11 @@ def _discover_plugin_classes(
         ):
             classes.append(obj)
     if not classes:
-        raise PluginLoadError(
-            f"Plugin '{name}': no BasePlugin subclasses found in module"
-        )
+        raise PluginLoadError(f"Plugin '{name}': no BasePlugin subclasses found in module")
     return classes
 
 
-def _instantiate_plugins(
-    name: str, classes: list[type[BasePlugin]], options: dict[str, Any]
-) -> list[BasePlugin]:
+def _instantiate_plugins(name: str, classes: list[type[BasePlugin]], options: dict[str, Any]) -> list[BasePlugin]:
     """Instantiate discovered plugin classes with options.
 
     Raises:
@@ -121,9 +104,7 @@ def _instantiate_plugins(
         try:
             instances.append(cls(options))
         except Exception as e:
-            raise PluginLoadError(
-                f"Plugin '{name}': failed to instantiate {cls.__name__}: {e}"
-            ) from e
+            raise PluginLoadError(f"Plugin '{name}': failed to instantiate {cls.__name__}: {e}") from e
     return instances
 
 
@@ -147,9 +128,7 @@ class _PluginHookRelay:
         return self._outputs
 
 
-def _load_single_plugin(
-    plugin_cfg: PluginConfig, config_dir: Path
-) -> list[BasePlugin]:
+def _load_single_plugin(plugin_cfg: PluginConfig, config_dir: Path) -> list[BasePlugin]:
     """Load a single plugin from its config entry."""
     if _is_filesystem_path(plugin_cfg.module):
         path = _resolve_module_path(plugin_cfg.module, config_dir)

@@ -20,9 +20,7 @@ class BasePlugin(ABC):
         """Return the plugin identifier name."""
 
     @abstractmethod
-    def dry_run(
-        self, schema: dict[str, pl.DataType]
-    ) -> Result[dict[str, pl.DataType], Exception]:
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
         """Validate schema and return expected output schema."""
 
 

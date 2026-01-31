@@ -64,9 +64,7 @@ def main() -> None:
     sensor_types = RNG.choice(SENSOR_TYPES, size=NUM_ROWS)
 
     # センサー種別ごとのセンサーIDを選択
-    sensor_ids = [
-        RNG.choice(SENSOR_IDS[st]) for st in sensor_types
-    ]
+    sensor_ids = [RNG.choice(SENSOR_IDS[st]) for st in sensor_types]
 
     # 施設IDをランダム選択
     facility_ids = RNG.choice(FACILITY_IDS, size=NUM_ROWS)
@@ -132,9 +130,7 @@ def main() -> None:
 
     # 意図的に順序をシャッフル (乱数シードで再現可能)
     shuffle_idx = RNG.permutation(NUM_ROWS)
-    df = df.with_row_index("__idx").filter(
-        pl.col("__idx").is_in(shuffle_idx.tolist())
-    ).sort("__idx").drop("__idx")
+    df = df.with_row_index("__idx").filter(pl.col("__idx").is_in(shuffle_idx.tolist())).sort("__idx").drop("__idx")
     # polars の permutation 相当: sample で全行シャッフル
     df = df.sample(fraction=1.0, seed=12345, shuffle=True)
 

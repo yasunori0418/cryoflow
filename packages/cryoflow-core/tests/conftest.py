@@ -28,9 +28,7 @@ class DummyTransformPlugin(TransformPlugin):
     def execute(self, df: FrameData) -> Success[FrameData]:
         return Success(df)
 
-    def dry_run(
-        self, schema: dict[str, pl.DataType]
-    ) -> Success[dict[str, pl.DataType]]:
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Success[dict[str, pl.DataType]]:
         return Success(schema)
 
 
@@ -43,9 +41,7 @@ class DummyOutputPlugin(OutputPlugin):
     def execute(self, df: FrameData) -> Success[None]:
         return Success(None)
 
-    def dry_run(
-        self, schema: dict[str, pl.DataType]
-    ) -> Success[dict[str, pl.DataType]]:
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Success[dict[str, pl.DataType]]:
         return Success(schema)
 
 
@@ -58,9 +54,7 @@ class FailingTransformPlugin(TransformPlugin):
     def execute(self, df: FrameData) -> Failure[Exception]:
         return Failure(ValueError("intentional failure"))
 
-    def dry_run(
-        self, schema: dict[str, pl.DataType]
-    ) -> Failure[Exception]:
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Failure[Exception]:
         return Failure(ValueError("intentional dry_run failure"))
 
 
@@ -76,9 +70,7 @@ class BrokenInitPlugin(TransformPlugin):
     def execute(self, df: FrameData) -> Success[FrameData]:
         return Success(df)
 
-    def dry_run(
-        self, schema: dict[str, pl.DataType]
-    ) -> Success[dict[str, pl.DataType]]:
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Success[dict[str, pl.DataType]]:
         return Success(schema)
 
 

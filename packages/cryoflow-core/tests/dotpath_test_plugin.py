@@ -17,7 +17,5 @@ class DotpathTransformPlugin(TransformPlugin):
     def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         return Success(df)
 
-    def dry_run(
-        self, schema: dict[str, pl.DataType]
-    ) -> Result[dict[str, pl.DataType], Exception]:
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
         return Success(schema)

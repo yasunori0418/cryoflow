@@ -193,9 +193,7 @@ class TestLoadModuleFromPath:
             "cryoflow_core.loader.importlib.util.spec_from_file_location",
             return_value=None,
         ):
-            with pytest.raises(
-                PluginLoadError, match="failed to create module spec"
-            ):
+            with pytest.raises(PluginLoadError, match="failed to create module spec"):
                 _load_module_from_path("spec_none", plugin_py_file)
 
     def test_syntax_error_cleans_sys_modules(self, tmp_path):
@@ -266,9 +264,7 @@ class TestDiscoverPluginClasses:
 class TestInstantiatePlugins:
     def test_normal_instantiation(self):
         opts = {"key": "value"}
-        instances = _instantiate_plugins(
-            "test", [DummyTransformPlugin, DummyOutputPlugin], opts
-        )
+        instances = _instantiate_plugins("test", [DummyTransformPlugin, DummyOutputPlugin], opts)
         assert len(instances) == 2
         assert all(inst.options is opts for inst in instances)
 

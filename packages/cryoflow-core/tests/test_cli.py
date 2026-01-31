@@ -107,9 +107,7 @@ class TestRunSuccess:
 
 class TestRunErrors:
     def test_nonexistent_file(self, tmp_path):
-        result = runner.invoke(
-            app, ["run", "--config", str(tmp_path / "nonexistent.toml")]
-        )
+        result = runner.invoke(app, ["run", "--config", str(tmp_path / "nonexistent.toml")])
         assert result.exit_code != 0
 
     def test_config_load_error(self, tmp_path):
@@ -151,9 +149,7 @@ class TestDefaultConfigPath:
             mock_load.return_value = pluggy.PluginManager("cryoflow")
             # Invoke without --config so default path is used
             # We also need to patch load_config to use our file
-            with patch(
-                "cryoflow_core.cli.load_config"
-            ) as mock_load_config:
+            with patch("cryoflow_core.cli.load_config") as mock_load_config:
                 mock_load_config.return_value = CryoflowConfig(
                     input_path="/data/in.parquet",
                     output_target="/data/out.parquet",
