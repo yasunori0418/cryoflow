@@ -291,3 +291,43 @@ Output schema:
 - Verify plugin loading capability
 - Schema validation (confirm transformed column types)
 - Pre-flight validation before actual execution
+
+**Limitations**:
+
+- Currently supports a single output plugin only. If multiple output plugins are specified in the configuration, an error will be raised.
+
+---
+
+## 7. Implementation Details
+
+### 7.1 Plugin Loader Behavior
+
+The plugin loader (`cryoflow_core/loader.py`) distinguishes between filesystem paths and dotted module paths:
+
+- **Filesystem Path** (e.g., `./plugins/my_plugin.py`): Loaded directly via `importlib.util.spec_from_file_location()`
+- **Dotted Module Path** (e.g., `cryoflow_sample_plugin.transform`): Loaded via `importlib.import_module()` from installed packages
+
+This allows plugins to be loaded either from local development files or from installed Python packages, providing flexibility in plugin distribution and development workflows.
+
+### 7.2 Schema Extraction from Data Sources
+
+The pipeline automatically detects the format (Parquet/IPC) from the input file extension and extracts the schema:
+
+- **LazyFrame**: Schema is extracted via `schema` property without materializing data
+- **DataFrame**: Schema is extracted via the same `schema` property
+
+In both cases, the schema extraction is non-blocking and does not trigger data loading. This enables efficient dry-run validation without I/O overhead.
+
+### 7.3 Result Type and Error Propagation
+
+All plugin methods (`execute`, `dry_run`) return `Result[T, Exception]` types from the `returns` library:
+
+```python
+# Transform plugin returns the transformed data
+Result[FrameData, Exception]
+
+# Output plugin returns None (None indicates successful output)
+Result[None, Exception]
+```
+
+Errors are propagated through the pipeline using the `bind()` method, which automatically halts processing on the first `Failure` encountered. This implements railway-oriented programming, ensuring predictable error handling across the entire pipeline.

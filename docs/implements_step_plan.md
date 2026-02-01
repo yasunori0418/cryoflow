@@ -148,7 +148,7 @@ Phase 3 completed. The following has been implemented:
 - `test_transform.py`: Unit tests for transform plugin (21 tests)
 - `test_output.py`: Unit tests for output plugin (9 tests)
 - `test_e2e.py`: E2E integration tests (4 tests)
-- **Total**: All 149 tests pass
+- **Total**: All 140 tests pass
 
 ### 3-4. CLI Integration
 - Extended `cli.py` `run` command for pipeline execution
