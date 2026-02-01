@@ -31,15 +31,62 @@
           # system,
           ...
         }:
+        let
+          # https://pyproject-nix.github.io/uv2nix/usage/getting-started.html#setting-up-a-development-environment-optional
+          # Access workspace and pythonSet from root via legacyPackages
+          rootWorkspace = inputs'.root.legacyPackages.workspace;
+          rootPythonSet = inputs'.root.legacyPackages.pythonSet;
+          editableOverlay = rootWorkspace.mkEditablePyprojectOverlay {
+            # Use environment variable pointing to editable root directory
+            root = "$REPO_ROOT";
+            # Optional: Only enable editable for these packages
+            # members = [ "hello-world" ];
+          };
+          editablePythonSet = rootPythonSet.overrideScope (
+            pkgs.lib.composeManyExtensions [
+              editableOverlay
+              (
+                final: prev:
+                let
+                  addEditables =
+                    name:
+                    prev.${name}.overrideAttrs (old: {
+                      nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
+                        final.editables
+                      ];
+                    });
+                in
+                {
+                  cryoflow = addEditables "cryoflow";
+                  cryoflow-core = addEditables "cryoflow-core";
+                  cryoflow-sample-plugin = addEditables "cryoflow-sample-plugin";
+                }
+              )
+            ]
+          );
+          virtualenv = editablePythonSet.mkVirtualEnv "cryoflow-dev-env" rootWorkspace.deps.all;
+        in
         {
           devShells.default = pkgs.mkShell {
             inputsFrom = [ inputs'.root.packages.default ];
-            packages = with pkgs; [
-              uv
-              ruff
-              pyright
-            ];
-            UV_PYTHON_PREFERENCE = "only-system";
+            packages =
+              with pkgs;
+              [
+                uv
+                ruff
+                pyright
+              ]
+              ++ [ virtualenv ];
+            env = {
+              UV_PYTHON_PREFERENCE = "only-system";
+              UV_NO_SYNC = "1";
+              UV_PYTHON = editablePythonSet.python.interpreter;
+              UV_PYTHON_DOWNLOADS = "never";
+            };
+            shellHook = ''
+              unset PYTHONPATH
+              export REPO_ROOT=$(git rev-parse --show-superproject-working-tree --show-toplevel)
+            '';
           };
         };
     };
