@@ -143,3 +143,154 @@ if isinstance(result, Failure):
     raise typer.Exit(code=1)
 
 ```
+
+---
+
+## 5. プラグイン実装のベストプラクティス
+
+### 5.1 エラーハンドリング
+
+プラグインの`execute()`と`dry_run()`メソッドでは、以下のパターンを推奨します。
+
+**パターン1: try-exceptで明示的にFailureを返す（推奨）**
+
+```python
+from returns.result import Failure, Success
+
+def execute(self, df: FrameData) -> Result[FrameData, Exception]:
+    try:
+        column_name = self.options['column_name']
+        if column_name not in df.columns:
+            return Failure(ValueError(f"Column '{column_name}' not found"))
+        # ... 処理 ...
+        return Success(transformed_df)
+    except Exception as e:
+        return Failure(e)
+```
+
+**パターン2: @safeデコレータで自動変換**
+
+```python
+from returns.result import safe
+
+@safe
+def execute(self, df: FrameData) -> FrameData:
+    column_name = self.options['column_name']
+    if column_name not in df.columns:
+        raise ValueError(f"Column '{column_name}' not found")
+    # ... 処理 ...
+    return transformed_df
+```
+
+いずれの場合も、**エラーメッセージには具体的な情報**（カラム名、期待値、実際値）を含めることが重要です。
+
+### 5.2 dry_runメソッドの実装
+
+`dry_run`メソッドは、実際のデータを処理せずにスキーマのみを検査して、処理後の予想スキーマを返します。
+
+```python
+def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
+    """スキーマを検証し、処理後の予想スキーマを返す"""
+    column_name = self.options['column_name']
+
+    # カラム存在チェック
+    if column_name not in schema:
+        return Failure(ValueError(f"Column '{column_name}' not found in schema"))
+
+    # 型チェック
+    dtype = schema[column_name]
+    if not dtype.is_numeric():
+        return Failure(ValueError(
+            f"Column '{column_name}' has type {dtype}, expected numeric type"
+        ))
+
+    # スキーマは変更されないため、そのまま返す
+    return Success(schema)
+```
+
+### 5.3 リソース管理
+
+- Polarsの`scan_*`/`sink_*`メソッドは自動的にファイルハンドラをクローズします
+- カスタムOutputPluginを実装する場合、`with`文でファイルハンドラを管理してください
+
+```python
+class CustomOutputPlugin(OutputPlugin):
+    def execute(self, df: FrameData) -> Result[None, Exception]:
+        try:
+            output_path = self.options['output_path']
+            with open(output_path, 'w') as f:
+                # ファイル処理
+                pass
+            return Success(None)
+        except Exception as e:
+            return Failure(e)
+```
+
+---
+
+## 6. CLIコマンド
+
+### 6.1 run コマンド
+
+データ処理パイプラインを実行します。
+
+```bash
+cryoflow run [-c CONFIG] [-v]
+```
+
+**オプション**:
+- `-c, --config CONFIG`: 設定ファイルのパス（指定されない場合はXDG準拠のデフォルトパスを使用）
+- `-v, --verbose`: 詳細ログを出力（DEBUG レベルのログが表示される）
+
+**出力例**:
+
+```
+Config loaded: /home/user/.config/cryoflow/config.toml
+  input_path:    data/input.parquet
+  output_target: data/output.parquet
+  plugins:       2 plugin(s)
+    - transform_plugin (my.transform) [enabled]
+    - output_plugin (my.output) [enabled]
+Loaded 2 plugin(s) successfully.
+
+Executing pipeline...
+INFO: Executing 1 transformation plugin(s)...
+INFO:   [1/1] transform_plugin
+[SUCCESS] Pipeline completed successfully
+```
+
+### 6.2 check コマンド
+
+パイプライン設定とスキーマを検証します。実際のデータは処理されません。
+
+```bash
+cryoflow check [-c CONFIG] [-v]
+```
+
+**オプション**:
+- `-c, --config CONFIG`: 設定ファイルのパス
+- `-v, --verbose`: 詳細ログを出力
+
+**出力例**:
+
+```
+[CHECK] Config loaded: /home/user/.config/cryoflow/config.toml
+[CHECK] Loaded 2 plugin(s) successfully.
+
+[CHECK] Running dry-run validation...
+
+[SUCCESS] Validation completed successfully
+
+Output schema:
+  order_id: Int64
+  customer_id: Int64
+  total_amount: Float64
+  order_date: Date
+```
+
+**用途**:
+
+- 設定ファイルの構文チェック
+- プラグインのロード可否確認
+- スキーマ検証（変換後のカラム型を確認）
+- 本実行前のプリフライト確認

@@ -39,6 +39,42 @@ ABC による基底クラスを継承してプラグインを作成します。
 - プラグイン間のデータ受け渡しは `Result[FrameData, Exception]` でラップ
 - パイプライン制御では `flow` / `bind` を使用し、`Failure` 発生時に即座に処理を中断
 
+## CLIコマンド
+
+### run コマンド
+
+データ処理パイプラインを実行します。
+
+```bash
+# デフォルト設定ファイルを使用
+cryoflow run
+
+# カスタム設定ファイルを指定
+cryoflow run -c path/to/config.toml
+
+# 詳細ログを出力
+cryoflow run -c path/to/config.toml -v
+```
+
+### check コマンド
+
+パイプライン設定とスキーマを検証します。実際のデータは処理されません。
+
+```bash
+# 設定の妥当性とスキーマを確認
+cryoflow check -c path/to/config.toml
+
+# 詳細ログ付きで確認
+cryoflow check -c path/to/config.toml -v
+```
+
+**check コマンドの用途**:
+
+- 設定ファイルの構文チェック
+- プラグインのロード可否確認
+- スキーマ検証（変換後のカラム型を確認）
+- 本実行前のプリフライト確認
+
 ## ドキュメント
 
 - [仕様書](docs/spec.md)
