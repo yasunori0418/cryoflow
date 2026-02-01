@@ -77,6 +77,11 @@
           packages = {
             default = pythonSet.mkVirtualEnv "cryoflow-env" workspace.deps.default;
           };
+
+          # Expose workspace and pythonSet for dev/flake.nix
+          legacyPackages = {
+            inherit workspace pythonSet;
+          };
         };
     };
 }
