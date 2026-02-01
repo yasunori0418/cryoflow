@@ -55,8 +55,10 @@
           # 1. Load project metadata
           workspace = inputs.uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
 
-          # 2. Specifying Python interpreter
-          python = pkgs.python314;
+          # 2. Constructing a base Python set
+          pythonBase = pkgs.callPackage inputs.pyproject-nix.build.packages {
+            python = pkgs.python314;
+          };
 
           # 3. Generate Nix overlay from `uv.lock`
           overlay = workspace.mkPyprojectOverlay {
@@ -64,16 +66,12 @@
           };
 
           # 4. Building a Python package set
-          pythonSet =
-            (pkgs.callPackage inputs.pyproject-nix.build.packages {
-              inherit python;
-            }).overrideScope
-              (
-                pkgs.lib.composeManyExtensions [
-                  inputs.pyproject-build-systems.overlays.wheel
-                  overlay
-                ]
-              );
+          pythonSet = pythonBase.overrideScope (
+            pkgs.lib.composeManyExtensions [
+              inputs.pyproject-build-systems.overlays.wheel
+              overlay
+            ]
+          );
         in
         {
           packages = {
