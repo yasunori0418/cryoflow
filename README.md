@@ -17,20 +17,36 @@ A plugin-driven columnar data processing CLI tool built on Polars LazyFrame.
 ## Prerequisites
 
 - Python 3.14 or higher
-- pip or [uv](https://astral.sh/uv/) (optional, for faster installation)
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
 
 ## Installation
 
+### Using uv (recommended)
+
+Install directly from the GitHub repository:
+
+```bash
+uv tool install git+https://github.com/yasunori0418/cryoflow
+```
+
+Try without installing:
+
+```bash
+uvx --from git+https://github.com/yasunori0418/cryoflow cryoflow --help
+```
+
+> **Note**: After PyPI publication, you can also install with:
+
+```bash
+uv tool install cryoflow
+```
+
 ### Using pip
+
+> **Note**: Available after PyPI publication.
 
 ```bash
 pip install cryoflow
-```
-
-### Using uv (recommended)
-
-```bash
-uv pip install cryoflow
 ```
 
 ### Using Nix

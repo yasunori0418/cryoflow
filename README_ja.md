@@ -17,20 +17,36 @@ Polars LazyFrame を中核とした、プラグイン駆動型の列指向デー
 ## 前提条件
 
 - Python 3.14 以上
-- pip または [uv](https://astral.sh/uv/)（オプション、高速インストール向け）
+- [uv](https://docs.astral.sh/uv/)（推奨）または pip
 
 ## インストール
 
+### uv を使用（推奨）
+
+GitHub リポジトリから直接インストール：
+
+```bash
+uv tool install git+https://github.com/yasunori0418/cryoflow
+```
+
+お試し実行（インストール不要）：
+
+```bash
+uvx --from git+https://github.com/yasunori0418/cryoflow cryoflow --help
+```
+
+> **注意**: PyPI 公開後は以下でもインストール可能になります：
+
+```bash
+uv tool install cryoflow
+```
+
 ### pip を使用
+
+> **注意**: PyPI 公開後に利用可能になります。
 
 ```bash
 pip install cryoflow
-```
-
-### uv を使用（推奨）
-
-```bash
-uv pip install cryoflow
 ```
 
 ### Nix を使用
