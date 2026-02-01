@@ -47,7 +47,7 @@
 
 ---
 
-## Phase 2: プラグイン機構の実装 (Pluggy & ABC)
+## Phase 2: プラグイン機構の実装 (Pluggy & ABC) ✅ 完了
 
 **目標**: 外部ファイルに定義されたクラスをロードし、メソッドを呼び出せるようにする。
 
@@ -130,5 +130,5 @@
 
 ## 次のアクション
 
-Phase 1 が完了したため、**Phase 2: プラグイン機構の実装** に進む。
-最初のステップとして、ABC基底クラス（`BasePlugin`, `TransformPlugin`, `OutputPlugin`）とpluggのHookSpec定義を実装する。
+Phase 2 が完了したため、**Phase 3: データ処理パイプライン実装** に進む。
+`pipeline.py` で Polars LazyFrame を統合し、プラグインチェーンをデータ処理フローに組み込む。
