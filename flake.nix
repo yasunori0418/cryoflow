@@ -1,5 +1,5 @@
 {
-  description = "Plug-in-driven column-oriented data processing CLI tool with Polars LazyFrame at its core.";
+  description = "A plugin-driven columnar data processing CLI tool built on Polars LazyFrame.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
