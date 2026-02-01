@@ -2,7 +2,16 @@ input_path = "examples/data/sample_sales.parquet"
 output_target = "examples/data/output.parquet"
 
 [[plugins]]
-name = "sample-transform"
+name = "column-multiplier"
 module = "cryoflow_sample_plugin.transform"
 enabled = true
-options = { column_name = "value", multiplier = 2 }
+[plugins.options]
+column_name = "total_amount"
+multiplier = 2
+
+[[plugins]]
+name = "parquet-writer"
+module = "cryoflow_sample_plugin.output"
+enabled = true
+[plugins.options]
+output_path = "examples/data/output.parquet"

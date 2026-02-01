@@ -82,7 +82,7 @@
 
 ---
 
-## Phase 3: データ処理パイプライン実装 (Polars & Returns)
+## Phase 3: データ処理パイプライン実装 (Polars & Returns) ✅ 完了
 
 **目標**: 実際にParquetを読み込み、処理して保存できるようにする。
 
@@ -128,7 +128,44 @@
 
 ---
 
+## 実装済みパイプラインの確認
+
+Phase 3 完了。以下が実装されました：
+
+### 3-1. `pipeline.py` - コアパイプライン実装
+- `_detect_format()`: ファイル拡張子から Parquet/IPC 形式を自動判別
+- `load_data()`: `@safe` デコレータで例外を `Result` に自動変換
+- `execute_transform_chain()`: `returns.Result.bind()` でプラグインを連鎖実行
+- `execute_output()`: 変換済みデータを出力プラグインに渡す
+- `run_pipeline()`: 読込→変換→出力の統合パイプライン
+
+### 3-2. サンプルプラグイン実装
+- `ColumnMultiplierPlugin`: 指定カラムを係数で乗算（LazyFrame の計算グラフ対応）
+- `ParquetWriterPlugin`: Parquet ファイルへの出力（`sink_parquet()` でストリーミング書き込み）
+
+### 3-3. テストカバレッジ
+- `test_pipeline.py`: パイプライン関数の単体テスト (20テスト)
+- `test_transform.py`: 変換プラグインの単体テスト (21テスト)
+- `test_output.py`: 出力プラグインの単体テスト (9テスト)
+- `test_e2e.py`: E2E統合テスト (4テスト)
+- **合計**: 149テスト全て合格
+
+### 3-4. CLI 統合
+- `cli.py` の `run` コマンドをパイプライン実行に拡張
+- 出力プラグイン検証ロジック（1プラグインのみサポート）
+- Success/Failure の処理と詳細なエラーメッセージ表示
+
+### 3-5. 実動作確認
+```bash
+python -c "from cryoflow_core.cli import app; app(['run', '-c', 'examples/config.toml'])"
+```
+✅ Parquet → (total_amount × 2) → Parquet として正常に動作
+
+---
+
 ## 次のアクション
 
-Phase 2 が完了したため、**Phase 3: データ処理パイプライン実装** に進む。
-`pipeline.py` で Polars LazyFrame を統合し、プラグインチェーンをデータ処理フローに組み込む。
+Phase 3 完了。**Phase 4: Dry-Run と堅牢化** に進む準備完了。
+- `cryoflow check` コマンドの実装
+- スキーマ検証の強化
+- ロギングシステムの統備

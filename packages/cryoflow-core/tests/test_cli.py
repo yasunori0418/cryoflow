@@ -4,11 +4,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pluggy
-import pytest
 from typer.testing import CliRunner
 
 from cryoflow_core.cli import app
-from cryoflow_core.config import ConfigLoadError, CryoflowConfig, PluginConfig
+from cryoflow_core.config import CryoflowConfig
 from cryoflow_core.loader import PluginLoadError
 
 from .conftest import VALID_TOML, MINIMAL_TOML
@@ -49,18 +48,28 @@ class TestRunSuccess:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+        with (
+            patch('cryoflow_core.cli.load_plugins') as mock_load,
+            patch('cryoflow_core.cli.get_transform_plugins') as mock_get_trans,
+            patch('cryoflow_core.cli.get_output_plugins') as mock_get_out,
+        ):
             mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_get_trans.return_value = []
+            mock_get_out.return_value = []
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
-        assert result.exit_code == 0
-        assert 'Config loaded' in result.output
+        assert result.exit_code == 1
+        assert '[ERROR] No output plugin configured' in result.output
 
     def test_output_contains_input_path(self, tmp_path):
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+        with (
+            patch('cryoflow_core.cli.load_plugins') as mock_load,
+            patch('cryoflow_core.cli.get_transform_plugins'),
+            patch('cryoflow_core.cli.get_output_plugins'),
+        ):
             mock_load.return_value = pluggy.PluginManager('cryoflow')
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
@@ -71,7 +80,11 @@ class TestRunSuccess:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+        with (
+            patch('cryoflow_core.cli.load_plugins') as mock_load,
+            patch('cryoflow_core.cli.get_transform_plugins'),
+            patch('cryoflow_core.cli.get_output_plugins'),
+        ):
             mock_load.return_value = pluggy.PluginManager('cryoflow')
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
@@ -82,7 +95,11 @@ class TestRunSuccess:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+        with (
+            patch('cryoflow_core.cli.load_plugins') as mock_load,
+            patch('cryoflow_core.cli.get_transform_plugins'),
+            patch('cryoflow_core.cli.get_output_plugins'),
+        ):
             mock_load.return_value = pluggy.PluginManager('cryoflow')
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
@@ -92,12 +109,18 @@ class TestRunSuccess:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(MINIMAL_TOML)
 
-        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+        with (
+            patch('cryoflow_core.cli.load_plugins') as mock_load,
+            patch('cryoflow_core.cli.get_transform_plugins') as mock_get_trans,
+            patch('cryoflow_core.cli.get_output_plugins') as mock_get_out,
+        ):
             mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_get_trans.return_value = []
+            mock_get_out.return_value = []
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
-        assert result.exit_code == 0
-        assert '0 plugin(s)' in result.output
+        assert result.exit_code == 1
+        assert '[ERROR] No output plugin configured' in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -145,17 +168,22 @@ class TestDefaultConfigPath:
                 return_value=config_file,
             ) as mock_default,
             patch('cryoflow_core.cli.load_plugins') as mock_load,
+            patch('cryoflow_core.cli.get_transform_plugins') as mock_get_trans,
+            patch('cryoflow_core.cli.get_output_plugins') as mock_get_out,
         ):
             mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_get_trans.return_value = []
+            mock_get_out.return_value = []
             # Invoke without --config so default path is used
             # We also need to patch load_config to use our file
             with patch('cryoflow_core.cli.load_config') as mock_load_config:
                 mock_load_config.return_value = CryoflowConfig(
-                    input_path='/data/in.parquet',
+                    input_path=Path('/data/in.parquet'),
                     output_target='/data/out.parquet',
                     plugins=[],
                 )
                 result = runner.invoke(app, ['run'])
 
             mock_default.assert_called_once()
-        assert result.exit_code == 0
+        assert result.exit_code == 1
+        assert '[ERROR] No output plugin configured' in result.output
