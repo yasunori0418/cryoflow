@@ -33,12 +33,51 @@ pip install cryoflow
 uv pip install cryoflow
 ```
 
+### Nix を使用
+
+Nix をインストール済みの場合、以下で直接実行できます：
+
+```bash
+nix run github:yasunori0418/cryoflow -- --help
+```
+
+または、NixOS の設定ファイルや flake.nix に追加できます：
+
+```nix
+inputs = {
+  cryoflow.url = "github:yasunori0418/cryoflow";
+};
+```
+
 ### ソースからのインストール
 
 ```bash
 git clone https://github.com/yasunori0418/cryoflow
 cd cryoflow
 uv sync  # or pip install -e .
+```
+
+### Nix Flake と direnv を使用した開発環境
+
+開発目的の場合、direnv または Nix CLI を使用して開発環境をロードできます：
+
+#### direnv を使用（推奨）
+
+```bash
+# サンプル設定をコピー
+cp example.envrc .envrc
+
+# direnv にロードを許可
+direnv allow
+```
+
+このディレクトリに入ると、direnv は自動的に `dev/flake.nix` で定義された環境をアクティベートします。uv、ruff、pyright などのツールがすべて含まれた開発環境がセットアップされます。
+
+#### Nix CLI を使用
+
+```bash
+# dev/flake.nix の開発環境に入る
+nix develop ./dev
 ```
 
 ## クイックスタート

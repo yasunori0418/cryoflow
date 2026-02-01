@@ -33,12 +33,51 @@ pip install cryoflow
 uv pip install cryoflow
 ```
 
+### Using Nix
+
+If you have Nix installed, you can run cryoflow directly:
+
+```bash
+nix run github:yasunori0418/cryoflow -- --help
+```
+
+Or add cryoflow to your NixOS configuration or flake.nix:
+
+```nix
+inputs = {
+  cryoflow.url = "github:yasunori0418/cryoflow";
+};
+```
+
 ### From Source
 
 ```bash
 git clone https://github.com/yasunori0418/cryoflow
 cd cryoflow
 uv sync  # or pip install -e .
+```
+
+### Development with Nix Flake and direnv
+
+For development purposes, you can use either direnv or nix CLI:
+
+#### Using direnv (recommended)
+
+```bash
+# Copy the example configuration
+cp example.envrc .envrc
+
+# Allow direnv to load the configuration
+direnv allow
+```
+
+This automatically loads the development environment with Nix, including uv, ruff, and pyright tools. When you enter the directory, direnv automatically activates the environment defined in `dev/flake.nix`.
+
+#### Using Nix CLI
+
+```bash
+# Enter the development environment from dev/flake.nix
+nix develop ./dev
 ```
 
 ## Quick Start
