@@ -307,7 +307,7 @@ English documentation is available as `docs/{filename}.md`.
 
 ## License
 
-This project is licensed under the MIT License. See LICENSE file for details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
