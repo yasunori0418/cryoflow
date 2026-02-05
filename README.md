@@ -108,7 +108,7 @@ output_target = "data/output.parquet"
 
 [[plugins]]
 name = "column-multiplier"
-module = "cryoflow_sample_plugin.transform"
+module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
 [plugins.options]
 column_name = "amount"
@@ -116,7 +116,7 @@ multiplier = 2
 
 [[plugins]]
 name = "parquet-writer"
-module = "cryoflow_sample_plugin.output"
+module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 [plugins.options]
 output_path = "data/output.parquet"
@@ -199,7 +199,7 @@ output_target = "examples/data/output.parquet"
 # First plugin: Transform data
 [[plugins]]
 name = "column-multiplier"
-module = "cryoflow_sample_plugin.transform"
+module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
 [plugins.options]
 column_name = "total_amount"
@@ -208,7 +208,7 @@ multiplier = 2
 # Second plugin: Output result
 [[plugins]]
 name = "parquet-writer"
-module = "cryoflow_sample_plugin.output"
+module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 [plugins.options]
 output_path = "examples/data/output.parquet"
@@ -339,10 +339,10 @@ English documentation is available as `docs/{filename}.md`.
 
 ### Plugin Not Found
 
-**Error**: `Module not found: cryoflow_sample_plugin`
+**Error**: `Module not found: cryoflow_plugin_collections`
 
 **Solution**:
-- Install required plugins: `pip install cryoflow-sample-plugin`
+- Install required plugins: `pip install cryoflow-plugin-collections`
 - Verify the module path in the configuration file
 
 ### Schema Validation Error

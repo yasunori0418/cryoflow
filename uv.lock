@@ -6,7 +6,7 @@ requires-python = ">=3.14"
 members = [
     "cryoflow",
     "cryoflow-core",
-    "cryoflow-sample-plugin",
+    "cryoflow-plugin-collections",
 ]
 
 [[package]]
@@ -45,7 +45,7 @@ version = "0.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "cryoflow-core" },
-    { name = "cryoflow-sample-plugin" },
+    { name = "cryoflow-plugin-collections" },
     { name = "polars" },
 ]
 
@@ -58,7 +58,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cryoflow-core", editable = "packages/cryoflow-core" },
-    { name = "cryoflow-sample-plugin", editable = "packages/cryoflow-sample-plugin" },
+    { name = "cryoflow-plugin-collections", editable = "packages/cryoflow-plugin-collections" },
     { name = "polars", specifier = ">=1.37.1" },
 ]
 
@@ -92,9 +92,9 @@ requires-dist = [
 ]
 
 [[package]]
-name = "cryoflow-sample-plugin"
+name = "cryoflow-plugin-collections"
 version = "0.0.1"
-source = { editable = "packages/cryoflow-sample-plugin" }
+source = { editable = "packages/cryoflow-plugin-collections" }
 dependencies = [
     { name = "cryoflow-core" },
 ]

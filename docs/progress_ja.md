@@ -116,8 +116,8 @@
 |---------|------|------|------|
 | `packages/cryoflow-core/cryoflow_core/pipeline.py` | 新規 | ✅ | パイプラインランナー（108行） - scan + transform chain + output |
 | `packages/cryoflow-core/cryoflow_core/cli.py` | 編集 | ✅ | モック → パイプライン実行に切り替え |
-| `packages/cryoflow-sample-plugin/cryoflow_sample_plugin/transform.py` | 新規 | ✅ | ColumnMultiplierPlugin（90行） |
-| `packages/cryoflow-sample-plugin/cryoflow_sample_plugin/output.py` | 新規 | ✅ | ParquetWriterPlugin（79行） |
+| `packages/cryoflow-plugin-collections/cryoflow_plugin_collections/transform/multiplier.py` | 新規 | ✅ | ColumnMultiplierPlugin（90行） |
+| `packages/cryoflow-plugin-collections/cryoflow_plugin_collections/output/parquet_writer.py` | 新規 | ✅ | ParquetWriterPlugin（79行） |
 
 ### 実装内容の詳細
 
@@ -282,13 +282,17 @@ cryoflow/
 │   │       ├── test_pipeline.py
 │   │       ├── test_e2e.py
 │   │       └── conftest.py
-│   └── cryoflow-sample-plugin/     # サンプルプラグイン
-│       ├── pyproject.toml          # 依存定義 (cryoflow-core, polars)
-│       ├── cryoflow_sample_plugin/
+│   └── cryoflow-plugin-collections/     # サンプルプラグイン
+│       ├── pyproject.toml                # 依存定義 (cryoflow-core, polars)
+│       ├── cryoflow_plugin_collections/
 │       │   ├── __init__.py
-│       │   ├── transform.py        # ColumnMultiplierPlugin (90行)
-│       │   └── output.py           # ParquetWriterPlugin (79行)
-│       └── tests/                  # テストスイート (30テスト)
+│       │   ├── transform/
+│       │   │   ├── __init__.py
+│       │   │   └── multiplier.py         # ColumnMultiplierPlugin (90行)
+│       │   └── output/
+│       │       ├── __init__.py
+│       │       └── parquet_writer.py     # ParquetWriterPlugin (79行)
+│       └── tests/                        # テストスイート (30テスト)
 │           ├── test_transform.py
 │           └── test_output.py
 ├── examples/
@@ -316,7 +320,7 @@ cryoflow/
 | パッケージ | テスト数 | 状態 |
 |----------|---------|------|
 | cryoflow-core | 140テスト | ✅ 全てパス |
-| cryoflow-sample-plugin | 30テスト | ✅ 全てパス |
+| cryoflow-plugin-collections | 30テスト | ✅ 全てパス |
 | **合計** | **170テスト** | **✅ 全てパス (100% 合格)** |
 
 ---

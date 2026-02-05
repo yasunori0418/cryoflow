@@ -3,7 +3,7 @@ output_target = "examples/data/output.parquet"
 
 [[plugins]]
 name = "column-multiplier"
-module = "cryoflow_sample_plugin.transform"
+module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
 [plugins.options]
 column_name = "total_amount"
@@ -11,7 +11,7 @@ multiplier = 2
 
 [[plugins]]
 name = "parquet-writer"
-module = "cryoflow_sample_plugin.output"
+module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 [plugins.options]
 output_path = "examples/data/output.parquet"

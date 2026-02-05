@@ -7,7 +7,7 @@ import polars as pl
 import pytest
 from returns.result import Failure, Success
 
-from cryoflow_sample_plugin.output import ParquetWriterPlugin
+from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
 
 
 class TestParquetWriterPlugin:

@@ -8,7 +8,7 @@
 
 ### 1-1. プロジェクトセットアップ
 
-- uv workspace による monorepo 構成（`cryoflow-core`, `cryoflow-sample-plugin`）
+- uv workspace による monorepo 構成（`cryoflow-core`, `cryoflow-plugin-collections`）
 - Python 3.14 ターゲット
 - Nix flake による開発環境
 
@@ -72,13 +72,13 @@
 
 ### 2-4. テスト用プラグイン作成
 
-- `cryoflow-sample-plugin` に Identity プラグイン（何もしない変換）を実装
+- `cryoflow-plugin-collections` に Identity プラグイン（何もしない変換）を実装
 - プラグインのロード・登録・実行のテスト
 
 ### 追加依存
 
 - `cryoflow-core`: `pluggy`, `returns`
-- `cryoflow-sample-plugin`: `cryoflow-core`, `polars`
+- `cryoflow-plugin-collections`: `cryoflow-core`, `polars`
 
 ---
 

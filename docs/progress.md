@@ -116,8 +116,8 @@ Plugin dynamic loading, discovery, and management mechanism:
 |---------|------|------|------|
 | `packages/cryoflow-core/cryoflow_core/pipeline.py` | New | ✅ | Pipeline runner (108 lines) - scan + transform chain + output |
 | `packages/cryoflow-core/cryoflow_core/cli.py` | Edit | ✅ | Switch from mock to pipeline execution |
-| `packages/cryoflow-sample-plugin/cryoflow_sample_plugin/transform.py` | New | ✅ | ColumnMultiplierPlugin (90 lines) |
-| `packages/cryoflow-sample-plugin/cryoflow_sample_plugin/output.py` | New | ✅ | ParquetWriterPlugin (79 lines) |
+| `packages/cryoflow-plugin-collections/cryoflow_plugin_collections/transform/multiplier.py` | New | ✅ | ColumnMultiplierPlugin (90 lines) |
+| `packages/cryoflow-plugin-collections/cryoflow_plugin_collections/output/parquet_writer.py` | New | ✅ | ParquetWriterPlugin (79 lines) |
 
 ### Implementation Details
 
@@ -282,13 +282,17 @@ cryoflow/
 │   │       ├── test_pipeline.py
 │   │       ├── test_e2e.py
 │   │       └── conftest.py
-│   └── cryoflow-sample-plugin/     # Sample plugins
-│       ├── pyproject.toml          # Dependency definition (cryoflow-core, polars)
-│       ├── cryoflow_sample_plugin/
+│   └── cryoflow-plugin-collections/     # Sample plugins
+│       ├── pyproject.toml                # Dependency definition (cryoflow-core, polars)
+│       ├── cryoflow_plugin_collections/
 │       │   ├── __init__.py
-│       │   ├── transform.py        # ColumnMultiplierPlugin (90 lines)
-│       │   └── output.py           # ParquetWriterPlugin (79 lines)
-│       └── tests/                  # Test suite (30 tests)
+│       │   ├── transform/
+│       │   │   ├── __init__.py
+│       │   │   └── multiplier.py         # ColumnMultiplierPlugin (90 lines)
+│       │   └── output/
+│       │       ├── __init__.py
+│       │       └── parquet_writer.py     # ParquetWriterPlugin (79 lines)
+│       └── tests/                        # Test suite (30 tests)
 │           ├── test_transform.py
 │           └── test_output.py
 ├── examples/
@@ -316,7 +320,7 @@ cryoflow/
 | Package | Test Count | Status |
 |----------|---------|------|
 | cryoflow-core | 140 tests | ✅ All pass |
-| cryoflow-sample-plugin | 30 tests | ✅ All pass |
+| cryoflow-plugin-collections | 30 tests | ✅ All pass |
 | **Total** | **170 tests** | **✅ All pass (100% pass rate)** |
 
 ---

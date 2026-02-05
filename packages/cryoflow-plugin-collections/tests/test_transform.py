@@ -4,7 +4,7 @@ import polars as pl
 import pytest
 from returns.result import Failure, Success
 
-from cryoflow_sample_plugin.transform import ColumnMultiplierPlugin
+from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlugin
 
 
 class TestColumnMultiplierPlugin:

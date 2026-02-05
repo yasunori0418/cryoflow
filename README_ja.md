@@ -108,7 +108,7 @@ output_target = "data/output.parquet"
 
 [[plugins]]
 name = "column-multiplier"
-module = "cryoflow_sample_plugin.transform"
+module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
 [plugins.options]
 column_name = "amount"
@@ -116,7 +116,7 @@ multiplier = 2
 
 [[plugins]]
 name = "parquet-writer"
-module = "cryoflow_sample_plugin.output"
+module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 [plugins.options]
 output_path = "data/output.parquet"
@@ -199,7 +199,7 @@ output_target = "examples/data/output.parquet"
 # 最初のプラグイン: データ変換
 [[plugins]]
 name = "column-multiplier"
-module = "cryoflow_sample_plugin.transform"
+module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
 [plugins.options]
 column_name = "total_amount"
@@ -208,7 +208,7 @@ multiplier = 2
 # 2番目のプラグイン: 結果の出力
 [[plugins]]
 name = "parquet-writer"
-module = "cryoflow_sample_plugin.output"
+module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 [plugins.options]
 output_path = "examples/data/output.parquet"
@@ -338,10 +338,10 @@ examples ディレクトリに含まれるもの：
 
 ### プラグインが見つからない
 
-**エラー**: `Module not found: cryoflow_sample_plugin`
+**エラー**: `Module not found: cryoflow_plugin_collections`
 
 **解決方法**:
-- 必要なプラグインをインストール: `pip install cryoflow-sample-plugin`
+- 必要なプラグインをインストール: `pip install cryoflow-plugin-collections`
 - 設定ファイル内のモジュールパスが正しいか確認してください
 
 ### スキーマ検証エラー

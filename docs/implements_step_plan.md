@@ -8,7 +8,7 @@ The project is divided into 4 phases for staged implementation.
 
 ### 1-1. Project Setup
 
-- monorepo structure with uv workspace (`cryoflow-core`, `cryoflow-sample-plugin`)
+- monorepo structure with uv workspace (`cryoflow-core`, `cryoflow-plugin-collections`)
 - Python 3.14 target
 - Development environment via Nix flake
 
@@ -72,13 +72,13 @@ The project is divided into 4 phases for staged implementation.
 
 ### 2-4. Test Plugin Creation
 
-- Implement Identity plugin (no-op transformation) in `cryoflow-sample-plugin`
+- Implement Identity plugin (no-op transformation) in `cryoflow-plugin-collections`
 - Test plugin loading, registration, and execution
 
 ### Additional Dependencies
 
 - `cryoflow-core`: `pluggy`, `returns`
-- `cryoflow-sample-plugin`: `cryoflow-core`, `polars`
+- `cryoflow-plugin-collections`: `cryoflow-core`, `polars`
 
 ---
 

@@ -7,7 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
     "polars>=1.37.1",
     "cryoflow-core",
-    "cryoflow-sample-plugin",
+    "cryoflow-plugin-collections",
 ]
 
 [project.scripts]
@@ -22,7 +22,7 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 cryoflow-core = { workspace = true }
-cryoflow-sample-plugin = { workspace = true }
+cryoflow-plugin-collections = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["packages/cryoflow-core/tests"]
