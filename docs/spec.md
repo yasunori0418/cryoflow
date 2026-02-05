@@ -305,7 +305,7 @@ Output schema:
 The plugin loader (`cryoflow_core/loader.py`) distinguishes between filesystem paths and dotted module paths:
 
 - **Filesystem Path** (e.g., `./plugins/my_plugin.py`): Loaded directly via `importlib.util.spec_from_file_location()`
-- **Dotted Module Path** (e.g., `cryoflow_sample_plugin.transform`): Loaded via `importlib.import_module()` from installed packages
+- **Dotted Module Path** (e.g., `cryoflow_plugin_collections.transform.multiplier`): Loaded via `importlib.import_module()` from installed packages
 
 This allows plugins to be loaded either from local development files or from installed Python packages, providing flexibility in plugin distribution and development workflows.
 
