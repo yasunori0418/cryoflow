@@ -59,7 +59,6 @@
                 {
                   cryoflow = addEditables "cryoflow";
                   cryoflow-core = addEditables "cryoflow-core";
-                  cryoflow-sample-plugin = addEditables "cryoflow-sample-plugin";
                   cryoflow-plugin-collections = addEditables "cryoflow-plugin-collections";
                 }
               )
