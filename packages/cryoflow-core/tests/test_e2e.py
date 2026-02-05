@@ -16,8 +16,8 @@ class TestE2EIntegration:
 
     def test_parquet_transform_parquet_pipeline(self) -> None:
         """Test complete pipeline: Parquet -> Transform -> Parquet."""
-        from cryoflow_sample_plugin.output import ParquetWriterPlugin
-        from cryoflow_sample_plugin.transform import ColumnMultiplierPlugin
+        from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
+        from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlugin
 
         with TemporaryDirectory() as tmpdir:
             # Create input file
@@ -52,7 +52,7 @@ class TestE2EIntegration:
 
     def test_ipc_to_parquet_pipeline(self) -> None:
         """Test pipeline: IPC -> Parquet."""
-        from cryoflow_sample_plugin.output import ParquetWriterPlugin
+        from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
 
         with TemporaryDirectory() as tmpdir:
             # Create IPC input file
@@ -79,8 +79,8 @@ class TestE2EIntegration:
 
     def test_multiple_transforms_pipeline(self) -> None:
         """Test pipeline with multiple transformation plugins."""
-        from cryoflow_sample_plugin.output import ParquetWriterPlugin
-        from cryoflow_sample_plugin.transform import ColumnMultiplierPlugin
+        from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
+        from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlugin
 
         with TemporaryDirectory() as tmpdir:
             # Create input file
@@ -110,7 +110,7 @@ class TestE2EIntegration:
 
     def test_pipeline_with_subdirectory_output(self) -> None:
         """Test pipeline creates subdirectories for output."""
-        from cryoflow_sample_plugin.output import ParquetWriterPlugin
+        from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
 
         with TemporaryDirectory() as tmpdir:
             # Create input file
@@ -135,8 +135,8 @@ class TestCheckCommand:
 
     def test_check_command_success(self) -> None:
         """Test successful dry-run check with valid config."""
-        from cryoflow_sample_plugin.output import ParquetWriterPlugin
-        from cryoflow_sample_plugin.transform import ColumnMultiplierPlugin
+        from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
+        from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlugin
 
         with TemporaryDirectory() as tmpdir:
             # Create input file
@@ -154,7 +154,7 @@ output_target = "{tmpdir}/output.parquet"
 
 [[plugins]]
 name = "column_multiplier"
-module = "cryoflow_sample_plugin.transform"
+module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
 
 [plugins.options]
@@ -163,7 +163,7 @@ multiplier = 2
 
 [[plugins]]
 name = "parquet_writer"
-module = "cryoflow_sample_plugin.output"
+module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 
 [plugins.options]
@@ -195,8 +195,8 @@ output_path = "{tmpdir}/output.parquet"
 
     def test_check_command_with_verbose(self) -> None:
         """Test check command with verbose flag."""
-        from cryoflow_sample_plugin.output import ParquetWriterPlugin
-        from cryoflow_sample_plugin.transform import ColumnMultiplierPlugin
+        from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
+        from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlugin
 
         with TemporaryDirectory() as tmpdir:
             # Create input file
@@ -212,7 +212,7 @@ output_target = "{tmpdir}/output.parquet"
 
 [[plugins]]
 name = "column_multiplier"
-module = "cryoflow_sample_plugin.transform"
+module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
 
 [plugins.options]
@@ -221,7 +221,7 @@ multiplier = 2
 
 [[plugins]]
 name = "parquet_writer"
-module = "cryoflow_sample_plugin.output"
+module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 
 [plugins.options]
@@ -257,7 +257,7 @@ output_target = "{tmpdir}/output.parquet"
 
 [[plugins]]
 name = "column_multiplier"
-module = "cryoflow_sample_plugin.transform"
+module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
 
 [plugins.options]
@@ -266,7 +266,7 @@ multiplier = 2
 
 [[plugins]]
 name = "parquet_writer"
-module = "cryoflow_sample_plugin.output"
+module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 
 [plugins.options]
