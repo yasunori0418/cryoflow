@@ -1,77 +1,77 @@
-## 概要
+## Overview
 
-<!-- このPRの目的と背景を簡潔に説明してください -->
+<!-- Briefly describe the purpose and context of this PR -->
 
-## 変更の種類
+## Type of Change
 
-<!-- 該当する項目にチェックを入れてください -->
+<!-- Check the items that apply -->
 
-- [ ] 🎉 新機能 (Breaking changeを含まない機能追加)
-- [ ] 🐛 バグ修正 (Breaking changeを含まない不具合修正)
-- [ ] 💥 Breaking change (既存の機能に影響を与える変更)
-- [ ] 📝 ドキュメント更新
-- [ ] ♻️ リファクタリング (機能変更を伴わないコード改善)
-- [ ] 🎨 スタイル変更 (フォーマット、セミコロン追加など)
-- [ ] ⚡ パフォーマンス改善
-- [ ] ✅ テスト追加・修正
-- [ ] 🔧 設定変更
-- [ ] 🏗️ ビルド・CI/CD関連
+- [ ] 🎉 New feature (non-breaking change which adds functionality)
+- [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
+- [ ] 💥 Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] 📝 Documentation update
+- [ ] ♻️ Refactoring (code improvement without changing functionality)
+- [ ] 🎨 Style change (formatting, missing semicolons, etc.)
+- [ ] ⚡ Performance improvement
+- [ ] ✅ Test addition/modification
+- [ ] 🔧 Configuration change
+- [ ] 🏗️ Build/CI/CD related
 
-## 変更内容
+## Changes
 
-<!-- 実施した変更の詳細をリストアップしてください -->
+<!-- List the details of the changes made -->
 
 -
 -
 -
 
-## 関連Issue
+## Related Issues
 
-<!-- 関連するIssueがあればリンクしてください -->
+<!-- Link related issues if any -->
 
 Closes #
 Related to #
 
-## テスト
+## Testing
 
-<!-- テストの実施状況を記載してください -->
+<!-- Describe the testing status -->
 
-### テスト実行結果
+### Test Results
 
 ```bash
-# テスト実行コマンドと結果を記載
+# Paste test execution commands and results
 ```
 
-### 動作確認
+### Verification
 
-- [ ] ローカル環境で動作確認済み
-- [ ] 既存のテストが全てパス
-- [ ] 新規テストを追加済み（該当する場合）
+- [ ] Verified in local environment
+- [ ] All existing tests pass
+- [ ] Added new tests (if applicable)
 
-## スクリーンショット
+## Screenshots
 
-<!-- UIに変更がある場合、Before/Afterのスクリーンショットを添付してください -->
+<!-- Attach Before/After screenshots if there are UI changes -->
 
-## チェックリスト
+## Checklist
 
-<!-- マージ前に確認すべき項目をチェックしてください -->
+<!-- Check items that should be verified before merging -->
 
-- [ ] コードが本プロジェクトのコーディング規約に従っている
-- [ ] 自己レビューを実施済み
-- [ ] コードにコメントを追加（特に理解が難しい箇所）
-- [ ] ドキュメントを更新済み（該当する場合）
-- [ ] 警告が発生していない
-- [ ] 既存の全テストがパスしている
-- [ ] 新しい変更に対するテストを追加済み
-- [ ] Breaking changeの場合、移行ガイドを記載済み
+- [ ] Code follows the project's coding conventions
+- [ ] Self-reviewed the code
+- [ ] Added comments (especially for complex logic)
+- [ ] Updated documentation (if applicable)
+- [ ] No warnings generated
+- [ ] All existing tests pass
+- [ ] Added tests for new changes
+- [ ] Included migration guide (if breaking change)
 
-## 追加情報
+## Additional Information
 
-<!-- レビュアーに伝えたい追加情報があれば記載してください -->
+<!-- Add any additional information for reviewers -->
 
-## レビュー観点
+## Review Focus
 
-<!-- レビュアーに特に注目してほしい点があれば記載してください -->
+<!-- Highlight specific areas that need reviewer attention -->
 
 -
 -
