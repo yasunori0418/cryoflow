@@ -1,6 +1,6 @@
 [project]
 name = "cryoflow"
-version = "0.0.1"
+version = "0.0.2"
 description = "Plug-in-driven column-oriented data processing CLI tool with Polars LazyFrame at its core."
 readme = "README.md"
 requires-python = ">=3.14"
