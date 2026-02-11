@@ -21,7 +21,6 @@ class CryoflowConfig(BaseModel):
     """Top-level configuration for cryoflow."""
 
     input_path: Path
-    output_target: str
     plugins: list[PluginConfig]
 
 

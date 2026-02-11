@@ -150,7 +150,6 @@ class TestCheckCommand:
             config_file = Path(tmpdir) / 'config.toml'
             config_content = f"""\
 input_path = "{input_file}"
-output_target = "{tmpdir}/output.parquet"
 
 [[plugins]]
 name = "column_multiplier"
@@ -208,7 +207,6 @@ output_path = "{tmpdir}/output.parquet"
             config_file = Path(tmpdir) / 'config.toml'
             config_content = f"""\
 input_path = "{input_file}"
-output_target = "{tmpdir}/output.parquet"
 
 [[plugins]]
 name = "column_multiplier"
@@ -253,7 +251,6 @@ output_path = "{tmpdir}/output.parquet"
             config_file = Path(tmpdir) / 'config.toml'
             config_content = f"""\
 input_path = "{input_file}"
-output_target = "{tmpdir}/output.parquet"
 
 [[plugins]]
 name = "column_multiplier"

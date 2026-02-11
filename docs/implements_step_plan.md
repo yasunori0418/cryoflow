@@ -15,7 +15,7 @@ The project is divided into 4 phases for staged implementation.
 ### 1-2. Config Implementation (`cryoflow_core/config.py`)
 
 - `PluginConfig`: Pydantic model with name, module, enabled(=True), options(=dict)
-- `CryoflowConfig`: input_path(Path), output_target(str), plugins(list[PluginConfig])
+- `CryoflowConfig`: input_path(Path), plugins(list[PluginConfig])
 - `ConfigLoadError`: Exception wrapping file not found / TOML parse error / validation error
 - `get_default_config_path()`: Returns `xdg_config_home() / "cryoflow" / "config.toml"`
 - `load_config(config_path)`: Load TOML → Pydantic validation → return `CryoflowConfig`

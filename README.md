@@ -104,7 +104,6 @@ Create a `config.toml` file:
 
 ```toml
 input_path = "data/input.parquet"
-output_target = "data/output.parquet"
 
 [[plugins]]
 name = "column-multiplier"

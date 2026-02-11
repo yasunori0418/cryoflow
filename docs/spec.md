@@ -50,7 +50,6 @@ class PluginConfig(BaseModel):
 
 class CryoflowConfig(BaseModel):
     input_path: Path  # Use Path instead of FilePath to avoid enforcing file existence at config load time
-    output_target: str
     plugins: list[PluginConfig]
 ```
 
@@ -243,9 +242,8 @@ cryoflow run [-c CONFIG] [-v]
 
 ```
 Config loaded: /home/user/.config/cryoflow/config.toml
-  input_path:    data/input.parquet
-  output_target: data/output.parquet
-  plugins:       2 plugin(s)
+  input_path: data/input.parquet
+  plugins:    2 plugin(s)
     - transform_plugin (my.transform) [enabled]
     - output_plugin (my.output) [enabled]
 Loaded 2 plugin(s) successfully.

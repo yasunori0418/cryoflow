@@ -83,23 +83,6 @@ class TestRunSuccess:
         assert 'input_path' in result.output
         assert '/data/input.parquet' in result.output
 
-    def test_output_contains_output_target(self, tmp_path):
-        config_file = tmp_path / 'config.toml'
-        config_file.write_text(VALID_TOML)
-
-        def mock_get_plugins(_pm, _plugin_type):
-            return []
-
-        with (
-            patch('cryoflow_core.cli.load_plugins') as mock_load,
-            patch('cryoflow_core.cli.get_plugins', side_effect=mock_get_plugins),
-        ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
-            result = runner.invoke(app, ['run', '--config', str(config_file)])
-
-        assert 'output_target' in result.output
-        assert '/data/output.parquet' in result.output
-
     def test_output_contains_plugin_count(self, tmp_path):
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
@@ -200,7 +183,6 @@ class TestDefaultConfigPath:
             with patch('cryoflow_core.cli.load_config') as mock_load_config:
                 mock_load_config.return_value = CryoflowConfig(
                     input_path=Path('/data/in.parquet'),
-                    output_target='/data/out.parquet',
                     plugins=[],
                 )
                 result = runner.invoke(app, ['run'])
