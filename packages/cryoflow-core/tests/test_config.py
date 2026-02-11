@@ -134,3 +134,28 @@ class TestLoadConfig:
         assert cfg.plugins[1].enabled is False
         assert cfg.plugins[2].name == 'plugin_c'
         assert cfg.plugins[2].options == {'key': 'value'}
+
+    def test_input_path_relative_to_config(self, tmp_path):
+        """Test that relative input_path is resolved relative to config directory."""
+        config_dir = tmp_path / 'config_dir'
+        config_dir.mkdir()
+        config_file = config_dir / 'config.toml'
+        config_file.write_text("""\
+input_path = "data/input.parquet"
+plugins = []
+""")
+        cfg = load_config(config_file)
+        expected_path = (config_dir / 'data' / 'input.parquet').resolve()
+        assert cfg.input_path == expected_path
+
+    def test_input_path_absolute_unchanged(self, tmp_path):
+        """Test that absolute input_path is preserved as-is (after normalization)."""
+        config_file = tmp_path / 'config.toml'
+        absolute_path = '/absolute/path/to/data.parquet'
+        config_file.write_text(f"""\
+input_path = "{absolute_path}"
+plugins = []
+""")
+        cfg = load_config(config_file)
+        # Absolute paths are normalized with resolve()
+        assert cfg.input_path == Path(absolute_path).resolve()
