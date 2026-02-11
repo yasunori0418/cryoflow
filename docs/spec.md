@@ -117,6 +117,74 @@ class CryoflowSpecs:
         """Return instances of output plugins"""
 ```
 
+### 3.4 Path Resolution Behavior
+
+All file paths in cryoflow configuration are resolved **relative to the directory containing the configuration file**, not the current working directory. This ensures portability of configuration files and allows moving entire project directories without breaking path references.
+
+#### Resolution Rules
+
+1. **Absolute paths**: Preserved as-is (after normalization with `.resolve()`)
+2. **Relative paths**: Resolved relative to the directory containing `config.toml`
+
+#### Configuration Paths
+
+**`input_path`** (in `config.toml`):
+- Automatically resolved by `load_config()` before returning the configuration object
+- Example:
+  ```toml
+  # If config.toml is at /project/config/config.toml
+  input_path = "data/input.parquet"
+  # Resolves to: /project/config/data/input.parquet
+  ```
+
+**Plugin option paths** (in `plugins.options`):
+- Must be resolved by plugin implementations using `BasePlugin.resolve_path()`
+- Example:
+  ```toml
+  [[plugins]]
+  name = "parquet_writer"
+  module = "cryoflow_plugin_collections.output.parquet_writer"
+
+  [plugins.options]
+  output_path = "data/output.parquet"
+  # Plugin must call: self.resolve_path(self.options['output_path'])
+  # Resolves to: /project/config/data/output.parquet
+  ```
+
+#### Plugin Implementation
+
+Plugins receive a `config_dir` parameter in their constructor, which is automatically set to the directory containing the configuration file:
+
+```python
+class BasePlugin(ABC):
+    def __init__(self, options: dict[str, Any], config_dir: Path | None = None) -> None:
+        self.options = options
+        self._config_dir = config_dir or Path.cwd()
+
+    def resolve_path(self, path: str | Path) -> Path:
+        """Resolve a path relative to the config directory."""
+        path = Path(path)
+        if not path.is_absolute():
+            path = self._config_dir / path
+        return path.resolve()
+```
+
+Usage in plugin:
+```python
+class ParquetWriterPlugin(OutputPlugin):
+    def execute(self, df: FrameData) -> Result[None, Exception]:
+        output_path_opt = self.options.get('output_path')
+        # Resolve relative path against config directory
+        output_path = self.resolve_path(output_path_opt)
+        # ... write to output_path
+```
+
+#### Benefits
+
+- **Portability**: Configuration files and data can be moved together as a unit
+- **Consistency**: All paths follow the same resolution rules
+- **Predictability**: Path resolution is independent of the current working directory
+
 ---
 
 ## 4. Error Handling Guidelines (returns)

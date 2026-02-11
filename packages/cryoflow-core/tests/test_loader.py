@@ -259,20 +259,20 @@ class TestDiscoverPluginClasses:
 
 
 class TestInstantiatePlugins:
-    def test_normal_instantiation(self):
+    def test_normal_instantiation(self, tmp_path):
         opts = {'key': 'value'}
-        instances = _instantiate_plugins('test', [DummyTransformPlugin, DummyOutputPlugin], opts)
+        instances = _instantiate_plugins('test', [DummyTransformPlugin, DummyOutputPlugin], opts, tmp_path)
         assert len(instances) == 2
         assert all(inst.options is opts for inst in instances)
 
-    def test_options_propagation(self):
+    def test_options_propagation(self, tmp_path):
         opts = {'threshold': 42}
-        instances = _instantiate_plugins('test', [DummyTransformPlugin], opts)
+        instances = _instantiate_plugins('test', [DummyTransformPlugin], opts, tmp_path)
         assert instances[0].options == {'threshold': 42}
 
-    def test_broken_init_raises(self):
+    def test_broken_init_raises(self, tmp_path):
         with pytest.raises(PluginLoadError, match='failed to instantiate'):
-            _instantiate_plugins('test', [BrokenInitPlugin], {})
+            _instantiate_plugins('test', [BrokenInitPlugin], {}, tmp_path)
 
 
 # ---------------------------------------------------------------------------
@@ -281,13 +281,13 @@ class TestInstantiatePlugins:
 
 
 class TestPluginHookRelay:
-    def test_register_transform_plugins(self):
-        t = DummyTransformPlugin({})
+    def test_register_transform_plugins(self, tmp_path):
+        t = DummyTransformPlugin({}, tmp_path)
         relay = _PluginHookRelay([t], [])
         assert relay.register_transform_plugins() == [t]
 
-    def test_register_output_plugins(self):
-        o = DummyOutputPlugin({})
+    def test_register_output_plugins(self, tmp_path):
+        o = DummyOutputPlugin({}, tmp_path)
         relay = _PluginHookRelay([], [o])
         assert relay.register_output_plugins() == [o]
 
@@ -448,20 +448,20 @@ class TestGetPlugins:
         pm.register(relay)
         assert get_plugins(pm, OutputPlugin) == []
 
-    def test_get_plugins_with_transform(self):
+    def test_get_plugins_with_transform(self, tmp_path):
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
-        t = DummyTransformPlugin({})
+        t = DummyTransformPlugin({}, tmp_path)
         relay = _PluginHookRelay([t], [])
         pm.register(relay)
         result = get_plugins(pm, TransformPlugin)
         assert len(result) == 1
         assert result[0] is t
 
-    def test_get_plugins_with_output(self):
+    def test_get_plugins_with_output(self, tmp_path):
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
-        o = DummyOutputPlugin({})
+        o = DummyOutputPlugin({}, tmp_path)
         relay = _PluginHookRelay([], [o])
         pm.register(relay)
         result = get_plugins(pm, OutputPlugin)

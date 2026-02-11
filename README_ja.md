@@ -188,12 +188,32 @@ cryoflow check -c config.toml -v
 - **enabled**: プラグインを実行するか（true/false）
 - **options**: プラグイン固有の設定オプション
 
+#### パス解決
+
+**重要**: 設定ファイル内の全てのファイルパスは、カレントディレクトリではなく、**設定ファイルが存在するディレクトリを基準として解決されます**。
+
+- **絶対パス**: そのまま使用（例: `/absolute/path/to/file.parquet`）
+- **相対パス**: 設定ファイルのディレクトリを基準に解決（例: `data/input.parquet`）
+
+この設計により、設定ファイルの移植性が向上し、プロジェクトディレクトリ全体を移動してもパス参照が壊れません。
+
+**例**:
+```
+project/
+  config/
+    config.toml         # 設定ファイルはここ
+    data/
+      input.parquet     # "data/input.parquet" として参照
+      output.parquet    # "data/output.parquet" として参照
+```
+
+**推奨**: 設定ファイルでは相対パスを使用することで、移植性を最大化できます。
+
 ### 設定ファイルの例
 
 ```toml
-# 入出力の指定
-input_path = "examples/data/sample_sales.parquet"
-output_target = "examples/data/output.parquet"
+# 入力の指定（設定ファイルディレクトリからの相対パス）
+input_path = "data/sample_sales.parquet"
 
 # 最初のプラグイン: データ変換
 [[plugins]]
@@ -210,7 +230,8 @@ name = "parquet-writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 [plugins.options]
-output_path = "examples/data/output.parquet"
+# 出力パスも設定ファイルディレクトリからの相対パス
+output_path = "data/output.parquet"
 ```
 
 ### 設定ファイルの検索パス

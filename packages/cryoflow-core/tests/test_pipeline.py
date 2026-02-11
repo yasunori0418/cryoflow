@@ -22,32 +22,32 @@ from cryoflow_core.pipeline import (
 class TestDetectFormat:
     """Tests for file format detection."""
 
-    def test_parquet_extension(self) -> None:
+    def test_parquet_extension(self, tmp_path) -> None:
         """Test detection of .parquet extension."""
         path = Path('data.parquet')
         assert _detect_format(path) == 'parquet'
 
-    def test_ipc_extension(self) -> None:
+    def test_ipc_extension(self, tmp_path) -> None:
         """Test detection of .ipc extension."""
         path = Path('data.ipc')
         assert _detect_format(path) == 'ipc'
 
-    def test_arrow_extension(self) -> None:
+    def test_arrow_extension(self, tmp_path) -> None:
         """Test detection of .arrow extension."""
         path = Path('data.arrow')
         assert _detect_format(path) == 'ipc'
 
-    def test_uppercase_extension(self) -> None:
+    def test_uppercase_extension(self, tmp_path) -> None:
         """Test detection with uppercase extension."""
         path = Path('data.PARQUET')
         assert _detect_format(path) == 'parquet'
 
-    def test_unknown_extension(self) -> None:
+    def test_unknown_extension(self, tmp_path) -> None:
         """Test detection of unsupported extension."""
         path = Path('data.csv')
         assert _detect_format(path) is None
 
-    def test_no_extension(self) -> None:
+    def test_no_extension(self, tmp_path) -> None:
         """Test detection with no extension."""
         path = Path('datafile')
         assert _detect_format(path) is None
@@ -56,7 +56,7 @@ class TestDetectFormat:
 class TestLoadData:
     """Tests for data loading."""
 
-    def test_load_parquet_success(self) -> None:
+    def test_load_parquet_success(self, tmp_path) -> None:
         """Test successful Parquet file loading."""
         with TemporaryDirectory() as tmpdir:
             # Create a test Parquet file
@@ -73,7 +73,7 @@ class TestLoadData:
                 'b': ['x', 'y', 'z'],
             }
 
-    def test_load_ipc_success(self) -> None:
+    def test_load_ipc_success(self, tmp_path) -> None:
         """Test successful IPC file loading."""
         with TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / 'test.ipc'
@@ -85,14 +85,14 @@ class TestLoadData:
             loaded = result.unwrap()
             assert isinstance(loaded, pl.LazyFrame)
 
-    def test_load_file_not_found(self) -> None:
+    def test_load_file_not_found(self, tmp_path) -> None:
         """Test error when file does not exist."""
         result = load_data(Path('/nonexistent/path/file.parquet'))
         assert isinstance(result, Failure)
         error = result.failure()
         assert isinstance(error, FileNotFoundError)
 
-    def test_load_unsupported_format(self) -> None:
+    def test_load_unsupported_format(self, tmp_path) -> None:
         """Test error when file format is unsupported."""
         with TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / 'test.csv'
@@ -107,7 +107,7 @@ class TestLoadData:
 class TestExecuteTransformChain:
     """Tests for transformation plugin chain execution."""
 
-    def test_empty_plugin_chain(self, sample_lazyframe) -> None:
+    def test_empty_plugin_chain(self, sample_lazyframe, tmp_path) -> None:
         """Test with no transformation plugins."""
         initial = Success(sample_lazyframe)
         result = execute_transform_chain(initial, [])
@@ -115,7 +115,7 @@ class TestExecuteTransformChain:
         # Can't compare LazyFrames directly, just verify it's a Success
         assert result.unwrap() is sample_lazyframe
 
-    def test_single_plugin_success(self, sample_lazyframe) -> None:
+    def test_single_plugin_success(self, sample_lazyframe, tmp_path) -> None:
         """Test with single successful plugin."""
         from cryoflow_core.plugin import FrameData, TransformPlugin
         from returns.result import Success as SuccessResult
@@ -130,13 +130,13 @@ class TestExecuteTransformChain:
             def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
                 return SuccessResult(schema)
 
-        plugin = DummyTransformPlugin({})
+        plugin = DummyTransformPlugin({}, tmp_path)
         initial = Success(sample_lazyframe)
         result = execute_transform_chain(initial, [plugin])
         assert isinstance(result, Success)
         assert result.unwrap() is sample_lazyframe
 
-    def test_multiple_plugins_success(self, sample_lazyframe) -> None:
+    def test_multiple_plugins_success(self, sample_lazyframe, tmp_path) -> None:
         """Test with multiple successful plugins."""
         from cryoflow_core.plugin import FrameData, TransformPlugin
         from returns.result import Success as SuccessResult
@@ -151,12 +151,12 @@ class TestExecuteTransformChain:
             def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
                 return SuccessResult(schema)
 
-        plugins = [DummyTransformPlugin({}), DummyTransformPlugin({})]
+        plugins = [DummyTransformPlugin({}, tmp_path), DummyTransformPlugin({}, tmp_path)]
         initial = Success(sample_lazyframe)
         result = execute_transform_chain(initial, plugins)
         assert isinstance(result, Success)
 
-    def test_chain_stops_on_failure(self, sample_lazyframe) -> None:
+    def test_chain_stops_on_failure(self, sample_lazyframe, tmp_path) -> None:
         """Test that chain stops when a plugin fails."""
         from cryoflow_core.plugin import FrameData, TransformPlugin
         from returns.result import Failure as FailureResult, Success as SuccessResult
@@ -182,16 +182,16 @@ class TestExecuteTransformChain:
                 return FailureResult(ValueError('intentional dry_run failure'))
 
         plugins = [
-            DummyTransformPlugin({}),
-            FailingTransformPlugin({}),
-            DummyTransformPlugin({}),
+            DummyTransformPlugin({}, tmp_path),
+            FailingTransformPlugin({}, tmp_path),
+            DummyTransformPlugin({}, tmp_path),
         ]
         initial = Success(sample_lazyframe)
         result = execute_transform_chain(initial, plugins)
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
 
-    def test_propagate_initial_failure(self, sample_lazyframe) -> None:
+    def test_propagate_initial_failure(self, sample_lazyframe, tmp_path) -> None:
         """Test that initial Failure is propagated."""
         from cryoflow_core.plugin import FrameData, TransformPlugin
         from returns.result import Success as SuccessResult
@@ -206,7 +206,7 @@ class TestExecuteTransformChain:
             def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
                 return SuccessResult(schema)
 
-        plugins = [DummyTransformPlugin({}), DummyTransformPlugin({})]
+        plugins = [DummyTransformPlugin({}, tmp_path), DummyTransformPlugin({}, tmp_path)]
         initial_error = ValueError('initial error')
         initial = Failure(initial_error)
         result = execute_transform_chain(initial, plugins)
@@ -217,7 +217,7 @@ class TestExecuteTransformChain:
 class TestExecuteOutput:
     """Tests for output plugin execution."""
 
-    def test_output_success_data(self, sample_lazyframe) -> None:
+    def test_output_success_data(self, sample_lazyframe, tmp_path) -> None:
         """Test output with successful data."""
         from cryoflow_core.plugin import FrameData, OutputPlugin
         from returns.result import Success as SuccessResult
@@ -232,12 +232,12 @@ class TestExecuteOutput:
             def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
                 return SuccessResult(schema)
 
-        plugin = DummyOutputPlugin({})
+        plugin = DummyOutputPlugin({}, tmp_path)
         data = Success(sample_lazyframe)
         result = execute_output(data, plugin)
         assert isinstance(result, Success)
 
-    def test_output_failure_data(self) -> None:
+    def test_output_failure_data(self, tmp_path) -> None:
         """Test output with failed data (should not execute plugin)."""
         from cryoflow_core.plugin import FrameData, OutputPlugin
         from returns.result import Success as SuccessResult
@@ -252,7 +252,7 @@ class TestExecuteOutput:
             def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
                 return SuccessResult(schema)
 
-        plugin = DummyOutputPlugin({})
+        plugin = DummyOutputPlugin({}, tmp_path)
         error = ValueError('data processing error')
         data = Failure(error)
         result = execute_output(data, plugin)
@@ -263,7 +263,7 @@ class TestExecuteOutput:
 class TestRunPipeline:
     """Tests for complete pipeline execution."""
 
-    def test_pipeline_success(self) -> None:
+    def test_pipeline_success(self, tmp_path) -> None:
         """Test successful end-to-end pipeline."""
         from cryoflow_core.plugin import FrameData, OutputPlugin, TransformPlugin
         from returns.result import Success as SuccessResult
@@ -295,13 +295,13 @@ class TestRunPipeline:
             df.write_parquet(input_file)
 
             # Run pipeline
-            transform_plugins = [DummyTransformPlugin({})]
-            output_plugin = DummyOutputPlugin({})
+            transform_plugins = [DummyTransformPlugin({}, tmp_path)]
+            output_plugin = DummyOutputPlugin({}, tmp_path)
             result = run_pipeline(input_file, transform_plugins, output_plugin)
 
             assert isinstance(result, Success)
 
-    def test_pipeline_input_not_found(self) -> None:
+    def test_pipeline_input_not_found(self, tmp_path) -> None:
         """Test pipeline with missing input file."""
         from cryoflow_core.plugin import FrameData, OutputPlugin, TransformPlugin
         from returns.result import Success as SuccessResult
@@ -327,13 +327,13 @@ class TestRunPipeline:
                 return SuccessResult(schema)
 
         input_file = Path('/nonexistent/path/file.parquet')
-        transform_plugins = [DummyTransformPlugin({})]
-        output_plugin = DummyOutputPlugin({})
+        transform_plugins = [DummyTransformPlugin({}, tmp_path)]
+        output_plugin = DummyOutputPlugin({}, tmp_path)
         result = run_pipeline(input_file, transform_plugins, output_plugin)
 
         assert isinstance(result, Failure)
 
-    def test_pipeline_transform_fails(self) -> None:
+    def test_pipeline_transform_fails(self, tmp_path) -> None:
         """Test pipeline when transform plugin fails."""
         from cryoflow_core.plugin import FrameData, OutputPlugin, TransformPlugin
         from returns.result import Failure as FailureResult, Success as SuccessResult
@@ -363,8 +363,8 @@ class TestRunPipeline:
             df = pl.DataFrame({'a': [1, 2, 3]})
             df.write_parquet(input_file)
 
-            transform_plugins = [FailingTransformPlugin({})]
-            output_plugin = DummyOutputPlugin({})
+            transform_plugins = [FailingTransformPlugin({}, tmp_path)]
+            output_plugin = DummyOutputPlugin({}, tmp_path)
             result = run_pipeline(input_file, transform_plugins, output_plugin)
 
             assert isinstance(result, Failure)
@@ -374,7 +374,7 @@ class TestRunPipeline:
 class TestExtractSchema:
     """Tests for schema extraction."""
 
-    def test_extract_schema_from_lazyframe(self) -> None:
+    def test_extract_schema_from_lazyframe(self, tmp_path) -> None:
         """Test schema extraction from LazyFrame."""
         df = pl.DataFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']})
         lazy_df = df.lazy()
@@ -387,7 +387,7 @@ class TestExtractSchema:
         assert schema['a'] == pl.Int64
         assert schema['b'] == pl.String
 
-    def test_extract_schema_from_dataframe(self) -> None:
+    def test_extract_schema_from_dataframe(self, tmp_path) -> None:
         """Test schema extraction from DataFrame."""
         df = pl.DataFrame({'x': [1.0, 2.0], 'y': [10, 20]})
         result = extract_schema(df)
@@ -399,7 +399,7 @@ class TestExtractSchema:
         assert schema['x'] == pl.Float64
         assert schema['y'] == pl.Int64
 
-    def test_extract_schema_empty_frame(self) -> None:
+    def test_extract_schema_empty_frame(self, tmp_path) -> None:
         """Test schema extraction from empty DataFrame."""
         df = pl.DataFrame({'col1': pl.Series([], dtype=pl.Int32), 'col2': pl.Series([], dtype=pl.String)})
         result = extract_schema(df)
@@ -415,7 +415,7 @@ class TestExtractSchema:
 class TestExecuteDryRunChain:
     """Tests for dry-run transformation chain execution."""
 
-    def test_empty_plugin_chain(self) -> None:
+    def test_empty_plugin_chain(self, tmp_path) -> None:
         """Test dry-run with no transformation plugins."""
         schema = {'a': pl.Int64, 'b': pl.String}
         initial = Success(schema)
@@ -424,7 +424,7 @@ class TestExecuteDryRunChain:
         assert isinstance(result, Success)
         assert result.unwrap() == schema
 
-    def test_single_plugin_success(self) -> None:
+    def test_single_plugin_success(self, tmp_path) -> None:
         """Test dry-run with single successful plugin."""
         from cryoflow_core.plugin import TransformPlugin
         from returns.result import Success as SuccessResult
@@ -441,12 +441,12 @@ class TestExecuteDryRunChain:
 
         schema = {'a': pl.Int64}
         initial = Success(schema)
-        result = execute_dry_run_chain(initial, [DummyTransformPlugin({})])
+        result = execute_dry_run_chain(initial, [DummyTransformPlugin({}, tmp_path)])
 
         assert isinstance(result, Success)
         assert result.unwrap() == schema
 
-    def test_multiple_plugins_success(self) -> None:
+    def test_multiple_plugins_success(self, tmp_path) -> None:
         """Test dry-run with multiple successful plugins."""
         from cryoflow_core.plugin import TransformPlugin
         from returns.result import Success as SuccessResult
@@ -463,13 +463,13 @@ class TestExecuteDryRunChain:
 
         schema = {'a': pl.Int64, 'b': pl.String}
         initial = Success(schema)
-        plugins = [DummyTransformPlugin({}), DummyTransformPlugin({})]
+        plugins = [DummyTransformPlugin({}, tmp_path), DummyTransformPlugin({}, tmp_path)]
         result = execute_dry_run_chain(initial, plugins)
 
         assert isinstance(result, Success)
         assert result.unwrap() == schema
 
-    def test_plugin_modifies_schema(self) -> None:
+    def test_plugin_modifies_schema(self, tmp_path) -> None:
         """Test dry-run where plugin modifies schema."""
         from cryoflow_core.plugin import TransformPlugin
         from returns.result import Success as SuccessResult
@@ -489,14 +489,14 @@ class TestExecuteDryRunChain:
 
         schema = {'a': pl.Int64}
         initial = Success(schema)
-        result = execute_dry_run_chain(initial, [SchemaModifyingPlugin({})])
+        result = execute_dry_run_chain(initial, [SchemaModifyingPlugin({}, tmp_path)])
 
         assert isinstance(result, Success)
         final_schema = result.unwrap()
         assert 'a' in final_schema
         assert 'new_col' in final_schema
 
-    def test_plugin_validation_failure(self) -> None:
+    def test_plugin_validation_failure(self, tmp_path) -> None:
         """Test dry-run where plugin validation fails."""
         from cryoflow_core.plugin import TransformPlugin
         from returns.result import Failure as FailureResult
@@ -513,12 +513,12 @@ class TestExecuteDryRunChain:
 
         schema = {'a': pl.Int64}
         initial = Success(schema)
-        result = execute_dry_run_chain(initial, [FailingValidationPlugin({})])
+        result = execute_dry_run_chain(initial, [FailingValidationPlugin({}, tmp_path)])
 
         assert isinstance(result, Failure)
         assert 'missing_col' in str(result.failure())
 
-    def test_chain_stops_on_plugin_failure(self) -> None:
+    def test_chain_stops_on_plugin_failure(self, tmp_path) -> None:
         """Test that chain stops at first plugin failure."""
         from cryoflow_core.plugin import TransformPlugin
         from returns.result import Failure as FailureResult, Success as SuccessResult
@@ -534,8 +534,8 @@ class TestExecuteDryRunChain:
                 return FailureResult(ValueError('validation error'))
 
         class SuccessPlugin(TransformPlugin):
-            def __init__(self):
-                super().__init__({})
+            def __init__(self, tmp_path):
+                super().__init__({}, tmp_path)
                 self.was_called = False
 
             def name(self) -> str:
@@ -550,14 +550,14 @@ class TestExecuteDryRunChain:
 
         schema = {'a': pl.Int64}
         initial = Success(schema)
-        success_plugin = SuccessPlugin()
-        plugins = [FailingPlugin({}), success_plugin]
+        success_plugin = SuccessPlugin(tmp_path)
+        plugins = [FailingPlugin({}, tmp_path), success_plugin]
         result = execute_dry_run_chain(initial, plugins)
 
         assert isinstance(result, Failure)
         assert not success_plugin.was_called
 
-    def test_propagate_initial_failure(self) -> None:
+    def test_propagate_initial_failure(self, tmp_path) -> None:
         """Test that initial Failure is propagated."""
         from cryoflow_core.plugin import TransformPlugin
         from returns.result import Success as SuccessResult
@@ -574,7 +574,7 @@ class TestExecuteDryRunChain:
 
         initial_error = ValueError('initial error')
         initial = Failure(initial_error)
-        result = execute_dry_run_chain(initial, [DummyPlugin({})])
+        result = execute_dry_run_chain(initial, [DummyPlugin({}, tmp_path)])
 
         assert isinstance(result, Failure)
         assert result.failure() == initial_error
@@ -583,7 +583,7 @@ class TestExecuteDryRunChain:
 class TestExecuteOutputDryRun:
     """Tests for output plugin dry-run execution."""
 
-    def test_output_dry_run_success(self) -> None:
+    def test_output_dry_run_success(self, tmp_path) -> None:
         """Test output dry-run with successful validation."""
         from cryoflow_core.plugin import OutputPlugin
         from returns.result import Success as SuccessResult
@@ -600,12 +600,12 @@ class TestExecuteOutputDryRun:
 
         schema = {'a': pl.Int64, 'b': pl.String}
         initial = Success(schema)
-        result = execute_output_dry_run(initial, DummyOutputPlugin({}))
+        result = execute_output_dry_run(initial, DummyOutputPlugin({}, tmp_path))
 
         assert isinstance(result, Success)
         assert result.unwrap() == schema
 
-    def test_output_dry_run_failure(self) -> None:
+    def test_output_dry_run_failure(self, tmp_path) -> None:
         """Test output dry-run with validation failure."""
         from cryoflow_core.plugin import OutputPlugin
         from returns.result import Failure as FailureResult
@@ -622,12 +622,12 @@ class TestExecuteOutputDryRun:
 
         schema = {'a': pl.Int64}
         initial = Success(schema)
-        result = execute_output_dry_run(initial, FailingOutputPlugin({}))
+        result = execute_output_dry_run(initial, FailingOutputPlugin({}, tmp_path))
 
         assert isinstance(result, Failure)
         assert 'Invalid output schema' in str(result.failure())
 
-    def test_output_dry_run_propagate_failure(self) -> None:
+    def test_output_dry_run_propagate_failure(self, tmp_path) -> None:
         """Test that upstream failure is propagated."""
         from cryoflow_core.plugin import OutputPlugin
         from returns.result import Success as SuccessResult
@@ -644,7 +644,7 @@ class TestExecuteOutputDryRun:
 
         upstream_error = ValueError('upstream error')
         initial = Failure(upstream_error)
-        result = execute_output_dry_run(initial, DummyOutputPlugin({}))
+        result = execute_output_dry_run(initial, DummyOutputPlugin({}, tmp_path))
 
         assert isinstance(result, Failure)
         assert result.failure() == upstream_error
@@ -653,7 +653,7 @@ class TestExecuteOutputDryRun:
 class TestRunDryRunPipeline:
     """Tests for complete dry-run pipeline execution."""
 
-    def test_dry_run_pipeline_success(self) -> None:
+    def test_dry_run_pipeline_success(self, tmp_path) -> None:
         """Test successful dry-run pipeline."""
         from cryoflow_core.plugin import OutputPlugin, TransformPlugin
         from returns.result import Success as SuccessResult
@@ -685,8 +685,8 @@ class TestRunDryRunPipeline:
 
             result = run_dry_run_pipeline(
                 input_file,
-                [DummyTransformPlugin({})],
-                DummyOutputPlugin({})
+                [DummyTransformPlugin({}, tmp_path)],
+                DummyOutputPlugin({}, tmp_path)
             )
 
             assert isinstance(result, Success)
@@ -694,7 +694,7 @@ class TestRunDryRunPipeline:
             assert 'a' in schema
             assert 'b' in schema
 
-    def test_dry_run_pipeline_input_not_found(self) -> None:
+    def test_dry_run_pipeline_input_not_found(self, tmp_path) -> None:
         """Test dry-run with missing input file."""
         from cryoflow_core.plugin import OutputPlugin, TransformPlugin
         from returns.result import Success as SuccessResult
@@ -721,14 +721,14 @@ class TestRunDryRunPipeline:
 
         result = run_dry_run_pipeline(
             Path('/nonexistent/path/file.parquet'),
-            [DummyTransformPlugin({})],
-            DummyOutputPlugin({})
+            [DummyTransformPlugin({}, tmp_path)],
+            DummyOutputPlugin({}, tmp_path)
         )
 
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), FileNotFoundError)
 
-    def test_dry_run_pipeline_transform_validation_fails(self) -> None:
+    def test_dry_run_pipeline_transform_validation_fails(self, tmp_path) -> None:
         """Test dry-run when transform validation fails."""
         from cryoflow_core.plugin import OutputPlugin, TransformPlugin
         from returns.result import Failure as FailureResult, Success as SuccessResult
@@ -760,14 +760,14 @@ class TestRunDryRunPipeline:
 
             result = run_dry_run_pipeline(
                 input_file,
-                [FailingTransformPlugin({})],
-                DummyOutputPlugin({})
+                [FailingTransformPlugin({}, tmp_path)],
+                DummyOutputPlugin({}, tmp_path)
             )
 
             assert isinstance(result, Failure)
             assert 'missing_col' in str(result.failure())
 
-    def test_dry_run_pipeline_output_validation_fails(self) -> None:
+    def test_dry_run_pipeline_output_validation_fails(self, tmp_path) -> None:
         """Test dry-run when output validation fails."""
         from cryoflow_core.plugin import OutputPlugin, TransformPlugin
         from returns.result import Failure as FailureResult, Success as SuccessResult
@@ -799,8 +799,8 @@ class TestRunDryRunPipeline:
 
             result = run_dry_run_pipeline(
                 input_file,
-                [DummyTransformPlugin({})],
-                FailingOutputPlugin({})
+                [DummyTransformPlugin({}, tmp_path)],
+                FailingOutputPlugin({}, tmp_path)
             )
 
             assert isinstance(result, Failure)

@@ -93,8 +93,19 @@ def _discover_plugin_classes(name: str, module: Any) -> list[type[BasePlugin]]:
     return classes
 
 
-def _instantiate_plugins(name: str, classes: list[type[BasePlugin]], options: dict[str, Any]) -> list[BasePlugin]:
+def _instantiate_plugins(
+    name: str,
+    classes: list[type[BasePlugin]],
+    options: dict[str, Any],
+    config_dir: Path,
+) -> list[BasePlugin]:
     """Instantiate discovered plugin classes with options.
+
+    Args:
+        name: Plugin name for error messages.
+        classes: List of plugin classes to instantiate.
+        options: Plugin options dictionary.
+        config_dir: Directory containing the config file (for path resolution).
 
     Raises:
         PluginLoadError: If instantiation fails.
@@ -102,7 +113,7 @@ def _instantiate_plugins(name: str, classes: list[type[BasePlugin]], options: di
     instances: list[BasePlugin] = []
     for cls in classes:
         try:
-            instances.append(cls(options))
+            instances.append(cls(options, config_dir))
         except Exception as e:
             raise PluginLoadError(f"Plugin '{name}': failed to instantiate {cls.__name__}: {e}") from e
     return instances
@@ -129,7 +140,18 @@ class _PluginHookRelay:
 
 
 def _load_single_plugin(plugin_cfg: PluginConfig, config_dir: Path) -> list[BasePlugin]:
-    """Load a single plugin from its config entry."""
+    """Load a single plugin from its config entry.
+
+    Args:
+        plugin_cfg: Plugin configuration.
+        config_dir: Directory containing the config file (for path resolution).
+
+    Returns:
+        List of instantiated plugin instances.
+
+    Raises:
+        PluginLoadError: If plugin loading fails.
+    """
     if _is_filesystem_path(plugin_cfg.module):
         path = _resolve_module_path(plugin_cfg.module, config_dir)
         module = _load_module_from_path(plugin_cfg.name, path)
@@ -137,7 +159,7 @@ def _load_single_plugin(plugin_cfg: PluginConfig, config_dir: Path) -> list[Base
         module = _load_module_from_dotpath(plugin_cfg.name, plugin_cfg.module)
 
     classes = _discover_plugin_classes(plugin_cfg.name, module)
-    return _instantiate_plugins(plugin_cfg.name, classes, plugin_cfg.options)
+    return _instantiate_plugins(plugin_cfg.name, classes, plugin_cfg.options, config_dir)
 
 
 def load_plugins(

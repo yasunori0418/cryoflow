@@ -1,4 +1,9 @@
-input_path = "examples/data/sample_sales.parquet"
+# All file paths are resolved relative to this config file's directory.
+# This makes the configuration portable - you can move the entire examples/
+# directory without breaking path references.
+
+# Input data file (relative to this config file)
+input_path = "data/sample_sales.parquet"
 
 [[plugins]]
 name = "column-multiplier"
@@ -13,4 +18,5 @@ name = "parquet-writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 [plugins.options]
-output_path = "examples/data/output.parquet"
+# Output file path (also relative to this config file)
+output_path = "data/output.parquet"

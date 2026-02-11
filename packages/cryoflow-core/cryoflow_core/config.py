@@ -33,6 +33,29 @@ def get_default_config_path() -> Path:
     return xdg_config_home() / 'cryoflow' / 'config.toml'
 
 
+def _resolve_path_relative_to_config(path: Path, config_dir: Path) -> Path:
+    """Resolve a path relative to the config file directory.
+
+    Absolute paths are normalized with resolve().
+    Relative paths are resolved relative to config_dir.
+
+    Args:
+        path: The path to resolve.
+        config_dir: The directory containing the config file.
+
+    Returns:
+        The resolved absolute path.
+
+    Note:
+        This function does not check if the file exists.
+        File existence should be validated at the appropriate stage
+        (e.g., in pipeline.py when opening the file).
+    """
+    if not path.is_absolute():
+        path = config_dir / path
+    return path.resolve()
+
+
 def load_config(config_path: Path) -> CryoflowConfig:
     """Load and validate a TOML configuration file.
 
@@ -40,11 +63,16 @@ def load_config(config_path: Path) -> CryoflowConfig:
         config_path: Path to the TOML configuration file.
 
     Returns:
-        Validated CryoflowConfig instance.
+        Validated CryoflowConfig instance with input_path resolved relative
+        to the config file directory.
 
     Raises:
         ConfigLoadError: If the file is not found, TOML parsing fails,
             or Pydantic validation fails.
+
+    Note:
+        Relative paths in input_path are resolved relative to the directory
+        containing the config file, not the current working directory.
     """
     if not config_path.exists():
         raise ConfigLoadError(f'Config file not found: {config_path}')
@@ -60,6 +88,12 @@ def load_config(config_path: Path) -> CryoflowConfig:
         raise ConfigLoadError(f'Failed to parse TOML config: {e}') from e
 
     try:
-        return CryoflowConfig(**data)
+        cfg = CryoflowConfig(**data)
     except Exception as e:
         raise ConfigLoadError(f'Config validation failed: {e}') from e
+
+    # Resolve input_path relative to config directory
+    config_dir = config_path.parent.resolve()
+    cfg.input_path = _resolve_path_relative_to_config(cfg.input_path, config_dir)
+
+    return cfg

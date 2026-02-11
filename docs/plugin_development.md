@@ -92,8 +92,32 @@ from cryoflow_plugin_collections.libs.core import FrameData
 # FrameData = pl.LazyFrame | pl.DataFrame
 
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any]) -> None:
+    def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
+        """Initialize the plugin
+
+        Args:
+            options: Plugin-specific options from configuration file
+            config_dir: Directory containing the configuration file (for path resolution)
+        """
         self.options = options
+        self._config_dir = config_dir
+
+    def resolve_path(self, path: str | Path) -> Path:
+        """Resolve a path relative to the configuration file directory
+
+        Absolute paths are returned as-is, relative paths are resolved
+        relative to the configuration file's directory.
+
+        Args:
+            path: Path to resolve
+
+        Returns:
+            Resolved absolute path
+        """
+        path = Path(path)
+        if not path.is_absolute():
+            path = self._config_dir / path
+        return path.resolve()
 
     @abstractmethod
     def name(self) -> str:
@@ -380,7 +404,8 @@ class MyOutputPlugin(OutputPlugin):
     def execute(self, df: FrameData) -> Result[None, Exception]:
         """Output data (collect/sink is called here for the first time)"""
         try:
-            output_path = Path(self.options.get('output_path'))
+            # resolve_path()を使用して、相対パスを設定ファイル基準で解決
+            output_path = self.resolve_path(self.options.get('output_path'))
 
             # Create directory
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -398,7 +423,8 @@ class MyOutputPlugin(OutputPlugin):
     def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
         """Validate writability of output destination"""
         try:
-            output_path = Path(self.options.get('output_path'))
+            # resolve_path()を使用して、相対パスを設定ファイル基準で解決
+            output_path = self.resolve_path(self.options.get('output_path'))
 
             # Check if parent directory can be created
             try:
@@ -450,7 +476,10 @@ class ParquetWriterPlugin(OutputPlugin):
             if output_path_opt is None:
                 return Failure(ValueError("Option 'output_path' is required"))
 
-            output_path = Path(output_path_opt)
+            # resolve_path() to resolve relative paths relative to config file
+
+
+            output_path = self.resolve_path(output_path_opt)
 
             # Create parent directory
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -480,7 +509,10 @@ class ParquetWriterPlugin(OutputPlugin):
             if output_path_opt is None:
                 return Failure(ValueError("Option 'output_path' is required"))
 
-            output_path = Path(output_path_opt)
+            # resolve_path() to resolve relative paths relative to config file
+
+
+            output_path = self.resolve_path(output_path_opt)
 
             # Check if parent directory can be created
             try:
@@ -1068,18 +1100,44 @@ PluginOptions = dict[str, Any]
 
 ```python
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
 from cryoflow_plugin_collections.libs.polars import DataType
 from cryoflow_plugin_collections.libs.returns import Result
 
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any]) -> None:
-        """
+    def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
+        """Initialize the plugin
+
         Args:
             options: Plugin-specific options passed from configuration file
+            config_dir: Directory containing the configuration file (for path resolution)
         """
         self.options = options
+        self._config_dir = config_dir
+
+    def resolve_path(self, path: str | Path) -> Path:
+        """Resolve a path relative to the configuration file directory
+
+        Absolute paths are returned as-is, relative paths are resolved
+        relative to the configuration file's directory.
+
+        Args:
+            path: Path to resolve (string or Path object)
+
+        Returns:
+            Resolved absolute path
+
+        Example:
+            >>> # If config.toml is at /project/config/config.toml
+            >>> output_path = self.resolve_path("data/output.parquet")
+            >>> # => /project/config/data/output.parquet
+        """
+        path = Path(path)
+        if not path.is_absolute():
+            path = self._config_dir / path
+        return path.resolve()
 
     @abstractmethod
     def name(self) -> str:
