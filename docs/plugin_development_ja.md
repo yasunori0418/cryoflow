@@ -92,8 +92,31 @@ from cryoflow_plugin_collections.libs.core import FrameData
 # FrameData = pl.LazyFrame | pl.DataFrame
 
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any]) -> None:
+    def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
+        """プラグインの初期化
+
+        Args:
+            options: 設定ファイルから渡されるプラグイン固有のオプション
+            config_dir: 設定ファイルが存在するディレクトリ（相対パス解決用）
+        """
         self.options = options
+        self._config_dir = config_dir
+
+    def resolve_path(self, path: str | Path) -> Path:
+        """設定ファイルのディレクトリを基準にパスを解決
+
+        絶対パスはそのまま、相対パスは設定ファイルのディレクトリを基準に解決されます。
+
+        Args:
+            path: 解決するパス
+
+        Returns:
+            解決された絶対パス
+        """
+        path = Path(path)
+        if not path.is_absolute():
+            path = self._config_dir / path
+        return path.resolve()
 
     @abstractmethod
     def name(self) -> str:
@@ -380,7 +403,8 @@ class MyOutputPlugin(OutputPlugin):
     def execute(self, df: FrameData) -> Result[None, Exception]:
         """データを出力する（ここで初めて collect/sink が呼ばれる）"""
         try:
-            output_path = Path(self.options.get('output_path'))
+            # resolve_path()を使用して、相対パスを設定ファイル基準で解決
+            output_path = self.resolve_path(self.options.get('output_path'))
 
             # ディレクトリ作成
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -398,7 +422,8 @@ class MyOutputPlugin(OutputPlugin):
     def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
         """出力先の書き込み可能性を検証"""
         try:
-            output_path = Path(self.options.get('output_path'))
+            # resolve_path()を使用して、相対パスを設定ファイル基準で解決
+            output_path = self.resolve_path(self.options.get('output_path'))
 
             # 親ディレクトリが作成可能かチェック
             try:
@@ -450,7 +475,8 @@ class ParquetWriterPlugin(OutputPlugin):
             if output_path_opt is None:
                 return Failure(ValueError("Option 'output_path' is required"))
 
-            output_path = Path(output_path_opt)
+            # resolve_path()で相対パスを設定ファイル基準で解決
+            output_path = self.resolve_path(output_path_opt)
 
             # 親ディレクトリの作成
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -480,7 +506,8 @@ class ParquetWriterPlugin(OutputPlugin):
             if output_path_opt is None:
                 return Failure(ValueError("Option 'output_path' is required"))
 
-            output_path = Path(output_path_opt)
+            # resolve_path()で相対パスを設定ファイル基準で解決
+            output_path = self.resolve_path(output_path_opt)
 
             # 親ディレクトリが作成可能かチェック
             try:
@@ -1068,18 +1095,43 @@ PluginOptions = dict[str, Any]
 
 ```python
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
 from cryoflow_plugin_collections.libs.polars import DataType
 from cryoflow_plugin_collections.libs.returns import Result
 
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any]) -> None:
-        """
+    def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
+        """プラグインの初期化
+
         Args:
             options: 設定ファイルから渡されるプラグイン固有のオプション
+            config_dir: 設定ファイルが存在するディレクトリ（相対パス解決用）
         """
         self.options = options
+        self._config_dir = config_dir
+
+    def resolve_path(self, path: str | Path) -> Path:
+        """設定ファイルのディレクトリを基準にパスを解決
+
+        絶対パスはそのまま、相対パスは設定ファイルのディレクトリを基準に解決されます。
+
+        Args:
+            path: 解決するパス（文字列またはPathオブジェクト）
+
+        Returns:
+            解決された絶対パス
+
+        Example:
+            >>> # config.tomlが /project/config/config.toml にある場合
+            >>> output_path = self.resolve_path("data/output.parquet")
+            >>> # => /project/config/data/output.parquet
+        """
+        path = Path(path)
+        if not path.is_absolute():
+            path = self._config_dir / path
+        return path.resolve()
 
     @abstractmethod
     def name(self) -> str:
