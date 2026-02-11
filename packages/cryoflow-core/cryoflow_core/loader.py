@@ -5,7 +5,7 @@ import importlib.util
 import inspect
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 import pluggy
 
@@ -184,17 +184,38 @@ def load_plugins(
     return pm
 
 
-def get_transform_plugins(pm: pluggy.PluginManager) -> list[TransformPlugin]:
-    """Retrieve registered TransformPlugin instances from the manager."""
-    results: list[TransformPlugin] = []
-    for plugin_list in pm.hook.register_transform_plugins():
-        results.extend(plugin_list)
-    return results
+T = TypeVar('T', bound=BasePlugin)
+
+# Plugin type to hook name mapping
+_PLUGIN_TYPE_HOOKS: dict[type[BasePlugin], str] = {
+    TransformPlugin: 'register_transform_plugins',
+    OutputPlugin: 'register_output_plugins',
+}
 
 
-def get_output_plugins(pm: pluggy.PluginManager) -> list[OutputPlugin]:
-    """Retrieve registered OutputPlugin instances from the manager."""
-    results: list[OutputPlugin] = []
-    for plugin_list in pm.hook.register_output_plugins():
+def get_plugins(pm: pluggy.PluginManager, plugin_type: type[T]) -> list[T]:
+    """Retrieve registered plugin instances of the specified type.
+
+    Args:
+        pm: The PluginManager instance.
+        plugin_type: The plugin class type (must be a subclass of BasePlugin).
+
+    Returns:
+        List of plugin instances of the specified type.
+
+    Raises:
+        ValueError: If the plugin_type is not supported (not in _PLUGIN_TYPE_HOOKS).
+
+    Examples:
+        >>> transforms = get_plugins(pm, TransformPlugin)
+        >>> outputs = get_plugins(pm, OutputPlugin)
+    """
+    hook_name = _PLUGIN_TYPE_HOOKS.get(plugin_type)
+    if hook_name is None:
+        raise ValueError(f'Unsupported plugin type: {plugin_type}')
+
+    hook_caller = getattr(pm.hook, hook_name)
+    results: list[T] = []
+    for plugin_list in hook_caller():
         results.extend(plugin_list)
     return results

@@ -1,10 +1,12 @@
 [project]
 name = "cryoflow-plugin-collections"
-version = "0.0.1"
+version = "0.0.3"
 description = "Sample plugin for cryoflow"
 requires-python = ">=3.14"
 dependencies = [
     "cryoflow-core",
+    "polars>=1.37.1",
+    "returns>=0.23.0",
 ]
 
 [tool.uv.sources]
