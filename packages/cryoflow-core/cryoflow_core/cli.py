@@ -8,8 +8,9 @@ import typer
 from returns.result import Failure
 
 from cryoflow_core.config import ConfigLoadError, get_default_config_path, load_config
-from cryoflow_core.loader import PluginLoadError, get_output_plugins, get_transform_plugins, load_plugins
+from cryoflow_core.loader import PluginLoadError, get_plugins, load_plugins
 from cryoflow_core.pipeline import run_pipeline, run_dry_run_pipeline  # noqa: F401
+from cryoflow_core.plugin import OutputPlugin, TransformPlugin
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -82,8 +83,8 @@ def run(
     typer.echo(f'Loaded {enabled_count} plugin(s) successfully.')
 
     # Execute pipeline
-    transform_plugins = get_transform_plugins(pm)
-    output_plugins = get_output_plugins(pm)
+    transform_plugins = get_plugins(pm, TransformPlugin)
+    output_plugins = get_plugins(pm, OutputPlugin)
 
     if len(output_plugins) == 0:
         typer.echo('[ERROR] No output plugin configured', err=True)
@@ -149,8 +150,8 @@ def check(
     typer.echo(f'[CHECK] Loaded {enabled_count} plugin(s) successfully.')
 
     # Execute dry-run validation
-    transform_plugins = get_transform_plugins(pm)
-    output_plugins = get_output_plugins(pm)
+    transform_plugins = get_plugins(pm, TransformPlugin)
+    output_plugins = get_plugins(pm, OutputPlugin)
 
     if len(output_plugins) == 0:
         typer.echo('[ERROR] No output plugin configured', err=True)
