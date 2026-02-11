@@ -129,6 +129,72 @@ class TestE2EIntegration:
             assert isinstance(result, Success)
             assert output_file.exists()
 
+    def test_relative_path_resolution_in_config(self) -> None:
+        """Test that relative paths in config are resolved relative to config directory."""
+        from cryoflow_core.config import load_config
+        from cryoflow_core.loader import load_plugins
+
+        with TemporaryDirectory() as tmpdir:
+            # Create project structure:
+            # tmpdir/
+            #   config_dir/
+            #     config.toml
+            #     data/
+            #       input.parquet
+            #       output/
+            config_dir = Path(tmpdir) / 'config_dir'
+            config_dir.mkdir()
+            data_dir = config_dir / 'data'
+            data_dir.mkdir()
+            output_dir = data_dir / 'output'
+            output_dir.mkdir()
+
+            # Create input file
+            input_file = data_dir / 'input.parquet'
+            input_df = pl.DataFrame({'value': [100, 200, 300]})
+            input_df.write_parquet(input_file)
+
+            # Create config with relative paths
+            config_file = config_dir / 'config.toml'
+            config_content = """\
+input_path = "data/input.parquet"
+
+[[plugins]]
+name = "parquet_writer"
+module = "cryoflow_plugin_collections.output.parquet_writer"
+enabled = true
+
+[plugins.options]
+output_path = "data/output/result.parquet"
+"""
+            config_file.write_text(config_content)
+
+            # Load config
+            cfg = load_config(config_file)
+
+            # Verify input_path was resolved correctly
+            expected_input = (config_dir / 'data' / 'input.parquet').resolve()
+            assert cfg.input_path == expected_input
+
+            # Load plugins and verify they can resolve paths
+            pm = load_plugins(cfg, config_file)
+            from cryoflow_core.loader import get_plugins
+            from cryoflow_core.plugin import OutputPlugin
+            output_plugins = get_plugins(pm, OutputPlugin)
+            assert len(output_plugins) == 1
+
+            # Run pipeline (this will test that output plugin resolves path correctly)
+            result = run_pipeline(cfg.input_path, [], output_plugins[0])
+
+            # Verify result
+            assert isinstance(result, Success)
+            expected_output = (config_dir / 'data' / 'output' / 'result.parquet').resolve()
+            assert expected_output.exists()
+
+            # Verify output content
+            output_df = pl.read_parquet(expected_output)
+            assert output_df.to_dict(as_series=False) == {'value': [100, 200, 300]}
+
 
 class TestCheckCommand:
     """Tests for the 'check' command CLI."""
