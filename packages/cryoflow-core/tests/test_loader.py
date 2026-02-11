@@ -259,20 +259,20 @@ class TestDiscoverPluginClasses:
 
 
 class TestInstantiatePlugins:
-    def test_normal_instantiation(self):
+    def test_normal_instantiation(self, tmp_path):
         opts = {'key': 'value'}
-        instances = _instantiate_plugins('test', [DummyTransformPlugin, DummyOutputPlugin], opts)
+        instances = _instantiate_plugins('test', [DummyTransformPlugin, DummyOutputPlugin], opts, tmp_path)
         assert len(instances) == 2
         assert all(inst.options is opts for inst in instances)
 
-    def test_options_propagation(self):
+    def test_options_propagation(self, tmp_path):
         opts = {'threshold': 42}
-        instances = _instantiate_plugins('test', [DummyTransformPlugin], opts)
+        instances = _instantiate_plugins('test', [DummyTransformPlugin], opts, tmp_path)
         assert instances[0].options == {'threshold': 42}
 
-    def test_broken_init_raises(self):
+    def test_broken_init_raises(self, tmp_path):
         with pytest.raises(PluginLoadError, match='failed to instantiate'):
-            _instantiate_plugins('test', [BrokenInitPlugin], {})
+            _instantiate_plugins('test', [BrokenInitPlugin], {}, tmp_path)
 
 
 # ---------------------------------------------------------------------------

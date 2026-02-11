@@ -1,5 +1,6 @@
 """Shared fixtures and helpers for cryoflow-core tests."""
 
+from pathlib import Path
 from typing import Any
 
 import polars as pl
@@ -61,7 +62,7 @@ class FailingTransformPlugin(TransformPlugin):
 class BrokenInitPlugin(TransformPlugin):
     """Plugin that raises during __init__."""
 
-    def __init__(self, options: dict[str, Any]) -> None:
+    def __init__(self, options: dict[str, Any], config_dir: Path | None = None) -> None:
         raise RuntimeError('broken init')
 
     def name(self) -> str:

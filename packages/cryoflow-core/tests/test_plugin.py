@@ -1,5 +1,7 @@
 """Tests for cryoflow_core.plugin module."""
 
+from pathlib import Path
+
 import polars as pl
 import pytest
 from returns.result import Failure, Success
@@ -145,3 +147,53 @@ class TestInheritance:
         assert isinstance(p, BasePlugin)
         assert isinstance(p, TransformPlugin)
         assert not isinstance(p, OutputPlugin)
+
+
+# ---------------------------------------------------------------------------
+# Path Resolution
+# ---------------------------------------------------------------------------
+
+
+class TestPathResolution:
+    def test_resolve_path_relative(self, tmp_path):
+        """Test that relative paths are resolved relative to config_dir."""
+        config_dir = tmp_path / 'config'
+        config_dir.mkdir()
+        p = DummyTransformPlugin({}, config_dir)
+        result = p.resolve_path('data/output.parquet')
+        expected = (config_dir / 'data' / 'output.parquet').resolve()
+        assert result == expected
+
+    def test_resolve_path_absolute(self, tmp_path):
+        """Test that absolute paths are preserved (after normalization)."""
+        config_dir = tmp_path / 'config'
+        config_dir.mkdir()
+        p = DummyTransformPlugin({}, config_dir)
+        absolute_path = Path('/absolute/path/to/file.parquet')
+        result = p.resolve_path(absolute_path)
+        assert result == absolute_path.resolve()
+
+    def test_resolve_path_string_input(self, tmp_path):
+        """Test that string paths work correctly."""
+        config_dir = tmp_path / 'config'
+        config_dir.mkdir()
+        p = DummyTransformPlugin({}, config_dir)
+        result = p.resolve_path('relative/path.txt')
+        expected = (config_dir / 'relative' / 'path.txt').resolve()
+        assert result == expected
+
+    def test_resolve_path_path_input(self, tmp_path):
+        """Test that Path objects work correctly."""
+        config_dir = tmp_path / 'config'
+        config_dir.mkdir()
+        p = DummyTransformPlugin({}, config_dir)
+        result = p.resolve_path(Path('relative/path.txt'))
+        expected = (config_dir / 'relative' / 'path.txt').resolve()
+        assert result == expected
+
+    def test_config_dir_defaults_to_cwd(self):
+        """Test that config_dir defaults to current working directory."""
+        p = DummyTransformPlugin({})
+        result = p.resolve_path('relative/path.txt')
+        expected = (Path.cwd() / 'relative' / 'path.txt').resolve()
+        assert result == expected
