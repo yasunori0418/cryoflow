@@ -66,9 +66,8 @@ def run(
         raise typer.Exit(code=1)
 
     typer.echo(f'Config loaded: {config_path}')
-    typer.echo(f'  input_path:    {cfg.input_path}')
-    typer.echo(f'  output_target: {cfg.output_target}')
-    typer.echo(f'  plugins:       {len(cfg.plugins)} plugin(s)')
+    typer.echo(f'  input_path: {cfg.input_path}')
+    typer.echo(f'  plugins:    {len(cfg.plugins)} plugin(s)')
     for plugin in cfg.plugins:
         status = 'enabled' if plugin.enabled else 'disabled'
         typer.echo(f'    - {plugin.name} ({plugin.module}) [{status}]')

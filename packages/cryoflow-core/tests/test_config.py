@@ -56,24 +56,14 @@ class TestCryoflowConfig:
     def test_valid(self):
         cfg = CryoflowConfig(
             input_path='/data/in.parquet',
-            output_target='/data/out.parquet',
             plugins=[PluginConfig(name='p', module='m')],
         )
         assert isinstance(cfg.input_path, Path)
-        assert cfg.output_target == '/data/out.parquet'
         assert len(cfg.plugins) == 1
 
     def test_missing_input_path(self):
         with pytest.raises(ValidationError):
             CryoflowConfig(
-                output_target='/data/out.parquet',
-                plugins=[],
-            )  # type: ignore[call-arg]
-
-    def test_missing_output_target(self):
-        with pytest.raises(ValidationError):
-            CryoflowConfig(
-                input_path='/data/in.parquet',
                 plugins=[],
             )  # type: ignore[call-arg]
 
@@ -81,7 +71,6 @@ class TestCryoflowConfig:
         with pytest.raises(ValidationError):
             CryoflowConfig(
                 input_path='/data/in.parquet',
-                output_target='/data/out.parquet',
             )  # type: ignore[call-arg]
 
 
@@ -108,7 +97,6 @@ class TestLoadConfig:
         cfg = load_config(valid_config_file)
         assert isinstance(cfg, CryoflowConfig)
         assert cfg.input_path == Path('/data/input.parquet')
-        assert cfg.output_target == '/data/output.parquet'
         assert len(cfg.plugins) == 1
         assert cfg.plugins[0].name == 'my_plugin'
         assert cfg.plugins[0].options == {'threshold': 42}

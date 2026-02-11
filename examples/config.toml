@@ -1,5 +1,4 @@
 input_path = "examples/data/sample_sales.parquet"
-output_target = "examples/data/output.parquet"
 
 [[plugins]]
 name = "column-multiplier"

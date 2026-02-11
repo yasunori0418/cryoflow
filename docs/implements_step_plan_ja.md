@@ -15,7 +15,7 @@
 ### 1-2. Config実装 (`cryoflow_core/config.py`)
 
 - `PluginConfig`: name, module, enabled(=True), options(=dict) の Pydantic モデル
-- `CryoflowConfig`: input_path(Path), output_target(str), plugins(list[PluginConfig])
+- `CryoflowConfig`: input_path(Path), plugins(list[PluginConfig])
 - `ConfigLoadError`: ファイル未検出 / TOMLパースエラー / バリデーションエラーをラップする例外
 - `get_default_config_path()`: `xdg_config_home() / "cryoflow" / "config.toml"` を返却
 - `load_config(config_path)`: TOML読み込み → Pydantic検証 → `CryoflowConfig` 返却

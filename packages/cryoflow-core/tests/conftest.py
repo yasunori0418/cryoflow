@@ -80,7 +80,6 @@ class BrokenInitPlugin(TransformPlugin):
 
 VALID_TOML = """\
 input_path = "/data/input.parquet"
-output_target = "/data/output.parquet"
 
 [[plugins]]
 name = "my_plugin"
@@ -93,22 +92,20 @@ threshold = 42
 
 MINIMAL_TOML = """\
 input_path = "/data/input.parquet"
-output_target = "/data/output.parquet"
 plugins = []
 """
 
 INVALID_TOML_SYNTAX = """\
 input_path = "/data/input.parquet"
-output_target = /data/output  # missing quotes
+plugins = /invalid  # missing brackets
 """
 
 MISSING_FIELDS_TOML = """\
-output_target = "/data/output.parquet"
+plugins = []
 """
 
 MULTI_PLUGIN_TOML = """\
 input_path = "/data/input.parquet"
-output_target = "/data/output.parquet"
 
 [[plugins]]
 name = "plugin_a"

@@ -304,9 +304,9 @@ class TestPluginHookRelay:
 
 class TestLoadPlugins:
     def _make_config(self, plugins: list[PluginConfig]) -> CryoflowConfig:
+        from pathlib import Path
         return CryoflowConfig(
             input_path=Path('/data/in.parquet'),
-            output_target='/data/out.parquet',
             plugins=plugins,
         )
 
