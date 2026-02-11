@@ -13,16 +13,16 @@ FrameData = pl.LazyFrame | pl.DataFrame
 class BasePlugin(ABC):
     """Base class for all cryoflow plugins."""
 
-    def __init__(self, options: dict[str, Any], config_dir: Path | None = None) -> None:
+    def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
         """Initialize the plugin.
 
         Args:
             options: Plugin-specific options dictionary.
             config_dir: Directory containing the config file. Used for resolving
-                relative paths. Defaults to current working directory if not provided.
+                relative paths.
         """
         self.options = options
-        self._config_dir = config_dir or Path.cwd()
+        self._config_dir = config_dir
 
     def resolve_path(self, path: str | Path) -> Path:
         """Resolve a path relative to the config directory.

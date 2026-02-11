@@ -20,8 +20,9 @@ class TestE2EIntegration:
         from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlugin
 
         with TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
             # Create input file
-            input_file = Path(tmpdir) / 'input.parquet'
+            input_file = tmpdir_path / 'input.parquet'
             input_df = pl.DataFrame(
                 {'amount': [100, 200, 300], 'item': ['a', 'b', 'c']}
             )
@@ -29,10 +30,11 @@ class TestE2EIntegration:
 
             # Set up plugins
             multiplier_plugin = ColumnMultiplierPlugin(
-                {'column_name': 'amount', 'multiplier': 2}
+                {'column_name': 'amount', 'multiplier': 2},
+                tmpdir_path
             )
-            output_file = Path(tmpdir) / 'output.parquet'
-            output_plugin = ParquetWriterPlugin({'output_path': str(output_file)})
+            output_file = tmpdir_path / 'output.parquet'
+            output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline
             result = run_pipeline(
@@ -55,14 +57,15 @@ class TestE2EIntegration:
         from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
 
         with TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
             # Create IPC input file
-            input_file = Path(tmpdir) / 'input.ipc'
+            input_file = tmpdir_path / 'input.ipc'
             input_df = pl.DataFrame({'value': [1, 2, 3], 'name': ['x', 'y', 'z']})
             input_df.write_ipc(input_file)
 
             # Set up plugin (no transform)
-            output_file = Path(tmpdir) / 'output.parquet'
-            output_plugin = ParquetWriterPlugin({'output_path': str(output_file)})
+            output_file = tmpdir_path / 'output.parquet'
+            output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline
             result = run_pipeline(input_file, [], output_plugin)
@@ -83,20 +86,23 @@ class TestE2EIntegration:
         from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlugin
 
         with TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
             # Create input file
-            input_file = Path(tmpdir) / 'input.parquet'
+            input_file = tmpdir_path / 'input.parquet'
             input_df = pl.DataFrame({'value': [10, 20, 30]})
             input_df.write_parquet(input_file)
 
             # Set up two transformation plugins
             multiply_2 = ColumnMultiplierPlugin(
-                {'column_name': 'value', 'multiplier': 2}
+                {'column_name': 'value', 'multiplier': 2},
+                tmpdir_path
             )
             multiply_3 = ColumnMultiplierPlugin(
-                {'column_name': 'value', 'multiplier': 3}
+                {'column_name': 'value', 'multiplier': 3},
+                tmpdir_path
             )
-            output_file = Path(tmpdir) / 'output.parquet'
-            output_plugin = ParquetWriterPlugin({'output_path': str(output_file)})
+            output_file = tmpdir_path / 'output.parquet'
+            output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline (10 * 2 * 3 = 60, 20 * 2 * 3 = 120, 30 * 2 * 3 = 180)
             result = run_pipeline(
@@ -113,14 +119,15 @@ class TestE2EIntegration:
         from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
 
         with TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
             # Create input file
-            input_file = Path(tmpdir) / 'input.parquet'
+            input_file = tmpdir_path / 'input.parquet'
             input_df = pl.DataFrame({'data': [1, 2, 3]})
             input_df.write_parquet(input_file)
 
             # Output to nested directory
-            output_file = Path(tmpdir) / 'results' / 'nested' / 'output.parquet'
-            output_plugin = ParquetWriterPlugin({'output_path': str(output_file)})
+            output_file = tmpdir_path / 'results' / 'nested' / 'output.parquet'
+            output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline
             result = run_pipeline(input_file, [], output_plugin)

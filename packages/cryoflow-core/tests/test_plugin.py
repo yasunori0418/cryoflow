@@ -50,18 +50,18 @@ class TestABCInstantiation:
 
 
 class TestOptionsStorage:
-    def test_transform_plugin_stores_options(self):
+    def test_transform_plugin_stores_options(self, tmp_path):
         opts = {'threshold': 10}
-        p = DummyTransformPlugin(opts)
+        p = DummyTransformPlugin(opts, tmp_path)
         assert p.options is opts
 
-    def test_output_plugin_stores_options(self):
+    def test_output_plugin_stores_options(self, tmp_path):
         opts = {'format': 'csv'}
-        p = DummyOutputPlugin(opts)
+        p = DummyOutputPlugin(opts, tmp_path)
         assert p.options is opts
 
-    def test_empty_options(self):
-        p = DummyTransformPlugin({})
+    def test_empty_options(self, tmp_path):
+        p = DummyTransformPlugin({}, tmp_path)
         assert p.options == {}
 
 
@@ -71,28 +71,28 @@ class TestOptionsStorage:
 
 
 class TestExecute:
-    def test_transform_success_lazyframe(self, sample_lazyframe):
-        p = DummyTransformPlugin({})
+    def test_transform_success_lazyframe(self, sample_lazyframe, tmp_path):
+        p = DummyTransformPlugin({}, tmp_path)
         result = p.execute(sample_lazyframe)
         assert isinstance(result, Success)
         assert result.unwrap() is sample_lazyframe
 
-    def test_transform_success_dataframe(self, sample_dataframe):
-        p = DummyTransformPlugin({})
+    def test_transform_success_dataframe(self, sample_dataframe, tmp_path):
+        p = DummyTransformPlugin({}, tmp_path)
         result = p.execute(sample_dataframe)
         assert isinstance(result, Success)
         assert result.unwrap() is sample_dataframe
 
-    def test_transform_failure(self, sample_lazyframe):
-        p = FailingTransformPlugin({})
+    def test_transform_failure(self, sample_lazyframe, tmp_path):
+        p = FailingTransformPlugin({}, tmp_path)
         result = p.execute(sample_lazyframe)
         assert isinstance(result, Failure)
         exc = result.failure()
         assert isinstance(exc, ValueError)
         assert 'intentional failure' in str(exc)
 
-    def test_output_success(self, sample_lazyframe):
-        p = DummyOutputPlugin({})
+    def test_output_success(self, sample_lazyframe, tmp_path):
+        p = DummyOutputPlugin({}, tmp_path)
         result = p.execute(sample_lazyframe)
         assert isinstance(result, Success)
         assert result.unwrap() is None
@@ -104,21 +104,21 @@ class TestExecute:
 
 
 class TestDryRun:
-    def test_transform_dry_run_success(self):
-        p = DummyTransformPlugin({})
+    def test_transform_dry_run_success(self, tmp_path):
+        p = DummyTransformPlugin({}, tmp_path)
         schema = {'a': pl.Int64, 'b': pl.Utf8}
         result = p.dry_run(schema)
         assert isinstance(result, Success)
         assert result.unwrap() == schema
 
-    def test_transform_dry_run_failure(self):
-        p = FailingTransformPlugin({})
+    def test_transform_dry_run_failure(self, tmp_path):
+        p = FailingTransformPlugin({}, tmp_path)
         schema = {'a': pl.Int64}
         result = p.dry_run(schema)
         assert isinstance(result, Failure)
 
-    def test_output_dry_run_success(self):
-        p = DummyOutputPlugin({})
+    def test_output_dry_run_success(self, tmp_path):
+        p = DummyOutputPlugin({}, tmp_path)
         schema = {'a': pl.Int64}
         result = p.dry_run(schema)
         assert isinstance(result, Success)
@@ -142,8 +142,8 @@ class TestInheritance:
     def test_dummy_output_is_output(self):
         assert issubclass(DummyOutputPlugin, OutputPlugin)
 
-    def test_isinstance_check(self):
-        p = DummyTransformPlugin({})
+    def test_isinstance_check(self, tmp_path):
+        p = DummyTransformPlugin({}, tmp_path)
         assert isinstance(p, BasePlugin)
         assert isinstance(p, TransformPlugin)
         assert not isinstance(p, OutputPlugin)
@@ -189,11 +189,4 @@ class TestPathResolution:
         p = DummyTransformPlugin({}, config_dir)
         result = p.resolve_path(Path('relative/path.txt'))
         expected = (config_dir / 'relative' / 'path.txt').resolve()
-        assert result == expected
-
-    def test_config_dir_defaults_to_cwd(self):
-        """Test that config_dir defaults to current working directory."""
-        p = DummyTransformPlugin({})
-        result = p.resolve_path('relative/path.txt')
-        expected = (Path.cwd() / 'relative' / 'path.txt').resolve()
         assert result == expected

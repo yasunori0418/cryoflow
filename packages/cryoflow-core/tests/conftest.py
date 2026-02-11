@@ -62,7 +62,7 @@ class FailingTransformPlugin(TransformPlugin):
 class BrokenInitPlugin(TransformPlugin):
     """Plugin that raises during __init__."""
 
-    def __init__(self, options: dict[str, Any], config_dir: Path | None = None) -> None:
+    def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
         raise RuntimeError('broken init')
 
     def name(self) -> str:
