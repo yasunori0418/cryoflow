@@ -188,12 +188,32 @@ Each plugin entry specifies:
 - **enabled**: Whether the plugin should be executed (true/false)
 - **options**: Plugin-specific configuration options
 
+#### Path Resolution
+
+**Important**: All file paths in the configuration are resolved **relative to the directory containing the configuration file**, not the current working directory.
+
+- **Absolute paths**: Used as-is (e.g., `/absolute/path/to/file.parquet`)
+- **Relative paths**: Resolved relative to the config file's directory (e.g., `data/input.parquet`)
+
+This design ensures that configuration files are portable - you can move your entire project directory without breaking path references.
+
+**Example**:
+```
+project/
+  config/
+    config.toml         # Configuration file here
+    data/
+      input.parquet     # Referenced as "data/input.parquet"
+      output.parquet    # Referenced as "data/output.parquet"
+```
+
+**Recommendation**: Use relative paths in your configuration files to maximize portability.
+
 ### Example Configuration
 
 ```toml
-# Input/Output specification
-input_path = "examples/data/sample_sales.parquet"
-output_target = "examples/data/output.parquet"
+# Input specification (relative to config file directory)
+input_path = "data/sample_sales.parquet"
 
 # First plugin: Transform data
 [[plugins]]
@@ -210,7 +230,8 @@ name = "parquet-writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 [plugins.options]
-output_path = "examples/data/output.parquet"
+# Output path is also relative to config file directory
+output_path = "data/output.parquet"
 ```
 
 ### Configuration File Locations

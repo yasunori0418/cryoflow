@@ -120,6 +120,74 @@ class CryoflowSpecs:
         """出力プラグインのインスタンスを返す"""
 ```
 
+### 3.4 パス解決の挙動
+
+cryoflowの設定ファイルで指定される全てのファイルパスは、**カレントディレクトリではなく、設定ファイルが存在するディレクトリを基準として解決されます**。これにより、設定ファイルの移植性が向上し、プロジェクトディレクトリ全体を移動してもパス参照が壊れません。
+
+#### 解決ルール
+
+1. **絶対パス**: そのまま使用（`.resolve()`で正規化後）
+2. **相対パス**: `config.toml`が存在するディレクトリを基準に解決
+
+#### 設定ファイルのパス
+
+**`input_path`** (`config.toml`内):
+- `load_config()`が設定オブジェクトを返す前に自動的に解決される
+- 例:
+  ```toml
+  # config.tomlが /project/config/config.toml にある場合
+  input_path = "data/input.parquet"
+  # 解決結果: /project/config/data/input.parquet
+  ```
+
+**プラグインオプションのパス** (`plugins.options`内):
+- プラグイン実装側で`BasePlugin.resolve_path()`を使用して解決する必要がある
+- 例:
+  ```toml
+  [[plugins]]
+  name = "parquet_writer"
+  module = "cryoflow_plugin_collections.output.parquet_writer"
+
+  [plugins.options]
+  output_path = "data/output.parquet"
+  # プラグイン内で: self.resolve_path(self.options['output_path'])
+  # 解決結果: /project/config/data/output.parquet
+  ```
+
+#### プラグイン実装
+
+プラグインはコンストラクタで`config_dir`パラメータを受け取ります。これは設定ファイルのディレクトリに自動設定されます:
+
+```python
+class BasePlugin(ABC):
+    def __init__(self, options: dict[str, Any], config_dir: Path | None = None) -> None:
+        self.options = options
+        self._config_dir = config_dir or Path.cwd()
+
+    def resolve_path(self, path: str | Path) -> Path:
+        """設定ファイルのディレクトリを基準にパスを解決する"""
+        path = Path(path)
+        if not path.is_absolute():
+            path = self._config_dir / path
+        return path.resolve()
+```
+
+プラグインでの使用例:
+```python
+class ParquetWriterPlugin(OutputPlugin):
+    def execute(self, df: FrameData) -> Result[None, Exception]:
+        output_path_opt = self.options.get('output_path')
+        # 設定ファイルディレクトリを基準に相対パスを解決
+        output_path = self.resolve_path(output_path_opt)
+        # ... output_pathに書き込み
+```
+
+#### メリット
+
+- **移植性**: 設定ファイルとデータを一つのユニットとして移動可能
+- **一貫性**: 全てのパスが同じ解決ルールに従う
+- **予測可能性**: パス解決がカレントディレクトリに依存しない
+
 ---
 
 ## 4. エラーハンドリング指針 (returns)
