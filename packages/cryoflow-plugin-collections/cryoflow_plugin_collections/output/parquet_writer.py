@@ -33,7 +33,7 @@ class ParquetWriterPlugin(OutputPlugin):
             if output_path_opt is None:
                 return Failure(ValueError("Option 'output_path' is required"))
 
-            output_path = Path(output_path_opt)
+            output_path = self.resolve_path(output_path_opt)
 
             # Create parent directory if needed
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -62,7 +62,7 @@ class ParquetWriterPlugin(OutputPlugin):
             if output_path_opt is None:
                 return Failure(ValueError("Option 'output_path' is required"))
 
-            output_path = Path(output_path_opt)
+            output_path = self.resolve_path(output_path_opt)
 
             # Check if parent directory can be created
             try:

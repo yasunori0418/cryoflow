@@ -123,3 +123,38 @@ class TestParquetWriterPlugin:
         """Test plugin name."""
         plugin = ParquetWriterPlugin({'output_path': '/tmp/test.parquet'})
         assert plugin.name() == 'parquet_writer'
+
+    def test_execute_with_relative_path(self) -> None:
+        """Test that relative paths are resolved relative to config_dir."""
+        with TemporaryDirectory() as tmpdir:
+            config_dir = Path(tmpdir) / 'config'
+            config_dir.mkdir()
+            output_subdir = config_dir / 'output'
+            output_subdir.mkdir()
+
+            # Use relative path
+            df = pl.DataFrame({'value': [1, 2, 3]})
+            plugin = ParquetWriterPlugin({'output_path': 'output/result.parquet'}, config_dir)
+
+            result = plugin.execute(df)
+
+            assert isinstance(result, Success)
+            # File should be created relative to config_dir
+            expected_path = output_subdir / 'result.parquet'
+            assert expected_path.exists()
+
+    def test_dry_run_with_relative_path(self) -> None:
+        """Test dry_run with relative paths resolved relative to config_dir."""
+        with TemporaryDirectory() as tmpdir:
+            config_dir = Path(tmpdir) / 'config'
+            config_dir.mkdir()
+
+            schema = {'value': pl.Int64()}
+            plugin = ParquetWriterPlugin({'output_path': 'data/output.parquet'}, config_dir)
+
+            result = plugin.dry_run(schema)
+
+            assert isinstance(result, Success)
+            # Parent directory should exist relative to config_dir
+            expected_parent = config_dir / 'data'
+            assert expected_parent.exists()
