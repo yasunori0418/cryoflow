@@ -2,7 +2,7 @@
 name = "cryoflow-plugin-collections"
 version = "0.1.0"
 description = "Sample plugin for cryoflow"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
     "cryoflow-core",
     "polars>=1.37.1",

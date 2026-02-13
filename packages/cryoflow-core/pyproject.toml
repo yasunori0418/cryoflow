@@ -2,7 +2,7 @@
 name = "cryoflow-core"
 version = "0.1.0"
 description = "Core framework for cryoflow"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
     "typer>=0.21.1",
     "pydantic>=2.10",
