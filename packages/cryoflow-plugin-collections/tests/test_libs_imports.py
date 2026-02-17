@@ -28,6 +28,78 @@ def test_returns_reexport():
     assert error_result.failure()
 
 
+def test_returns_individual_imports():
+    """Test importing individual types/functions from returns re-export."""
+    from cryoflow_plugin_collections.libs.returns import (
+        Failure,
+        Result,
+        ResultE,
+        Success,
+        safe,
+    )
+
+    # Verify all imports are accessible
+    assert Result is not None
+    assert Success is not None
+    assert Failure is not None
+    assert ResultE is not None
+    assert callable(safe)
+
+    # Test actual usage
+    result: Result[int, str] = Success(42)
+    assert result.unwrap() == 42
+
+    error_result: Result[int, str] = Failure("error")
+    assert error_result.failure()
+
+    # Test safe decorator
+    @safe
+    def may_fail(x: int) -> int:
+        if x < 0:
+            raise ValueError("negative")
+        return x * 2
+
+    success_result = may_fail(5)
+    assert success_result.unwrap() == 10
+
+    failure_result = may_fail(-1)
+    assert failure_result.failure()
+
+
+def test_returns_complete_api_export():
+    """Test that all returns.result public APIs are exported."""
+    import returns.result
+    from cryoflow_plugin_collections.libs import returns as returns_reexport
+
+    # Get all public APIs from original returns.result
+    original_apis = {
+        name for name in dir(returns.result) if not name.startswith("_")
+    }
+
+    # Get all exports from re-export module
+    reexport_apis = set(returns_reexport.__all__)
+
+    # Verify all original APIs are re-exported
+    assert original_apis == reexport_apis
+
+
+def test_returns_type_identity():
+    """Test that re-exported objects are identical to originals."""
+    import returns.result
+    from cryoflow_plugin_collections.libs.returns import (
+        Failure,
+        Result,
+        Success,
+        safe,
+    )
+
+    # Verify objects are identical (not copies)
+    assert Result is returns.result.Result
+    assert Success is returns.result.Success
+    assert Failure is returns.result.Failure
+    assert safe is returns.result.safe
+
+
 def test_core_reexport():
     """Test core re-export works correctly."""
     from cryoflow_plugin_collections.libs.core import (
