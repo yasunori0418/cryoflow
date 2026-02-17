@@ -69,19 +69,19 @@ Re-exported modules:
 """
 
 # Re-export all public APIs from major returns modules
-from returns.result import *  # noqa: F403, F401
-from returns.maybe import *  # noqa: F403, F401
-from returns.io import *  # noqa: F403, F401
-from returns.future import *  # noqa: F403, F401
-from returns.context import *  # noqa: F403, F401
-from returns.pipeline import *  # noqa: F403, F401
-from returns.pointfree import *  # noqa: F403, F401
-from returns.iterables import *  # noqa: F403, F401
-from returns.curry import *  # noqa: F403, F401
-from returns.functions import *  # noqa: F403, F401
-from returns.converters import *  # noqa: F403, F401
-from returns.methods import *  # noqa: F403, F401
-from returns.primitives import *  # noqa: F403, F401
+from returns.result import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.maybe import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.io import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.future import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.context import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.pipeline import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.pointfree import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.iterables import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.curry import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.functions import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.converters import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.methods import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
+from returns.primitives import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
 
 # Import module objects for building __all__ and optional re-export
 from returns import (
@@ -117,12 +117,16 @@ _modules = [
     primitives,
 ]
 
-__all__ = []
-for _module in _modules:
-    __all__.extend([name for name in dir(_module) if not name.startswith("_")])
+# Build __all__ from all module exports with deduplication
+_all_exports = [
+    name
+    for _mod in _modules
+    for name in dir(_mod)
+    if not name.startswith('_')
+]
 
-# Remove duplicates while preserving order
-__all__ = list(dict.fromkeys(__all__))
+# Remove duplicates while preserving order, then assign to __all__
+__all__ = list(dict.fromkeys(_all_exports)) # pyright: ignore[reportUnsupportedDunderAll]
 
 # Clean up temporary references
-del _modules, _module
+del _modules, _all_exports
