@@ -32,10 +32,44 @@ class TestHelpDisplay:
         assert result.exit_code == 0
         assert 'Usage' in result.output
 
+    def test_help_short_flag(self):
+        result = runner.invoke(app, ['-h'])
+        assert result.exit_code == 0
+        assert 'Usage' in result.output
+
     def test_run_help(self):
         result = runner.invoke(app, ['run', '--help'])
         assert result.exit_code == 0
         assert '--config' in result.output
+
+    def test_run_help_short_flag(self):
+        result = runner.invoke(app, ['run', '-h'])
+        assert result.exit_code == 0
+        assert '--config' in result.output
+
+    def test_check_help_short_flag(self):
+        result = runner.invoke(app, ['check', '-h'])
+        assert result.exit_code == 0
+        assert '--config' in result.output
+
+
+# ---------------------------------------------------------------------------
+# Version display
+# ---------------------------------------------------------------------------
+
+
+class TestVersionDisplay:
+    def test_version_flag(self):
+        result = runner.invoke(app, ['--version'])
+        assert result.exit_code == 0
+        assert 'cryoflow version' in result.output
+        assert 'cryoflow-plugin-collections version' in result.output
+
+    def test_version_short_flag(self):
+        result = runner.invoke(app, ['-v'])
+        assert result.exit_code == 0
+        assert 'cryoflow version' in result.output
+        assert 'cryoflow-plugin-collections version' in result.output
 
 
 # ---------------------------------------------------------------------------
