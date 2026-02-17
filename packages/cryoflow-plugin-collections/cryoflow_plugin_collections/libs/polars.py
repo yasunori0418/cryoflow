@@ -1,21 +1,26 @@
 """Polars re-export for plugin development.
 
-Provides the main polars module and commonly used types for data processing
-in cryoflow plugins.
+Provides complete polars API re-export for external plugin developers.
+This module transparently re-exports all 228+ public APIs from polars,
+ensuring version compatibility and reducing dependency management overhead.
 
 Usage:
-    from cryoflow_plugin_collections.libs.polars import pl
+    # Import as module (enables pl.col(), pl.DataFrame(), etc.)
+    from cryoflow_plugin_collections.libs import polars as pl
+    pl.col("name")
 
-    # Or import specific types:
-    from cryoflow_plugin_collections.libs.polars import LazyFrame, DataFrame
+    # Import the polars module object
+    from cryoflow_plugin_collections.libs.polars import pl
+    pl.col("name")
+
+    # Import individual functions/types
+    from cryoflow_plugin_collections.libs.polars import col, lit, when, DataFrame, LazyFrame
+
+All imports provide full type hints and IDE autocomplete support.
 """
 
 import polars as pl
-from polars import DataFrame, DataType, LazyFrame
+from polars import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
 
-__all__ = [
-    "pl",  # Main polars module
-    "DataFrame",  # Eager frame type
-    "LazyFrame",  # Lazy frame type (primary in cryoflow)
-    "DataType",  # For dry_run schema validation
-]
+# Build __all__ dynamically to include all polars public APIs plus 'pl'
+__all__ = ["pl"] + [name for name in dir(pl) if not name.startswith("_")] # pyright: ignore[reportUnsupportedDunderAll]
