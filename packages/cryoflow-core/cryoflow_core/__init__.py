@@ -1,3 +1,9 @@
 """cryoflow-core: Core framework for cryoflow CLI tool."""
 
-__version__ = '0.1.3'
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version('cryoflow-core')
+except PackageNotFoundError:
+    # Fallback for development environment
+    __version__ = 'unknown'
