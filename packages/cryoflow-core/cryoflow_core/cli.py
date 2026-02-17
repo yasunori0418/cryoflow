@@ -35,6 +35,18 @@ def version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
+def help_callback(ctx: typer.Context, value: bool) -> None:
+    """Display help and exit.
+
+    Args:
+        ctx: Typer context.
+        value: If True, display help and exit.
+    """
+    if value:
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
+
+
 def setup_logging(verbose: bool = False) -> None:
     """Configure logging for CLI.
 
@@ -60,6 +72,16 @@ def main(
             help='Show version and exit.',
         ),
     ] = False,
+    _help: Annotated[
+        bool,
+        typer.Option(
+            '-h',
+            '--help',
+            callback=help_callback,
+            is_eager=True,
+            help='Show this message and exit.',
+        ),
+    ] = False,
 ) -> None:
     """cryoflow: Plugin-driven columnar data processing CLI."""
 
@@ -83,6 +105,16 @@ def run(
             '-V',
             '--verbose',
             help='Enable verbose output.',
+        ),
+    ] = False,
+    _help: Annotated[
+        bool,
+        typer.Option(
+            '-h',
+            '--help',
+            callback=help_callback,
+            is_eager=True,
+            help='Show this message and exit.',
         ),
     ] = False,
 ) -> None:
@@ -153,6 +185,16 @@ def check(
             '-V',
             '--verbose',
             help='Enable verbose output.',
+        ),
+    ] = False,
+    _help: Annotated[
+        bool,
+        typer.Option(
+            '-h',
+            '--help',
+            callback=help_callback,
+            is_eager=True,
+            help='Show this message and exit.',
         ),
     ] = False,
 ) -> None:
