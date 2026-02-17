@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-02-17
+
+### Added
+
+- **Complete polars API re-export** (`cryoflow-plugin-collections`):
+  - Re-export all 228+ public APIs from polars using wildcard import
+  - Support for 3 import patterns:
+    1. Module import: `from libs import polars as pl; pl.col()`
+    2. Object import: `from libs.polars import pl; pl.col()`
+    3. Individual imports: `from libs.polars import col, lit, when`
+  - Dynamic `__all__` generation for automatic tracking of polars updates
+  - Zero maintenance overhead and zero runtime overhead
+  - Full type safety and IDE autocomplete support
+
+- **Complete returns library re-export** (`cryoflow-plugin-collections`):
+  - Re-export 146+ unique public APIs from 13 major returns modules
+  - Newly available containers and utilities:
+    - `Maybe` monad for optional values (`Some`, `Nothing`)
+    - `IO` containers for side effect management (`IO`, `IOResult`)
+    - `Future` for async operations (`Future`, `FutureResult`)
+    - `Context` for dependency injection (`RequiresContext`)
+    - Pipeline utilities (`flow`, `pipe`)
+    - Pointfree operations (`bind`, `map`, `alt`, `lash`)
+    - Curry/partial application utilities
+    - Converters and methods for container transformations
+  - Support for individual imports: `from libs.returns import Maybe, IO, flow`
+  - Full functional programming toolkit for plugin developers
+
+### Changed
+
+- **Improved `__all__` construction** (`cryoflow-plugin-collections`):
+  - Refactored returns module to use single assignment pattern
+  - Replaced destructive extend/reassign with list comprehension and temporary variable
+  - Better static analysis compatibility (reduced Pyright warnings)
+
+### Tests
+
+- Added comprehensive tests for polars re-export (4 new test cases)
+- Added comprehensive tests for returns re-export (4 new test cases)
+- All 44 tests passing with full backward compatibility
+
 ## [0.1.0] - 2025-02-12
 
 ### Added
