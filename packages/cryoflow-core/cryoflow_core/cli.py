@@ -7,12 +7,24 @@ from typing import Annotated
 import typer
 from returns.result import Failure
 
+from cryoflow_core import __version__
 from cryoflow_core.config import ConfigLoadError, get_default_config_path, load_config
 from cryoflow_core.loader import PluginLoadError, get_plugins, load_plugins
 from cryoflow_core.pipeline import run_pipeline, run_dry_run_pipeline  # noqa: F401
 from cryoflow_core.plugin import OutputPlugin, TransformPlugin
 
 app = typer.Typer(no_args_is_help=True)
+
+
+def version_callback(value: bool) -> None:
+    """Display version and exit.
+
+    Args:
+        value: If True, display version and exit.
+    """
+    if value:
+        typer.echo(f'cryoflow version {__version__}')
+        raise typer.Exit()
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -29,7 +41,18 @@ def setup_logging(verbose: bool = False) -> None:
 
 
 @app.callback()
-def main() -> None:
+def main(
+    version: Annotated[
+        bool,
+        typer.Option(
+            '-v',
+            '--version',
+            callback=version_callback,
+            is_eager=True,
+            help='Show version and exit.',
+        ),
+    ] = False,
+) -> None:
     """cryoflow: Plugin-driven columnar data processing CLI."""
 
 
@@ -49,7 +72,7 @@ def run(
     verbose: Annotated[
         bool,
         typer.Option(
-            '-v',
+            '-V',
             '--verbose',
             help='Enable verbose output.',
         ),
@@ -119,7 +142,7 @@ def check(
     verbose: Annotated[
         bool,
         typer.Option(
-            '-v',
+            '-V',
             '--verbose',
             help='Enable verbose output.',
         ),
