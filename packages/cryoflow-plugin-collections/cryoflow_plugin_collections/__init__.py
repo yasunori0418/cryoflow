@@ -30,4 +30,6 @@ For Built-in Sample Plugins:
 from cryoflow_plugin_collections.output import ParquetWriterPlugin
 from cryoflow_plugin_collections.transform import ColumnMultiplierPlugin
 
+__version__ = '0.1.3'
+
 __all__ = ['ColumnMultiplierPlugin', 'ParquetWriterPlugin']

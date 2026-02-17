@@ -48,11 +48,13 @@ class TestVersionDisplay:
         result = runner.invoke(app, ['--version'])
         assert result.exit_code == 0
         assert 'cryoflow version' in result.output
+        assert 'cryoflow-plugin-collections version' in result.output
 
     def test_version_short_flag(self):
         result = runner.invoke(app, ['-v'])
         assert result.exit_code == 0
         assert 'cryoflow version' in result.output
+        assert 'cryoflow-plugin-collections version' in result.output
 
 
 # ---------------------------------------------------------------------------

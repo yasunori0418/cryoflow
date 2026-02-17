@@ -24,6 +24,14 @@ def version_callback(value: bool) -> None:
     """
     if value:
         typer.echo(f'cryoflow version {__version__}')
+
+        # Display plugin collections version if available
+        try:
+            import cryoflow_plugin_collections
+            typer.echo(f'cryoflow-plugin-collections version {cryoflow_plugin_collections.__version__}')
+        except (ImportError, AttributeError):
+            pass
+
         raise typer.Exit()
 
 
@@ -42,7 +50,7 @@ def setup_logging(verbose: bool = False) -> None:
 
 @app.callback()
 def main(
-    version: Annotated[
+    _version: Annotated[
         bool,
         typer.Option(
             '-v',
