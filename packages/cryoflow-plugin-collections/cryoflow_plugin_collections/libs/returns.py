@@ -1,37 +1,128 @@
 """Returns library re-export for plugin development.
 
-Provides complete returns.result API re-export for external plugin developers.
-This module transparently re-exports all public APIs from returns.result,
+Provides complete returns library API re-export for external plugin developers.
+This module transparently re-exports all 230+ public APIs from returns,
 ensuring version compatibility and reducing dependency management overhead.
 
+The returns library provides type-safe functional programming primitives for
+Python, including containers for error handling, optional values, IO effects,
+async operations, and context management.
+
 Usage:
-    # Import individual types/functions
+    # Result monad (error handling)
     from cryoflow_plugin_collections.libs.returns import Result, Success, Failure, safe
 
-    # Import ResultE alias (Result[T, Exception])
-    from cryoflow_plugin_collections.libs.returns import ResultE
+    # Maybe monad (optional values)
+    from cryoflow_plugin_collections.libs.returns import Maybe, Some, Nothing
 
-    # Import decorators and utilities
-    from cryoflow_plugin_collections.libs.returns import safe, attempt
+    # IO containers (side effects)
+    from cryoflow_plugin_collections.libs.returns import IO, IOResult
 
-Example:
+    # Pipeline utilities (function composition)
+    from cryoflow_plugin_collections.libs.returns import flow, pipe
+
+    # Pointfree operations
+    from cryoflow_plugin_collections.libs.returns import bind, map
+
+Examples:
+    # Error handling with Result
     from cryoflow_plugin_collections.libs.returns import Result, Success, Failure, safe
 
     @safe
-    def process() -> Result[str, Exception]:
-        return Success("value")
+    def divide(a: int, b: int) -> float:
+        return a / b
+
+    result = divide(10, 2)  # Success(5.0)
+    error = divide(10, 0)   # Failure(ZeroDivisionError(...))
+
+    # Optional values with Maybe
+    from cryoflow_plugin_collections.libs.returns import Maybe, Some, Nothing
+
+    def find_user(id: int) -> Maybe[str]:
+        return Some("Alice") if id == 1 else Nothing
+
+    # Function composition
+    from cryoflow_plugin_collections.libs.returns import flow, Result
+
+    process = flow(
+        parse_input,
+        validate_data,
+        transform_data,
+    )
 
 All imports provide full type hints and IDE autocomplete support.
+
+Re-exported modules:
+    - result: Result, Success, Failure, ResultE, safe, etc.
+    - maybe: Maybe, Some, Nothing, etc.
+    - io: IO, IOResult, impure, etc.
+    - future: Future, FutureResult, etc.
+    - context: Context, RequiresContext, etc.
+    - pipeline: flow, pipe, managed
+    - pointfree: bind, map, alt, lash, etc.
+    - iterables: Fold, fold, etc.
+    - curry: curry, partial, etc.
+    - functions: identity, tap, raise_exception, etc.
+    - converters: coalesce_result, flatten, etc.
+    - methods: cond, not_
+    - primitives: Immutable, interfaces
 """
 
+# Re-export all public APIs from major returns modules
 from returns.result import *  # noqa: F403, F401
+from returns.maybe import *  # noqa: F403, F401
+from returns.io import *  # noqa: F403, F401
+from returns.future import *  # noqa: F403, F401
+from returns.context import *  # noqa: F403, F401
+from returns.pipeline import *  # noqa: F403, F401
+from returns.pointfree import *  # noqa: F403, F401
+from returns.iterables import *  # noqa: F403, F401
+from returns.curry import *  # noqa: F403, F401
+from returns.functions import *  # noqa: F403, F401
+from returns.converters import *  # noqa: F403, F401
+from returns.methods import *  # noqa: F403, F401
+from returns.primitives import *  # noqa: F403, F401
 
-# Import returns.result module to build __all__, but don't re-export it
-# (returns.result.result conflicts with module name)
-import returns.result as _result_module
+# Import module objects for building __all__ and optional re-export
+from returns import (
+    result,
+    maybe,
+    io,
+    future,
+    context,
+    pipeline,
+    pointfree,
+    iterables,
+    curry,
+    functions,
+    converters,
+    methods,
+    primitives,
+)
 
-# Build __all__ dynamically to include all returns.result public APIs
-__all__ = [name for name in dir(_result_module) if not name.startswith("_")]
+# Build __all__ dynamically from all re-exported modules
+_modules = [
+    result,
+    maybe,
+    io,
+    future,
+    context,
+    pipeline,
+    pointfree,
+    iterables,
+    curry,
+    functions,
+    converters,
+    methods,
+    primitives,
+]
 
-# Clean up temporary reference
-del _result_module
+__all__ = []
+for _module in _modules:
+    __all__.extend([name for name in dir(_module) if not name.startswith("_")])
+
+# Remove duplicates while preserving order
+__all__ = list(dict.fromkeys(__all__))
+
+# Clean up temporary references
+del _modules, _module

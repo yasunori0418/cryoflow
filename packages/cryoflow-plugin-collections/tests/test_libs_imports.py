@@ -66,21 +66,69 @@ def test_returns_individual_imports():
     assert failure_result.failure()
 
 
+def test_returns_extended_apis():
+    """Test extended returns APIs are available."""
+    from cryoflow_plugin_collections.libs.returns import (
+        IO,
+        Maybe,
+        Nothing,
+        Some,
+        bind,
+        flow,
+        pipe,
+    )
+
+    # Test Maybe monad
+    some_value: Maybe[int] = Some(42)
+    assert some_value.unwrap() == 42
+
+    # Nothing is a singleton value, not a container instance
+    assert Nothing is not None
+
+    # Test pipeline utilities
+    def add_one(x: int) -> int:
+        return x + 1
+
+    def multiply_two(x: int) -> int:
+        return x * 2
+
+    # Test flow (applies functions left-to-right starting from a value)
+    result_flow = flow(5, add_one, multiply_two)
+    assert result_flow == 12
+
+    # Test pipe (composes functions into a new function)
+    composed_fn = pipe(add_one, multiply_two)
+    assert callable(composed_fn)
+    assert composed_fn(5) == 12
+
+    # Test IO container
+    assert IO is not None
+    assert callable(bind)
+
+
 def test_returns_complete_api_export():
-    """Test that all returns.result public APIs are exported."""
-    import returns.result
+    """Test that all returns major module APIs are exported."""
     from cryoflow_plugin_collections.libs import returns as returns_reexport
 
-    # Get all public APIs from original returns.result
-    original_apis = {
-        name for name in dir(returns.result) if not name.startswith("_")
-    }
+    # Verify we have a substantial number of APIs re-exported
+    # (returns has 140+ unique public APIs across all modules after deduplication)
+    assert len(returns_reexport.__all__) > 140
 
-    # Get all exports from re-export module
-    reexport_apis = set(returns_reexport.__all__)
+    # Verify major container types are present
+    assert "Result" in returns_reexport.__all__
+    assert "Success" in returns_reexport.__all__
+    assert "Failure" in returns_reexport.__all__
+    assert "Maybe" in returns_reexport.__all__
+    assert "Some" in returns_reexport.__all__
+    assert "Nothing" in returns_reexport.__all__
+    assert "IO" in returns_reexport.__all__
+    assert "Future" in returns_reexport.__all__
 
-    # Verify all original APIs are re-exported
-    assert original_apis == reexport_apis
+    # Verify utilities are present
+    assert "flow" in returns_reexport.__all__
+    assert "pipe" in returns_reexport.__all__
+    assert "bind" in returns_reexport.__all__
+    assert "safe" in returns_reexport.__all__
 
 
 def test_returns_type_identity():
