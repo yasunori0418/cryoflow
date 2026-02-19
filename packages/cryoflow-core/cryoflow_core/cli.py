@@ -1,6 +1,5 @@
 """CLI application for cryoflow."""
 
-import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -8,6 +7,7 @@ import typer
 from returns.result import Failure
 
 from cryoflow_core import __version__
+from cryoflow_core.commands import utils
 from cryoflow_core.config import ConfigLoadError, get_default_config_path, load_config
 from cryoflow_core.loader import PluginLoadError, get_plugins, load_plugins
 from cryoflow_core.pipeline import run_pipeline, run_dry_run_pipeline  # noqa: F401
@@ -28,6 +28,7 @@ def version_callback(value: bool) -> None:
         # Display plugin collections version if available
         try:
             import cryoflow_plugin_collections
+
             typer.echo(f'cryoflow-plugin-collections version {cryoflow_plugin_collections.__version__}')
         except (ImportError, AttributeError):
             pass
@@ -45,19 +46,6 @@ def help_callback(ctx: typer.Context, value: bool) -> None:
     if value:
         typer.echo(ctx.get_help())
         raise typer.Exit()
-
-
-def setup_logging(verbose: bool = False) -> None:
-    """Configure logging for CLI.
-
-    Args:
-        verbose: If True, set log level to DEBUG; otherwise INFO.
-    """
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        format='%(levelname)s: %(message)s',
-        level=level,
-    )
 
 
 @app.callback()
@@ -119,7 +107,7 @@ def run(
     ] = False,
 ) -> None:
     """Run the data processing pipeline."""
-    setup_logging(verbose)
+    utils.setup_logging(verbose)
     config_path = config if config is not None else get_default_config_path()
 
     try:
@@ -199,7 +187,7 @@ def check(
     ] = False,
 ) -> None:
     """Validate pipeline configuration and schema without processing data."""
-    setup_logging(verbose)
+    utils.setup_logging(verbose)
     config_path = config if config is not None else get_default_config_path()
 
     # Config loading
