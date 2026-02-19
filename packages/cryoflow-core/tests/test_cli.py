@@ -91,8 +91,8 @@ class TestRunSuccess:
             return []
 
         with (
-            patch('cryoflow_core.cli.load_plugins') as mock_load,
-            patch('cryoflow_core.cli.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.run.load_plugins') as mock_load,
+            patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
         ):
             mock_load.return_value = pluggy.PluginManager('cryoflow')
             result = runner.invoke(app, ['run', '--config', str(config_file)])
@@ -177,7 +177,7 @@ class TestRunErrors:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch('cryoflow_core.cli.load_plugins') as mock_load:
+        with patch('cryoflow_core.commands.run.load_plugins') as mock_load:
             mock_load.side_effect = PluginLoadError('plugin failed to load')
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
@@ -205,16 +205,16 @@ class TestDefaultConfigPath:
 
         with (
             patch(
-                'cryoflow_core.cli.get_default_config_path',
+                'cryoflow_core.commands.run.get_default_config_path',
                 return_value=config_file,
             ) as mock_default,
-            patch('cryoflow_core.cli.load_plugins') as mock_load,
-            patch('cryoflow_core.cli.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.run.load_plugins') as mock_load,
+            patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
         ):
             mock_load.return_value = pluggy.PluginManager('cryoflow')
             # Invoke without --config so default path is used
             # We also need to patch load_config to use our file
-            with patch('cryoflow_core.cli.load_config') as mock_load_config:
+            with patch('cryoflow_core.commands.run.load_config') as mock_load_config:
                 mock_load_config.return_value = CryoflowConfig(
                     input_path=Path('/data/in.parquet'),
                     plugins=[],
