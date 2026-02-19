@@ -15,18 +15,6 @@ from cryoflow_core.plugin import OutputPlugin, TransformPlugin
 app = typer.Typer(no_args_is_help=True)
 
 
-def help_callback(ctx: typer.Context, value: bool) -> None:
-    """Display help and exit.
-
-    Args:
-        ctx: Typer context.
-        value: If True, display help and exit.
-    """
-    if value:
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
-
-
 @app.callback()
 def main(
     _version: Annotated[
@@ -44,7 +32,7 @@ def main(
         typer.Option(
             '-h',
             '--help',
-            callback=help_callback,
+            callback=utils.help_callback,
             is_eager=True,
             help='Show this message and exit.',
         ),
@@ -79,7 +67,7 @@ def run(
         typer.Option(
             '-h',
             '--help',
-            callback=help_callback,
+            callback=utils.help_callback,
             is_eager=True,
             help='Show this message and exit.',
         ),
@@ -159,7 +147,7 @@ def check(
         typer.Option(
             '-h',
             '--help',
-            callback=help_callback,
+            callback=utils.help_callback,
             is_eager=True,
             help='Show this message and exit.',
         ),

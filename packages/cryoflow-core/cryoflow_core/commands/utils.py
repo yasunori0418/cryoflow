@@ -36,3 +36,15 @@ def version_callback(value: bool) -> None:
             pass
 
         raise typer.Exit()
+
+
+def help_callback(ctx: typer.Context, value: bool) -> None:
+    """Display help and exit.
+
+    Args:
+        ctx: Typer context.
+        value: If True, display help and exit.
+    """
+    if value:
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
