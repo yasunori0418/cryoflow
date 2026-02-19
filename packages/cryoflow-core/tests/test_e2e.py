@@ -303,7 +303,7 @@ output_path = "{tmpdir}/output.parquet"
             # Run check command with verbose flag
             runner = CliRunner()
             result = runner.invoke(
-                app, ['check', '-c', str(config_file), '-v']
+                app, ['check', '-c', str(config_file), '-V']
             )
 
             # Verify success and verbose output
