@@ -234,7 +234,7 @@ class TestExecuteOutput:
 
         plugin = DummyOutputPlugin({}, tmp_path)
         data = Success(sample_lazyframe)
-        result = execute_output(data, plugin)
+        result = execute_output(data, [plugin])
         assert isinstance(result, Success)
 
     def test_output_failure_data(self, tmp_path) -> None:
@@ -255,9 +255,84 @@ class TestExecuteOutput:
         plugin = DummyOutputPlugin({}, tmp_path)
         error = ValueError('data processing error')
         data = Failure(error)
-        result = execute_output(data, plugin)
+        result = execute_output(data, [plugin])
         assert isinstance(result, Failure)
         assert result.failure() == error
+
+    def test_output_empty_plugins(self, sample_lazyframe) -> None:
+        """Test output with empty plugin list returns Success(None)."""
+        data = Success(sample_lazyframe)
+        result = execute_output(data, [])
+        assert isinstance(result, Success)
+
+    def test_multiple_output_plugins_all_succeed(self, sample_lazyframe, tmp_path) -> None:
+        """Test that all output plugins are executed when data succeeds."""
+        from cryoflow_core.plugin import FrameData, OutputPlugin
+        from returns.result import Success as SuccessResult
+
+        executed = []
+
+        class TrackingOutputPlugin(OutputPlugin):
+            def __init__(self, label: str, options, config_dir):
+                super().__init__(options, config_dir)
+                self._label = label
+
+            def name(self) -> str:
+                return f'tracking_{self._label}'
+
+            def execute(self, df: FrameData) -> SuccessResult[None]:
+                executed.append(self._label)
+                return SuccessResult(None)
+
+            def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
+                return SuccessResult(schema)
+
+        plugins = [
+            TrackingOutputPlugin('first', {}, tmp_path),
+            TrackingOutputPlugin('second', {}, tmp_path),
+        ]
+        data = Success(sample_lazyframe)
+        result = execute_output(data, plugins)
+        assert isinstance(result, Success)
+        assert executed == ['first', 'second']
+
+    def test_multiple_output_plugins_stops_on_failure(self, sample_lazyframe, tmp_path) -> None:
+        """Test that execution stops when a plugin fails."""
+        from cryoflow_core.plugin import FrameData, OutputPlugin
+        from returns.result import Failure as FailureResult, Success as SuccessResult
+
+        executed = []
+
+        class FailingOutputPlugin(OutputPlugin):
+            def name(self) -> str:
+                return 'failing_output'
+
+            def execute(self, df: FrameData) -> FailureResult[Exception]:
+                executed.append('failing')
+                return FailureResult(ValueError('output failed'))
+
+            def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
+                return SuccessResult(schema)
+
+        class AfterOutputPlugin(OutputPlugin):
+            def name(self) -> str:
+                return 'after_output'
+
+            def execute(self, df: FrameData) -> SuccessResult[None]:
+                executed.append('after')
+                return SuccessResult(None)
+
+            def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
+                return SuccessResult(schema)
+
+        plugins = [
+            FailingOutputPlugin({}, tmp_path),
+            AfterOutputPlugin({}, tmp_path),
+        ]
+        data = Success(sample_lazyframe)
+        result = execute_output(data, plugins)
+        assert isinstance(result, Failure)
+        assert executed == ['failing']
 
 
 class TestRunPipeline:
@@ -296,8 +371,8 @@ class TestRunPipeline:
 
             # Run pipeline
             transform_plugins = [DummyTransformPlugin({}, tmp_path)]
-            output_plugin = DummyOutputPlugin({}, tmp_path)
-            result = run_pipeline(input_file, transform_plugins, output_plugin)
+            output_plugins = [DummyOutputPlugin({}, tmp_path)]
+            result = run_pipeline(input_file, transform_plugins, output_plugins)
 
             assert isinstance(result, Success)
 
@@ -328,8 +403,8 @@ class TestRunPipeline:
 
         input_file = Path('/nonexistent/path/file.parquet')
         transform_plugins = [DummyTransformPlugin({}, tmp_path)]
-        output_plugin = DummyOutputPlugin({}, tmp_path)
-        result = run_pipeline(input_file, transform_plugins, output_plugin)
+        output_plugins = [DummyOutputPlugin({}, tmp_path)]
+        result = run_pipeline(input_file, transform_plugins, output_plugins)
 
         assert isinstance(result, Failure)
 
@@ -364,8 +439,8 @@ class TestRunPipeline:
             df.write_parquet(input_file)
 
             transform_plugins = [FailingTransformPlugin({}, tmp_path)]
-            output_plugin = DummyOutputPlugin({}, tmp_path)
-            result = run_pipeline(input_file, transform_plugins, output_plugin)
+            output_plugins = [DummyOutputPlugin({}, tmp_path)]
+            result = run_pipeline(input_file, transform_plugins, output_plugins)
 
             assert isinstance(result, Failure)
             assert isinstance(result.failure(), ValueError)
@@ -600,7 +675,7 @@ class TestExecuteOutputDryRun:
 
         schema = {'a': pl.Int64, 'b': pl.String}
         initial = Success(schema)
-        result = execute_output_dry_run(initial, DummyOutputPlugin({}, tmp_path))
+        result = execute_output_dry_run(initial, [DummyOutputPlugin({}, tmp_path)])
 
         assert isinstance(result, Success)
         assert result.unwrap() == schema
@@ -622,7 +697,7 @@ class TestExecuteOutputDryRun:
 
         schema = {'a': pl.Int64}
         initial = Success(schema)
-        result = execute_output_dry_run(initial, FailingOutputPlugin({}, tmp_path))
+        result = execute_output_dry_run(initial, [FailingOutputPlugin({}, tmp_path)])
 
         assert isinstance(result, Failure)
         assert 'Invalid output schema' in str(result.failure())
@@ -644,7 +719,7 @@ class TestExecuteOutputDryRun:
 
         upstream_error = ValueError('upstream error')
         initial = Failure(upstream_error)
-        result = execute_output_dry_run(initial, DummyOutputPlugin({}, tmp_path))
+        result = execute_output_dry_run(initial, [DummyOutputPlugin({}, tmp_path)])
 
         assert isinstance(result, Failure)
         assert result.failure() == upstream_error
@@ -686,7 +761,7 @@ class TestRunDryRunPipeline:
             result = run_dry_run_pipeline(
                 input_file,
                 [DummyTransformPlugin({}, tmp_path)],
-                DummyOutputPlugin({}, tmp_path)
+                [DummyOutputPlugin({}, tmp_path)],
             )
 
             assert isinstance(result, Success)
@@ -722,7 +797,7 @@ class TestRunDryRunPipeline:
         result = run_dry_run_pipeline(
             Path('/nonexistent/path/file.parquet'),
             [DummyTransformPlugin({}, tmp_path)],
-            DummyOutputPlugin({}, tmp_path)
+            [DummyOutputPlugin({}, tmp_path)],
         )
 
         assert isinstance(result, Failure)
@@ -761,7 +836,7 @@ class TestRunDryRunPipeline:
             result = run_dry_run_pipeline(
                 input_file,
                 [FailingTransformPlugin({}, tmp_path)],
-                DummyOutputPlugin({}, tmp_path)
+                [DummyOutputPlugin({}, tmp_path)],
             )
 
             assert isinstance(result, Failure)
@@ -800,7 +875,7 @@ class TestRunDryRunPipeline:
             result = run_dry_run_pipeline(
                 input_file,
                 [DummyTransformPlugin({}, tmp_path)],
-                FailingOutputPlugin({}, tmp_path)
+                [FailingOutputPlugin({}, tmp_path)],
             )
 
             assert isinstance(result, Failure)

@@ -21,9 +21,13 @@ def execute(config: Path | None):
     cfg = config_result.unwrap()
 
     typer.echo(f'Config loaded: {config_path}')
-    typer.echo(f'  input_path: {cfg.input_path}')
-    typer.echo(f'  plugins:    {len(cfg.plugins)} plugin(s)')
-    for plugin in cfg.plugins:
+    typer.echo(f'  input_path:        {cfg.input_path}')
+    typer.echo(f'  transform_plugins: {len(cfg.transform_plugins)} plugin(s)')
+    for plugin in cfg.transform_plugins:
+        status = 'enabled' if plugin.enabled else 'disabled'
+        typer.echo(f'    - {plugin.name} ({plugin.module}) [{status}]')
+    typer.echo(f'  output_plugins:    {len(cfg.output_plugins)} plugin(s)')
+    for plugin in cfg.output_plugins:
         status = 'enabled' if plugin.enabled else 'disabled'
         typer.echo(f'    - {plugin.name} ({plugin.module}) [{status}]')
 
@@ -33,7 +37,7 @@ def execute(config: Path | None):
         typer.echo(str(e), err=True)
         raise typer.Exit(code=1)
 
-    enabled_count = sum(1 for p in cfg.plugins if p.enabled)
+    enabled_count = sum(1 for p in cfg.transform_plugins + cfg.output_plugins if p.enabled)
     typer.echo(f'Loaded {enabled_count} plugin(s) successfully.')
 
     # Execute pipeline
@@ -43,12 +47,9 @@ def execute(config: Path | None):
     if len(output_plugins) == 0:
         typer.echo('[ERROR] No output plugin configured', err=True)
         raise typer.Exit(code=1)
-    if len(output_plugins) > 1:
-        typer.echo('[ERROR] Multiple output plugins not supported yet', err=True)
-        raise typer.Exit(code=1)
 
     typer.echo('\nExecuting pipeline...')
-    result = run_pipeline(cfg.input_path, transform_plugins, output_plugins[0])
+    result = run_pipeline(cfg.input_path, transform_plugins, output_plugins)
 
     if isinstance(result, Failure):
         error = result.failure()

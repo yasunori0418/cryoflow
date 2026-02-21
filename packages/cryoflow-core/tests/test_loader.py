@@ -303,15 +303,21 @@ class TestPluginHookRelay:
 
 
 class TestLoadPlugins:
-    def _make_config(self, plugins: list[PluginConfig]) -> CryoflowConfig:
+    def _make_config(
+        self,
+        transform_plugins: list[PluginConfig] | None = None,
+        output_plugins: list[PluginConfig] | None = None,
+    ) -> CryoflowConfig:
         from pathlib import Path
+
         return CryoflowConfig(
             input_path=Path('/data/in.parquet'),
-            plugins=plugins,
+            transform_plugins=transform_plugins or [],
+            output_plugins=output_plugins or [],
         )
 
     def test_empty_plugins(self, tmp_path):
-        cfg = self._make_config([])
+        cfg = self._make_config()
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
         pm = load_plugins(cfg, config_file)
@@ -319,7 +325,7 @@ class TestLoadPlugins:
 
     def test_disabled_plugin_skipped(self, tmp_path, plugin_py_file):
         cfg = self._make_config(
-            [
+            transform_plugins=[
                 PluginConfig(
                     name='skipped',
                     module=str(plugin_py_file),
@@ -335,7 +341,7 @@ class TestLoadPlugins:
 
     def test_transform_plugin_loaded(self, tmp_path, plugin_py_file):
         cfg = self._make_config(
-            [
+            transform_plugins=[
                 PluginConfig(
                     name='my_transform',
                     module=str(plugin_py_file),
@@ -352,7 +358,7 @@ class TestLoadPlugins:
 
     def test_output_plugin_loaded(self, tmp_path, output_plugin_py_file):
         cfg = self._make_config(
-            [
+            output_plugins=[
                 PluginConfig(
                     name='my_output',
                     module=str(output_plugin_py_file),
@@ -368,7 +374,7 @@ class TestLoadPlugins:
         assert outputs[0].name() == 'my_output'
 
     def test_existing_pm_accepted(self, tmp_path):
-        cfg = self._make_config([])
+        cfg = self._make_config()
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
         existing_pm = pluggy.PluginManager('cryoflow')
@@ -378,7 +384,7 @@ class TestLoadPlugins:
 
     def test_plugin_load_error_propagates(self, tmp_path):
         cfg = self._make_config(
-            [
+            transform_plugins=[
                 PluginConfig(
                     name='bad',
                     module=str(tmp_path / 'nonexistent.py'),
@@ -394,7 +400,7 @@ class TestLoadPlugins:
     def test_dotpath_plugin_loaded(self, tmp_path):
         """Test the dotpath branch of _load_single_plugin (loader.py:158)."""
         cfg = self._make_config(
-            [
+            transform_plugins=[
                 PluginConfig(
                     name='dotpath_plugin',
                     module='tests.dotpath_test_plugin',
@@ -409,15 +415,22 @@ class TestLoadPlugins:
         assert len(transforms) == 1
         assert transforms[0].name() == 'dotpath_transform'
 
-    def test_both_plugin_types(self, tmp_path, both_plugins_py_file):
+    def test_both_plugin_types(self, tmp_path, plugin_py_file, output_plugin_py_file):
         cfg = self._make_config(
-            [
+            transform_plugins=[
                 PluginConfig(
-                    name='both',
-                    module=str(both_plugins_py_file),
+                    name='my_transform',
+                    module=str(plugin_py_file),
                     enabled=True,
                 )
-            ]
+            ],
+            output_plugins=[
+                PluginConfig(
+                    name='my_output',
+                    module=str(output_plugin_py_file),
+                    enabled=True,
+                )
+            ],
         )
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')

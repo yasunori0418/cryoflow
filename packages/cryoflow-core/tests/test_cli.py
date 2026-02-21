@@ -86,6 +86,7 @@ class TestRunSuccess:
 
         def mock_get_plugins(_pm, plugin_type):
             from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+
             if plugin_type is TransformPlugin:
                 return []
             elif plugin_type is OutputPlugin:
@@ -141,6 +142,7 @@ class TestRunSuccess:
 
         def mock_get_plugins(_pm, plugin_type):
             from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+
             if plugin_type is TransformPlugin:
                 return []
             elif plugin_type is OutputPlugin:
@@ -199,6 +201,7 @@ class TestDefaultConfigPath:
 
         def mock_get_plugins(_pm, plugin_type):
             from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+
             if plugin_type is TransformPlugin:
                 return []
             elif plugin_type is OutputPlugin:
@@ -218,10 +221,14 @@ class TestDefaultConfigPath:
             # We also need to patch load_config to use our file
             with patch('cryoflow_core.commands.run.load_config') as mock_load_config:
                 from returns.result import Success
-                mock_load_config.return_value = Success(CryoflowConfig(
-                    input_path=Path('/data/in.parquet'),
-                    plugins=[],
-                ))
+
+                mock_load_config.return_value = Success(
+                    CryoflowConfig(
+                        input_path=Path('/data/in.parquet'),
+                        transform_plugins=[],
+                        output_plugins=[],
+                    )
+                )
                 result = runner.invoke(app, ['run'])
 
             mock_default.assert_called_once()
@@ -251,6 +258,7 @@ class TestCheckSuccess:
 
         def mock_get_plugins(_pm, plugin_type):
             from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+
             if plugin_type is TransformPlugin:
                 return []
             elif plugin_type is OutputPlugin:
@@ -272,6 +280,7 @@ class TestCheckSuccess:
 
         def mock_get_plugins(_pm, plugin_type):
             from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+
             if plugin_type is TransformPlugin:
                 return []
             elif plugin_type is OutputPlugin:
@@ -296,6 +305,7 @@ class TestCheckSuccess:
 
         def mock_get_plugins(_pm, plugin_type):
             from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+
             if plugin_type is TransformPlugin:
                 return []
             elif plugin_type is OutputPlugin:
@@ -349,6 +359,7 @@ class TestCheckErrors:
 
         def mock_get_plugins(_pm, plugin_type):
             from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+
             if plugin_type is TransformPlugin:
                 return []
             elif plugin_type is OutputPlugin:
@@ -365,12 +376,13 @@ class TestCheckErrors:
         assert result.exit_code == 1
         assert '[ERROR] No output plugin configured' in result.output
 
-    def test_multiple_output_plugins(self, tmp_path):
+    def test_multiple_output_plugins_succeed(self, tmp_path):
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
         def mock_get_plugins(_pm, plugin_type):
             from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+
             if plugin_type is TransformPlugin:
                 return []
             elif plugin_type is OutputPlugin:
@@ -380,12 +392,14 @@ class TestCheckErrors:
         with (
             patch('cryoflow_core.commands.check.load_plugins') as mock_load,
             patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.check.run_dry_run_pipeline') as mock_dry_run,
         ):
             mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_dry_run.return_value = Success({'col_a': pl.Int64})
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 
-        assert result.exit_code == 1
-        assert '[ERROR] Multiple output plugins not supported yet' in result.output
+        assert result.exit_code == 0
+        assert '[SUCCESS] Validation completed successfully' in result.output
 
     def test_dry_run_failure(self, tmp_path):
         config_file = tmp_path / 'config.toml'
@@ -393,6 +407,7 @@ class TestCheckErrors:
 
         def mock_get_plugins(_pm, plugin_type):
             from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+
             if plugin_type is TransformPlugin:
                 return []
             elif plugin_type is OutputPlugin:
@@ -424,6 +439,7 @@ class TestCheckDefaultConfigPath:
 
         def mock_get_plugins(_pm, plugin_type):
             from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+
             if plugin_type is TransformPlugin:
                 return []
             elif plugin_type is OutputPlugin:
@@ -440,10 +456,13 @@ class TestCheckDefaultConfigPath:
         ):
             mock_load.return_value = pluggy.PluginManager('cryoflow')
             with patch('cryoflow_core.commands.check.load_config') as mock_load_config:
-                mock_load_config.return_value = Success(CryoflowConfig(
-                    input_path=Path('/data/in.parquet'),
-                    plugins=[],
-                ))
+                mock_load_config.return_value = Success(
+                    CryoflowConfig(
+                        input_path=Path('/data/in.parquet'),
+                        transform_plugins=[],
+                        output_plugins=[],
+                    )
+                )
                 result = runner.invoke(app, ['check'])
 
             mock_default.assert_called_once()

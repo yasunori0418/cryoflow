@@ -23,23 +23,16 @@ class TestE2EIntegration:
             tmpdir_path = Path(tmpdir)
             # Create input file
             input_file = tmpdir_path / 'input.parquet'
-            input_df = pl.DataFrame(
-                {'amount': [100, 200, 300], 'item': ['a', 'b', 'c']}
-            )
+            input_df = pl.DataFrame({'amount': [100, 200, 300], 'item': ['a', 'b', 'c']})
             input_df.write_parquet(input_file)
 
             # Set up plugins
-            multiplier_plugin = ColumnMultiplierPlugin(
-                {'column_name': 'amount', 'multiplier': 2},
-                tmpdir_path
-            )
+            multiplier_plugin = ColumnMultiplierPlugin({'column_name': 'amount', 'multiplier': 2}, tmpdir_path)
             output_file = tmpdir_path / 'output.parquet'
             output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline
-            result = run_pipeline(
-                input_file, [multiplier_plugin], output_plugin
-            )
+            result = run_pipeline(input_file, [multiplier_plugin], [output_plugin])
 
             # Verify result
             assert isinstance(result, Success)
@@ -68,7 +61,7 @@ class TestE2EIntegration:
             output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline
-            result = run_pipeline(input_file, [], output_plugin)
+            result = run_pipeline(input_file, [], [output_plugin])
 
             # Verify result
             assert isinstance(result, Success)
@@ -93,21 +86,13 @@ class TestE2EIntegration:
             input_df.write_parquet(input_file)
 
             # Set up two transformation plugins
-            multiply_2 = ColumnMultiplierPlugin(
-                {'column_name': 'value', 'multiplier': 2},
-                tmpdir_path
-            )
-            multiply_3 = ColumnMultiplierPlugin(
-                {'column_name': 'value', 'multiplier': 3},
-                tmpdir_path
-            )
+            multiply_2 = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': 2}, tmpdir_path)
+            multiply_3 = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': 3}, tmpdir_path)
             output_file = tmpdir_path / 'output.parquet'
             output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline (10 * 2 * 3 = 60, 20 * 2 * 3 = 120, 30 * 2 * 3 = 180)
-            result = run_pipeline(
-                input_file, [multiply_2, multiply_3], output_plugin
-            )
+            result = run_pipeline(input_file, [multiply_2, multiply_3], [output_plugin])
 
             # Verify result
             assert isinstance(result, Success)
@@ -130,7 +115,7 @@ class TestE2EIntegration:
             output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline
-            result = run_pipeline(input_file, [], output_plugin)
+            result = run_pipeline(input_file, [], [output_plugin])
 
             # Verify result
             assert isinstance(result, Success)
@@ -165,13 +150,14 @@ class TestE2EIntegration:
             config_file = config_dir / 'config.toml'
             config_content = """\
 input_path = "data/input.parquet"
+transform_plugins = []
 
-[[plugins]]
+[[output_plugins]]
 name = "parquet_writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 
-[plugins.options]
+[output_plugins.options]
 output_path = "data/output/result.parquet"
 """
             config_file.write_text(config_content)
@@ -189,11 +175,12 @@ output_path = "data/output/result.parquet"
             pm = load_plugins(cfg, config_file)
             from cryoflow_core.loader import get_plugins
             from cryoflow_core.plugin import OutputPlugin
+
             output_plugins = get_plugins(pm, OutputPlugin)
             assert len(output_plugins) == 1
 
             # Run pipeline (this will test that output plugin resolves path correctly)
-            result = run_pipeline(cfg.input_path, [], output_plugins[0])
+            result = run_pipeline(cfg.input_path, [], output_plugins)
 
             # Verify result
             assert isinstance(result, Success)
@@ -216,9 +203,7 @@ class TestCheckCommand:
         with TemporaryDirectory() as tmpdir:
             # Create input file
             input_file = Path(tmpdir) / 'input.parquet'
-            input_df = pl.DataFrame(
-                {'amount': [100, 200, 300], 'item': ['a', 'b', 'c']}
-            )
+            input_df = pl.DataFrame({'amount': [100, 200, 300], 'item': ['a', 'b', 'c']})
             input_df.write_parquet(input_file)
 
             # Create config file
@@ -226,21 +211,21 @@ class TestCheckCommand:
             config_content = f"""\
 input_path = "{input_file}"
 
-[[plugins]]
+[[transform_plugins]]
 name = "column_multiplier"
 module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
 
-[plugins.options]
+[transform_plugins.options]
 column_name = "amount"
 multiplier = 2
 
-[[plugins]]
+[[output_plugins]]
 name = "parquet_writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 
-[plugins.options]
+[output_plugins.options]
 output_path = "{tmpdir}/output.parquet"
 """
             config_file.write_text(config_content)
@@ -260,9 +245,7 @@ output_path = "{tmpdir}/output.parquet"
     def test_check_command_missing_config(self) -> None:
         """Test check command with missing config file."""
         runner = CliRunner()
-        result = runner.invoke(
-            app, ['check', '-c', '/nonexistent/path/config.toml']
-        )
+        result = runner.invoke(app, ['check', '-c', '/nonexistent/path/config.toml'])
 
         # Verify error
         assert result.exit_code == 2  # Typer validation error
@@ -283,30 +266,28 @@ output_path = "{tmpdir}/output.parquet"
             config_content = f"""\
 input_path = "{input_file}"
 
-[[plugins]]
+[[transform_plugins]]
 name = "column_multiplier"
 module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
 
-[plugins.options]
+[transform_plugins.options]
 column_name = "value"
 multiplier = 2
 
-[[plugins]]
+[[output_plugins]]
 name = "parquet_writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 
-[plugins.options]
+[output_plugins.options]
 output_path = "{tmpdir}/output.parquet"
 """
             config_file.write_text(config_content)
 
             # Run check command with verbose flag
             runner = CliRunner()
-            result = runner.invoke(
-                app, ['check', '-c', str(config_file), '-V']
-            )
+            result = runner.invoke(app, ['check', '-c', str(config_file), '-V'])
 
             # Verify success and verbose output
             assert result.exit_code == 0
@@ -327,21 +308,21 @@ output_path = "{tmpdir}/output.parquet"
             config_content = f"""\
 input_path = "{input_file}"
 
-[[plugins]]
+[[transform_plugins]]
 name = "column_multiplier"
 module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
 
-[plugins.options]
+[transform_plugins.options]
 column_name = "nonexistent_column"
 multiplier = 2
 
-[[plugins]]
+[[output_plugins]]
 name = "parquet_writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
 
-[plugins.options]
+[output_plugins.options]
 output_path = "{tmpdir}/output.parquet"
 """
             config_file.write_text(config_content)

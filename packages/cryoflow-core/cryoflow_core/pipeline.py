@@ -138,31 +138,38 @@ def execute_dry_run_chain(
 
 def execute_output_dry_run(
     schema: Result[dict[str, pl.DataType], Exception],
-    plugin: OutputPlugin,
+    plugins: list[OutputPlugin],
 ) -> Result[dict[str, pl.DataType], Exception]:
-    """Execute dry-run validation for output plugin.
+    """Execute dry-run validation for output plugins.
+
+    Each plugin receives the same schema (fan-out). Stops on first failure.
 
     Args:
         schema: Schema from transformation chain.
-        plugin: Output plugin to validate.
+        plugins: List of output plugins to validate.
 
     Returns:
         Schema unchanged on success or Exception on failure.
     """
-    return schema.bind(plugin.dry_run)
+    result = schema
+    for plugin in plugins:
+        result = schema.bind(plugin.dry_run)
+        if isinstance(result, Failure):
+            break
+    return result
 
 
 def run_dry_run_pipeline(
     input_path: Path,
     transform_plugins: list[TransformPlugin],
-    output_plugin: OutputPlugin,
+    output_plugins: list[OutputPlugin],
 ) -> Result[dict[str, pl.DataType], Exception]:
     """Run dry-run validation pipeline without processing actual data.
 
     Args:
         input_path: Path to input data file.
         transform_plugins: List of transformation plugins to validate.
-        output_plugin: Output plugin to validate.
+        output_plugins: List of output plugins to validate.
 
     Returns:
         Final output schema on success or Exception on failure.
@@ -170,40 +177,47 @@ def run_dry_run_pipeline(
     initial_data = load_data(input_path)
     initial_schema = initial_data.bind(extract_schema)
     transformed_schema = execute_dry_run_chain(initial_schema, transform_plugins)
-    return execute_output_dry_run(transformed_schema, output_plugin)
+    return execute_output_dry_run(transformed_schema, output_plugins)
 
 
 def execute_output(
     data: Result[FrameData, Exception],
-    plugin: OutputPlugin,
+    plugins: list[OutputPlugin],
 ) -> Result[None, Exception]:
-    """Execute output plugin on successful data.
+    """Execute output plugins on successful data (fan-out).
+
+    Each plugin receives the same transformed data. Stops on first failure.
 
     Args:
         data: Result containing data or error.
-        plugin: Output plugin to execute.
+        plugins: List of output plugins to execute.
 
     Returns:
         Result containing None on success or Exception on failure.
     """
-    return data.bind(plugin.execute)
+    result: Result[None, Exception] = Success(None)
+    for plugin in plugins:
+        result = data.bind(plugin.execute)
+        if isinstance(result, Failure):
+            break
+    return result
 
 
 def run_pipeline(
     input_path: Path,
     transform_plugins: list[TransformPlugin],
-    output_plugin: OutputPlugin,
+    output_plugins: list[OutputPlugin],
 ) -> Result[None, Exception]:
     """Run complete data processing pipeline.
 
     Args:
         input_path: Path to input data file.
         transform_plugins: List of transformation plugins to apply.
-        output_plugin: Output plugin to write results.
+        output_plugins: List of output plugins to write results.
 
     Returns:
         Result containing None on success or Exception on failure.
     """
     initial_data: Result[FrameData, Exception] = load_data(input_path)
     transformed_data = execute_transform_chain(initial_data, transform_plugins)
-    return execute_output(transformed_data, output_plugin)
+    return execute_output(transformed_data, output_plugins)

@@ -24,7 +24,8 @@ class CryoflowConfig(BaseModel):
     """Top-level configuration for cryoflow."""
 
     input_path: Path
-    plugins: list[PluginConfig]
+    transform_plugins: list[PluginConfig]
+    output_plugins: list[PluginConfig]
 
 
 class ConfigLoadError(Exception):

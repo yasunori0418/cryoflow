@@ -8,7 +8,6 @@ import pytest
 from returns.result import Failure, Success
 
 from cryoflow_core.plugin import (
-    BasePlugin,
     FrameData,
     OutputPlugin,
     TransformPlugin,
@@ -81,47 +80,49 @@ class BrokenInitPlugin(TransformPlugin):
 
 VALID_TOML = """\
 input_path = "/data/input.parquet"
+output_plugins = []
 
-[[plugins]]
+[[transform_plugins]]
 name = "my_plugin"
 module = "my_module"
 enabled = true
 
-[plugins.options]
+[transform_plugins.options]
 threshold = 42
 """
 
 MINIMAL_TOML = """\
 input_path = "/data/input.parquet"
-plugins = []
+transform_plugins = []
+output_plugins = []
 """
 
 INVALID_TOML_SYNTAX = """\
 input_path = "/data/input.parquet"
-plugins = /invalid  # missing brackets
+transform_plugins = /invalid  # missing brackets
 """
 
 MISSING_FIELDS_TOML = """\
-plugins = []
+transform_plugins = []
 """
 
 MULTI_PLUGIN_TOML = """\
 input_path = "/data/input.parquet"
 
-[[plugins]]
+[[transform_plugins]]
 name = "plugin_a"
 module = "mod_a"
 
-[[plugins]]
+[[transform_plugins]]
 name = "plugin_b"
 module = "mod_b"
 enabled = false
 
-[[plugins]]
+[[output_plugins]]
 name = "plugin_c"
 module = "mod_c"
 
-[plugins.options]
+[output_plugins.options]
 key = "value"
 """
 

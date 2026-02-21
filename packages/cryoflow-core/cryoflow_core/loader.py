@@ -189,7 +189,7 @@ def load_plugins(
     all_transforms: list[TransformPlugin] = []
     all_outputs: list[OutputPlugin] = []
 
-    for plugin_cfg in config.plugins:
+    for plugin_cfg in config.transform_plugins:
         if not plugin_cfg.enabled:
             continue
 
@@ -197,7 +197,14 @@ def load_plugins(
         for inst in instances:
             if isinstance(inst, TransformPlugin):
                 all_transforms.append(inst)
-            elif isinstance(inst, OutputPlugin):
+
+    for plugin_cfg in config.output_plugins:
+        if not plugin_cfg.enabled:
+            continue
+
+        instances = _load_single_plugin(plugin_cfg, config_dir)
+        for inst in instances:
+            if isinstance(inst, OutputPlugin):
                 all_outputs.append(inst)
 
     relay = _PluginHookRelay(all_transforms, all_outputs)

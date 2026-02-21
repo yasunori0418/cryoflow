@@ -56,21 +56,32 @@ class TestCryoflowConfig:
     def test_valid(self):
         cfg = CryoflowConfig(
             input_path=Path('/data/in.parquet'),
-            plugins=[PluginConfig(name='p', module='m')],
+            transform_plugins=[PluginConfig(name='p', module='m')],
+            output_plugins=[],
         )
         assert isinstance(cfg.input_path, Path)
-        assert len(cfg.plugins) == 1
+        assert len(cfg.transform_plugins) == 1
+        assert len(cfg.output_plugins) == 0
 
     def test_missing_input_path(self):
         with pytest.raises(ValidationError):
             CryoflowConfig(
-                plugins=[],
+                transform_plugins=[],
+                output_plugins=[],
             )  # type: ignore[call-arg]
 
-    def test_missing_plugins(self):
+    def test_missing_transform_plugins(self):
         with pytest.raises(ValidationError):
             CryoflowConfig(
                 input_path='/data/in.parquet',
+                output_plugins=[],
+            )  # type: ignore[call-arg]
+
+    def test_missing_output_plugins(self):
+        with pytest.raises(ValidationError):
+            CryoflowConfig(
+                input_path='/data/in.parquet',
+                transform_plugins=[],
             )  # type: ignore[call-arg]
 
 
@@ -105,15 +116,17 @@ class TestLoadConfig:
         assert isinstance(result, Success)
         cfg = result.unwrap()
         assert cfg.input_path == Path('/data/input.parquet')
-        assert len(cfg.plugins) == 1
-        assert cfg.plugins[0].name == 'my_plugin'
-        assert cfg.plugins[0].options == {'threshold': 42}
+        assert len(cfg.transform_plugins) == 1
+        assert cfg.transform_plugins[0].name == 'my_plugin'
+        assert cfg.transform_plugins[0].options == {'threshold': 42}
+        assert cfg.output_plugins == []
 
     def test_minimal(self, minimal_config_file):
         result = load_config(minimal_config_file)
         assert isinstance(result, Success)
         cfg = result.unwrap()
-        assert cfg.plugins == []
+        assert cfg.transform_plugins == []
+        assert cfg.output_plugins == []
 
     def test_file_not_found(self, tmp_path):
         result = load_config(tmp_path / 'nonexistent.toml')
@@ -143,13 +156,14 @@ class TestLoadConfig:
         result = load_config(multi_plugin_config_file)
         assert isinstance(result, Success)
         cfg = result.unwrap()
-        assert len(cfg.plugins) == 3
-        assert cfg.plugins[0].name == 'plugin_a'
-        assert cfg.plugins[0].enabled is True
-        assert cfg.plugins[1].name == 'plugin_b'
-        assert cfg.plugins[1].enabled is False
-        assert cfg.plugins[2].name == 'plugin_c'
-        assert cfg.plugins[2].options == {'key': 'value'}
+        assert len(cfg.transform_plugins) == 2
+        assert cfg.transform_plugins[0].name == 'plugin_a'
+        assert cfg.transform_plugins[0].enabled is True
+        assert cfg.transform_plugins[1].name == 'plugin_b'
+        assert cfg.transform_plugins[1].enabled is False
+        assert len(cfg.output_plugins) == 1
+        assert cfg.output_plugins[0].name == 'plugin_c'
+        assert cfg.output_plugins[0].options == {'key': 'value'}
 
     def test_input_path_relative_to_config(self, tmp_path):
         """Test that relative input_path is resolved relative to config directory."""
@@ -158,7 +172,8 @@ class TestLoadConfig:
         config_file = config_dir / 'config.toml'
         config_file.write_text("""\
 input_path = "data/input.parquet"
-plugins = []
+transform_plugins = []
+output_plugins = []
 """)
         result = load_config(config_file)
         assert isinstance(result, Success)
@@ -172,7 +187,8 @@ plugins = []
         absolute_path = '/absolute/path/to/data.parquet'
         config_file.write_text(f"""\
 input_path = "{absolute_path}"
-plugins = []
+transform_plugins = []
+output_plugins = []
 """)
         result = load_config(config_file)
         assert isinstance(result, Success)
