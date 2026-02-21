@@ -12,9 +12,9 @@ class CryoflowSpecs:
     """Hook specifications for cryoflow plugin system."""
 
     @hookspec
-    def register_transform_plugins(self) -> list[TransformPlugin]:
+    def register_transform_plugins(self) -> list[TransformPlugin]: # pyright: ignore[reportReturnType]
         """Return a list of transform plugin instances."""
 
     @hookspec
-    def register_output_plugins(self) -> list[OutputPlugin]:
+    def register_output_plugins(self) -> list[OutputPlugin]: # pyright: ignore[reportReturnType]
         """Return a list of output plugin instances."""

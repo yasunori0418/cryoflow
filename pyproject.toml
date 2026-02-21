@@ -25,7 +25,7 @@ cryoflow-core = { workspace = true }
 cryoflow-plugin-collections = { workspace = true }
 
 [tool.pytest.ini_options]
-testpaths = ["packages/cryoflow-core/tests"]
+testpaths = ["packages/cryoflow-core/tests", "packages/cryoflow-plugin-collections/tests"]
 
 [tool.ruff]
 target-version = "py314"
