@@ -177,7 +177,9 @@ output_path = "data/output/result.parquet"
             config_file.write_text(config_content)
 
             # Load config
-            cfg = load_config(config_file)
+            config_result = load_config(config_file)
+            assert isinstance(config_result, Success)
+            cfg = config_result.unwrap()
 
             # Verify input_path was resolved correctly
             expected_input = (config_dir / 'data' / 'input.parquet').resolve()

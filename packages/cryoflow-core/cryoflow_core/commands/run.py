@@ -5,7 +5,7 @@ from pathlib import Path
 from returns.result import Failure
 import typer
 
-from cryoflow_core.config import get_config_path, load_config, ConfigLoadError
+from cryoflow_core.config import get_config_path, load_config
 from cryoflow_core.loader import PluginLoadError, get_plugins, load_plugins
 from cryoflow_core.pipeline import run_pipeline
 from cryoflow_core.plugin import OutputPlugin, TransformPlugin
@@ -14,11 +14,11 @@ from cryoflow_core.plugin import OutputPlugin, TransformPlugin
 def execute(config: Path | None):
     config_path = get_config_path(config)
 
-    try:
-        cfg = load_config(config_path)
-    except ConfigLoadError as e:
-        typer.echo(str(e), err=True)
+    config_result = load_config(config_path)
+    if isinstance(config_result, Failure):
+        typer.echo(str(config_result.failure()), err=True)
         raise typer.Exit(code=1)
+    cfg = config_result.unwrap()
 
     typer.echo(f'Config loaded: {config_path}')
     typer.echo(f'  input_path: {cfg.input_path}')

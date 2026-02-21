@@ -215,10 +215,11 @@ class TestDefaultConfigPath:
             # Invoke without --config so default path is used
             # We also need to patch load_config to use our file
             with patch('cryoflow_core.commands.run.load_config') as mock_load_config:
-                mock_load_config.return_value = CryoflowConfig(
+                from returns.result import Success
+                mock_load_config.return_value = Success(CryoflowConfig(
                     input_path=Path('/data/in.parquet'),
                     plugins=[],
-                )
+                ))
                 result = runner.invoke(app, ['run'])
 
             mock_default.assert_called_once()

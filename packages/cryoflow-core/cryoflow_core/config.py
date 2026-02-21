@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 from xdg_base_dirs import xdg_config_home
+from returns.result import Result, Success, Failure
 
 
 class PluginConfig(BaseModel):
@@ -62,7 +63,7 @@ def _resolve_path_relative_to_config(path: Path, config_dir: Path) -> Path:
     return path.resolve()
 
 
-def load_config(config_path: Path) -> CryoflowConfig:
+def load_config(config_path: Path) -> Result[CryoflowConfig, ConfigLoadError]:
     """Load and validate a TOML configuration file.
 
     Args:
@@ -81,25 +82,25 @@ def load_config(config_path: Path) -> CryoflowConfig:
         containing the config file, not the current working directory.
     """
     if not config_path.exists():
-        raise ConfigLoadError(f'Config file not found: {config_path}')
+        return Failure(ConfigLoadError(f'Config file not found: {config_path}'))
 
     try:
         raw = config_path.read_bytes()
     except OSError as e:
-        raise ConfigLoadError(f'Failed to read config file: {e}') from e
+        return Failure(ConfigLoadError(f'Failed to read config file: {e}'))
 
     try:
         data = tomllib.loads(raw.decode())
     except tomllib.TOMLDecodeError as e:
-        raise ConfigLoadError(f'Failed to parse TOML config: {e}') from e
+        return Failure(ConfigLoadError(f'Failed to parse TOML config: {e}'))
 
     try:
         cfg = CryoflowConfig(**data)
     except Exception as e:
-        raise ConfigLoadError(f'Config validation failed: {e}') from e
+        return Failure(ConfigLoadError(f'Config validation failed: {e}'))
 
     # Resolve input_path relative to config directory
     config_dir = config_path.parent.resolve()
     cfg.input_path = _resolve_path_relative_to_config(cfg.input_path, config_dir)
 
-    return cfg
+    return Success(cfg)

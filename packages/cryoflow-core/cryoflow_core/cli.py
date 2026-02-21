@@ -7,7 +7,7 @@ import typer
 from returns.result import Failure
 
 from cryoflow_core.commands import utils, run as run_executor
-from cryoflow_core.config import ConfigLoadError, get_config_path, load_config
+from cryoflow_core.config import get_config_path, load_config
 from cryoflow_core.loader import PluginLoadError, get_plugins, load_plugins
 from cryoflow_core.pipeline import run_dry_run_pipeline  # noqa: F401
 from cryoflow_core.plugin import OutputPlugin, TransformPlugin
@@ -115,11 +115,11 @@ def check(
     config_path = get_config_path(config)
 
     # Config loading
-    try:
-        cfg = load_config(config_path)
-    except ConfigLoadError as e:
-        typer.echo(str(e), err=True)
+    config_result = load_config(config_path)
+    if isinstance(config_result, Failure):
+        typer.echo(str(config_result.failure()), err=True)
         raise typer.Exit(code=1)
+    cfg = config_result.unwrap()
 
     typer.echo(f'[CHECK] Config loaded: {config_path}')
 
