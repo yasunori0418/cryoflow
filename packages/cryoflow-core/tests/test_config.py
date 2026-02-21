@@ -10,7 +10,7 @@ from cryoflow_core.config import (
     ConfigLoadError,
     CryoflowConfig,
     PluginConfig,
-    get_default_config_path,
+    get_config_path,
     load_config,
 )
 
@@ -75,16 +75,23 @@ class TestCryoflowConfig:
 
 
 # ---------------------------------------------------------------------------
-# get_default_config_path
+# get_config_path
 # ---------------------------------------------------------------------------
 
 
-class TestGetDefaultConfigPath:
+class TestGetConfigPath:
     def test_returns_xdg_path(self):
         fake_home = Path('/tmp/fakexdg')
         with patch('cryoflow_core.config.xdg_config_home', return_value=fake_home):
-            result = get_default_config_path()
+            result = get_config_path(None)
         assert result == fake_home / 'cryoflow' / 'config.toml'
+
+    def test_returns_target_config_path(self):
+        fake_home = Path('/tmp/fakexdg')
+        target_config_path = Path('/tmp/target/config.toml')
+        with patch('cryoflow_core.config.xdg_config_home', return_value=fake_home):
+            result = get_config_path(target_config_path)
+        assert result == target_config_path
 
 
 # ---------------------------------------------------------------------------

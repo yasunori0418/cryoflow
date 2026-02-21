@@ -5,14 +5,14 @@ from pathlib import Path
 from returns.result import Failure
 import typer
 
-from cryoflow_core.config import get_default_config_path, load_config, ConfigLoadError
+from cryoflow_core.config import get_config_path, load_config, ConfigLoadError
 from cryoflow_core.loader import PluginLoadError, get_plugins, load_plugins
 from cryoflow_core.pipeline import run_pipeline
 from cryoflow_core.plugin import OutputPlugin, TransformPlugin
 
 
 def execute(config: Path | None):
-    config_path = config if config is not None else get_default_config_path()
+    config_path = get_config_path(config)
 
     try:
         cfg = load_config(config_path)

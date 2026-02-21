@@ -2,7 +2,7 @@
 
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 from xdg_base_dirs import xdg_config_home
@@ -28,8 +28,14 @@ class ConfigLoadError(Exception):
     """Raised when configuration loading fails."""
 
 
-def get_default_config_path() -> Path:
-    """Return the default config file path following XDG Base Directory spec."""
+def get_config_path(path: Optional[Path]) -> Path:
+    """Returns the `path` passed in the argument or the default `$XDG_CONFIG_HOME/cryoflow/config.toml`.
+
+    - If the argument is None, return `$XDG_CONFIG_HOME/cryoflow/config.toml`
+    - If the argument is not None, return the value of the argument
+    """
+    if path is not None:
+        return path
     return xdg_config_home() / 'cryoflow' / 'config.toml'
 
 

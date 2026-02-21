@@ -205,7 +205,7 @@ class TestDefaultConfigPath:
 
         with (
             patch(
-                'cryoflow_core.commands.run.get_default_config_path',
+                'cryoflow_core.commands.run.get_config_path',
                 return_value=config_file,
             ) as mock_default,
             patch('cryoflow_core.commands.run.load_plugins') as mock_load,

@@ -7,7 +7,7 @@ import typer
 from returns.result import Failure
 
 from cryoflow_core.commands import utils, run as run_executor
-from cryoflow_core.config import ConfigLoadError, get_default_config_path, load_config
+from cryoflow_core.config import ConfigLoadError, get_config_path, load_config
 from cryoflow_core.loader import PluginLoadError, get_plugins, load_plugins
 from cryoflow_core.pipeline import run_dry_run_pipeline  # noqa: F401
 from cryoflow_core.plugin import OutputPlugin, TransformPlugin
@@ -112,7 +112,7 @@ def check(
 ) -> None:
     """Validate pipeline configuration and schema without processing data."""
     utils.setup_logging(verbose)
-    config_path = config if config is not None else get_default_config_path()
+    config_path = get_config_path(config)
 
     # Config loading
     try:
