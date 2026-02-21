@@ -3,9 +3,9 @@
 import pluggy
 
 from cryoflow_core.hookspecs import CryoflowSpecs, hookimpl, hookspec
-from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
-from .conftest import DummyOutputPlugin, DummyTransformPlugin
+from .conftest import DummyInputPlugin, DummyOutputPlugin, DummyTransformPlugin
 
 
 # ---------------------------------------------------------------------------
@@ -27,6 +27,10 @@ class TestMarkers:
 
 
 class TestCryoflowSpecsMethods:
+    def test_has_register_input_plugins(self):
+        assert hasattr(CryoflowSpecs, 'register_input_plugins')
+        assert callable(CryoflowSpecs.register_input_plugins)
+
     def test_has_register_transform_plugins(self):
         assert hasattr(CryoflowSpecs, 'register_transform_plugins')
         assert callable(CryoflowSpecs.register_transform_plugins)
@@ -42,6 +46,24 @@ class TestCryoflowSpecsMethods:
 
 
 class TestPluggyIntegration:
+    def test_input_hookspec_registration_and_call(self, tmp_path):
+        """Register hookspec, add hookimpl for input, call hook, verify results."""
+        pm = pluggy.PluginManager('cryoflow')
+        pm.add_hookspecs(CryoflowSpecs)
+
+        inp = DummyInputPlugin({}, tmp_path)
+
+        class MyHookImpl:
+            @hookimpl
+            def register_input_plugins(self) -> list[InputPlugin]:
+                return [inp]
+
+        pm.register(MyHookImpl())
+        results = pm.hook.register_input_plugins()
+        flat = [p for sublist in results for p in sublist]
+        assert len(flat) == 1
+        assert flat[0] is inp
+
     def test_hookspec_registration_and_call(self, tmp_path):
         """Register hookspec, add hookimpl, call hook, verify results."""
         pm = pluggy.PluginManager('cryoflow')

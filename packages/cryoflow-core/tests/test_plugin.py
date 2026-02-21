@@ -6,9 +6,10 @@ import polars as pl
 import pytest
 from returns.result import Failure, Success
 
-from cryoflow_core.plugin import BasePlugin, FrameData, OutputPlugin, TransformPlugin
+from cryoflow_core.plugin import BasePlugin, DEFAULT_LABEL, FrameData, InputPlugin, OutputPlugin, TransformPlugin
 
 from .conftest import (
+    DummyInputPlugin,
     DummyOutputPlugin,
     DummyTransformPlugin,
     FailingTransformPlugin,
@@ -24,6 +25,10 @@ class TestABCInstantiation:
     def test_base_plugin_not_instantiable(self):
         with pytest.raises(TypeError):
             BasePlugin({})  # type: ignore[abstract]
+
+    def test_input_plugin_not_instantiable(self):
+        with pytest.raises(TypeError):
+            InputPlugin({})  # type: ignore[abstract]
 
     def test_transform_plugin_not_instantiable(self):
         with pytest.raises(TypeError):
@@ -50,6 +55,11 @@ class TestABCInstantiation:
 
 
 class TestOptionsStorage:
+    def test_input_plugin_stores_options(self, tmp_path):
+        opts = {'input_path': 'data.parquet'}
+        p = DummyInputPlugin(opts, tmp_path)
+        assert p.options is opts
+
     def test_transform_plugin_stores_options(self, tmp_path):
         opts = {'threshold': 10}
         p = DummyTransformPlugin(opts, tmp_path)
@@ -63,6 +73,59 @@ class TestOptionsStorage:
     def test_empty_options(self, tmp_path):
         p = DummyTransformPlugin({}, tmp_path)
         assert p.options == {}
+
+
+# ---------------------------------------------------------------------------
+# label attribute
+# ---------------------------------------------------------------------------
+
+
+class TestLabelAttribute:
+    def test_default_label(self, tmp_path):
+        p = DummyTransformPlugin({}, tmp_path)
+        assert p.label == DEFAULT_LABEL
+        assert p.label == 'default'
+
+    def test_custom_label(self, tmp_path):
+        p = DummyTransformPlugin({}, tmp_path, label='sales')
+        assert p.label == 'sales'
+
+    def test_input_plugin_default_label(self, tmp_path):
+        p = DummyInputPlugin({}, tmp_path)
+        assert p.label == 'default'
+
+    def test_input_plugin_custom_label(self, tmp_path):
+        p = DummyInputPlugin({}, tmp_path, label='orders')
+        assert p.label == 'orders'
+
+    def test_output_plugin_label(self, tmp_path):
+        p = DummyOutputPlugin({}, tmp_path, label='results')
+        assert p.label == 'results'
+
+
+# ---------------------------------------------------------------------------
+# InputPlugin execute and dry_run
+# ---------------------------------------------------------------------------
+
+
+class TestInputPluginExecute:
+    def test_input_execute_returns_lazyframe(self, tmp_path):
+        p = DummyInputPlugin({}, tmp_path)
+        result = p.execute()
+        assert isinstance(result, Success)
+        import polars as pl
+
+        assert isinstance(result.unwrap(), pl.LazyFrame)
+
+    def test_input_dry_run_returns_schema(self, tmp_path):
+        p = DummyInputPlugin({}, tmp_path)
+        result = p.dry_run()
+        assert isinstance(result, Success)
+        schema = result.unwrap()
+        assert 'a' in schema
+        assert 'b' in schema
+        assert schema['a'] == pl.Int64
+        assert schema['b'] == pl.String
 
 
 # ---------------------------------------------------------------------------
@@ -130,11 +193,17 @@ class TestDryRun:
 
 
 class TestInheritance:
+    def test_input_is_base(self):
+        assert issubclass(InputPlugin, BasePlugin)
+
     def test_transform_is_base(self):
         assert issubclass(TransformPlugin, BasePlugin)
 
     def test_output_is_base(self):
         assert issubclass(OutputPlugin, BasePlugin)
+
+    def test_dummy_input_is_input(self):
+        assert issubclass(DummyInputPlugin, InputPlugin)
 
     def test_dummy_transform_is_transform(self):
         assert issubclass(DummyTransformPlugin, TransformPlugin)
@@ -142,7 +211,14 @@ class TestInheritance:
     def test_dummy_output_is_output(self):
         assert issubclass(DummyOutputPlugin, OutputPlugin)
 
-    def test_isinstance_check(self, tmp_path):
+    def test_isinstance_check_input(self, tmp_path):
+        p = DummyInputPlugin({}, tmp_path)
+        assert isinstance(p, BasePlugin)
+        assert isinstance(p, InputPlugin)
+        assert not isinstance(p, TransformPlugin)
+        assert not isinstance(p, OutputPlugin)
+
+    def test_isinstance_check_transform(self, tmp_path):
         p = DummyTransformPlugin({}, tmp_path)
         assert isinstance(p, BasePlugin)
         assert isinstance(p, TransformPlugin)
@@ -189,4 +265,11 @@ class TestPathResolution:
         p = DummyTransformPlugin({}, config_dir)
         result = p.resolve_path(Path('relative/path.txt'))
         expected = (config_dir / 'relative' / 'path.txt').resolve()
+        assert result == expected
+
+    def test_input_plugin_resolve_path(self, tmp_path):
+        """Test that InputPlugin can also resolve paths."""
+        p = DummyInputPlugin({}, tmp_path)
+        result = p.resolve_path('data/file.parquet')
+        expected = (tmp_path / 'data' / 'file.parquet').resolve()
         assert result == expected

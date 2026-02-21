@@ -1,59 +1,17 @@
 """Data processing pipeline for cryoflow."""
 
 import logging
-from pathlib import Path
-from typing import Literal
 
 import polars as pl
 from returns.result import Result, Success, Failure, safe  # noqa: F401
 
-from cryoflow_core.plugin import FrameData, OutputPlugin, TransformPlugin
+from cryoflow_core.plugin import FrameData, InputPlugin, OutputPlugin, TransformPlugin
 
 logger = logging.getLogger(__name__)
 
-
-def _detect_format(path: Path) -> Literal['parquet', 'ipc'] | None:
-    """Detect file format from file extension.
-
-    Args:
-        path: Path to the data file.
-
-    Returns:
-        Format name ('parquet' or 'ipc') or None if unknown.
-    """
-    suffix = path.suffix.lower()
-    if suffix == '.parquet':
-        return 'parquet'
-    if suffix in ('.ipc', '.arrow'):
-        return 'ipc'
-    return None
-
-
-@safe
-def load_data(input_path: Path) -> pl.LazyFrame:
-    """Load data from Parquet or IPC format with lazy evaluation.
-
-    Args:
-        input_path: Path to the data file.
-
-    Returns:
-        Result containing LazyFrame on success or Exception on failure.
-
-    Raises:
-        FileNotFoundError: If the file does not exist.
-        ValueError: If the file format is not supported.
-    """
-    if not input_path.exists():
-        raise FileNotFoundError(f'Input file not found: {input_path}')
-
-    fmt = _detect_format(input_path)
-    if fmt is None:
-        raise ValueError(f'Unsupported file format: {input_path.suffix}')
-
-    if fmt == 'parquet':
-        return pl.scan_parquet(input_path)
-    else:  # fmt == 'ipc'
-        return pl.scan_ipc(input_path)
+# Type aliases for label-aware data maps
+LabeledDataMap = dict[str, Result[FrameData, Exception]]
+LabeledSchemaMap = dict[str, Result[dict[str, pl.DataType], Exception]]
 
 
 @safe
@@ -159,27 +117,6 @@ def execute_output_dry_run(
     return result
 
 
-def run_dry_run_pipeline(
-    input_path: Path,
-    transform_plugins: list[TransformPlugin],
-    output_plugins: list[OutputPlugin],
-) -> Result[dict[str, pl.DataType], Exception]:
-    """Run dry-run validation pipeline without processing actual data.
-
-    Args:
-        input_path: Path to input data file.
-        transform_plugins: List of transformation plugins to validate.
-        output_plugins: List of output plugins to validate.
-
-    Returns:
-        Final output schema on success or Exception on failure.
-    """
-    initial_data = load_data(input_path)
-    initial_schema = initial_data.bind(extract_schema)
-    transformed_schema = execute_dry_run_chain(initial_schema, transform_plugins)
-    return execute_output_dry_run(transformed_schema, output_plugins)
-
-
 def execute_output(
     data: Result[FrameData, Exception],
     plugins: list[OutputPlugin],
@@ -203,21 +140,99 @@ def execute_output(
     return result
 
 
+def _execute_labeled_transform_chain(
+    data_map: LabeledDataMap,
+    plugins: list[TransformPlugin],
+) -> LabeledDataMap:
+    """Apply transform plugins to the labeled data entry matching each plugin's label.
+
+    Args:
+        data_map: Map of label -> Result[FrameData, Exception].
+        plugins: List of transformation plugins to apply.
+
+    Returns:
+        Updated data map with transforms applied.
+    """
+    result_map = dict(data_map)
+    for plugin in plugins:
+        label = plugin.label
+        if label not in result_map:
+            result_map[label] = Failure(KeyError(f"No input data with label '{label}'"))
+        result_map[label] = result_map[label].bind(plugin.execute)
+    return result_map
+
+
+def _execute_labeled_output(
+    data_map: LabeledDataMap,
+    plugins: list[OutputPlugin],
+) -> Result[None, Exception]:
+    """Execute output plugins on the labeled data entry matching each plugin's label.
+
+    Args:
+        data_map: Map of label -> Result[FrameData, Exception].
+        plugins: List of output plugins to execute.
+
+    Returns:
+        Result containing None on success or Exception on failure.
+    """
+    for plugin in plugins:
+        label = plugin.label
+        if label not in data_map:
+            return Failure(KeyError(f"No data with label '{label}'"))
+        result = data_map[label].bind(plugin.execute)
+        if isinstance(result, Failure):
+            return result
+    return Success(None)
+
+
 def run_pipeline(
-    input_path: Path,
+    input_plugins: list[InputPlugin],
     transform_plugins: list[TransformPlugin],
     output_plugins: list[OutputPlugin],
 ) -> Result[None, Exception]:
     """Run complete data processing pipeline.
 
     Args:
-        input_path: Path to input data file.
+        input_plugins: List of input plugins to load data.
         transform_plugins: List of transformation plugins to apply.
         output_plugins: List of output plugins to write results.
 
     Returns:
         Result containing None on success or Exception on failure.
     """
-    initial_data: Result[FrameData, Exception] = load_data(input_path)
-    transformed_data = execute_transform_chain(initial_data, transform_plugins)
-    return execute_output(transformed_data, output_plugins)
+    # Step 1: Execute each InputPlugin and build label-keyed data map
+    data_map: LabeledDataMap = {}
+    for plugin in input_plugins:
+        data_map[plugin.label] = plugin.execute()
+
+    # Step 2: Apply TransformPlugins by label
+    data_map = _execute_labeled_transform_chain(data_map, transform_plugins)
+
+    # Step 3: Execute OutputPlugins by label
+    return _execute_labeled_output(data_map, output_plugins)
+
+
+def run_dry_run_pipeline(
+    input_plugins: list[InputPlugin],
+    transform_plugins: list[TransformPlugin],
+    output_plugins: list[OutputPlugin],
+) -> Result[dict[str, pl.DataType], Exception]:
+    """Run dry-run validation pipeline without processing actual data.
+
+    Args:
+        input_plugins: List of input plugins to validate.
+        transform_plugins: List of transformation plugins to validate.
+        output_plugins: List of output plugins to validate.
+
+    Returns:
+        Final output schema on success or Exception on failure.
+    """
+    # Step 1: Build label-keyed schema map from InputPlugin.dry_run()
+    schema_map: LabeledSchemaMap = {}
+    for plugin in input_plugins:
+        schema_map[plugin.label] = plugin.dry_run()
+
+    # For single-label (default) case, delegate to existing chain helpers
+    default_schema = schema_map.get('default', Failure(KeyError("No input plugin with label 'default'")))
+    transformed_schema = execute_dry_run_chain(default_schema, transform_plugins)
+    return execute_output_dry_run(transformed_schema, output_plugins)

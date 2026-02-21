@@ -17,13 +17,14 @@ class PluginConfig(BaseModel):
     name: str
     module: str
     enabled: bool = True
+    label: str = 'default'
     options: dict[str, Any] = Field(default_factory=dict)
 
 
 class CryoflowConfig(BaseModel):
     """Top-level configuration for cryoflow."""
 
-    input_path: Path
+    input_plugins: list[PluginConfig]
     transform_plugins: list[PluginConfig]
     output_plugins: list[PluginConfig]
 
@@ -51,29 +52,6 @@ def get_config_path(path: Optional[Path]) -> Path:
     if path is not None:
         return path
     return xdg_config_home() / 'cryoflow' / 'config.toml'
-
-
-def _resolve_path_relative_to_config(path: Path, config_dir: Path) -> Path:
-    """Resolve a path relative to the config file directory.
-
-    Absolute paths are normalized with resolve().
-    Relative paths are resolved relative to config_dir.
-
-    Args:
-        path: The path to resolve.
-        config_dir: The directory containing the config file.
-
-    Returns:
-        The resolved absolute path.
-
-    Note:
-        This function does not check if the file exists.
-        File existence should be validated at the appropriate stage
-        (e.g., in pipeline.py when opening the file).
-    """
-    if not path.is_absolute():
-        path = config_dir / path
-    return path.resolve()
 
 
 def _ensure_config_file_exists(config_path: Path) -> Result[Path, ConfigLoadError]:
@@ -121,12 +99,6 @@ def _validate_config(data: dict) -> CryoflowConfig:
     return CryoflowConfig(**data)
 
 
-def _apply_path_resolution(cfg: CryoflowConfig, config_dir: Path) -> CryoflowConfig:
-    """Apply input_path resolution relative to config directory."""
-    resolved = _resolve_path_relative_to_config(cfg.input_path, config_dir)
-    return cfg.model_copy(update={'input_path': resolved})
-
-
 def load_config(config_path: Path) -> Result[CryoflowConfig, ConfigLoadError]:
     """Load and validate a TOML configuration file.
 
@@ -134,14 +106,9 @@ def load_config(config_path: Path) -> Result[CryoflowConfig, ConfigLoadError]:
         config_path: Path to the TOML configuration file.
 
     Returns:
-        Success containing a validated CryoflowConfig instance with
-        input_path resolved relative to the config file directory.
+        Success containing a validated CryoflowConfig instance.
         Failure containing ConfigLoadError if the file is not found,
         cannot be read, contains invalid TOML, or fails Pydantic validation.
-
-    Note:
-        Relative paths in input_path are resolved relative to the directory
-        containing the config file, not the current working directory.
     """
 
     def _pipeline(info: ConfigInfo) -> Result[CryoflowConfig, ConfigLoadError]:
@@ -150,7 +117,6 @@ def load_config(config_path: Path) -> Result[CryoflowConfig, ConfigLoadError]:
             .alt(lambda e: ConfigLoadError(f'Failed to read config file: {e}'))
             .bind(_config_bind_safe(_parse_toml, 'Failed to parse TOML config'))
             .bind(_config_bind_safe(_validate_config, 'Config validation failed'))
-            .map(lambda cfg: _apply_path_resolution(cfg, info.directory))
         )
 
     return (

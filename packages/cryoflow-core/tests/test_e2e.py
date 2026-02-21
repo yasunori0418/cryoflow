@@ -16,6 +16,7 @@ class TestE2EIntegration:
 
     def test_parquet_transform_parquet_pipeline(self) -> None:
         """Test complete pipeline: Parquet -> Transform -> Parquet."""
+        from cryoflow_plugin_collections.input.parquet_scan import ParquetScanPlugin
         from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
         from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlugin
 
@@ -27,12 +28,13 @@ class TestE2EIntegration:
             input_df.write_parquet(input_file)
 
             # Set up plugins
+            input_plugin = ParquetScanPlugin({'input_path': str(input_file)}, tmpdir_path)
             multiplier_plugin = ColumnMultiplierPlugin({'column_name': 'amount', 'multiplier': 2}, tmpdir_path)
             output_file = tmpdir_path / 'output.parquet'
             output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline
-            result = run_pipeline(input_file, [multiplier_plugin], [output_plugin])
+            result = run_pipeline([input_plugin], [multiplier_plugin], [output_plugin])
 
             # Verify result
             assert isinstance(result, Success)
@@ -47,6 +49,7 @@ class TestE2EIntegration:
 
     def test_ipc_to_parquet_pipeline(self) -> None:
         """Test pipeline: IPC -> Parquet."""
+        from cryoflow_plugin_collections.input.ipc_scan import IpcScanPlugin
         from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
 
         with TemporaryDirectory() as tmpdir:
@@ -56,12 +59,13 @@ class TestE2EIntegration:
             input_df = pl.DataFrame({'value': [1, 2, 3], 'name': ['x', 'y', 'z']})
             input_df.write_ipc(input_file)
 
-            # Set up plugin (no transform)
+            # Set up plugins (no transform)
+            input_plugin = IpcScanPlugin({'input_path': str(input_file)}, tmpdir_path)
             output_file = tmpdir_path / 'output.parquet'
             output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline
-            result = run_pipeline(input_file, [], [output_plugin])
+            result = run_pipeline([input_plugin], [], [output_plugin])
 
             # Verify result
             assert isinstance(result, Success)
@@ -75,6 +79,7 @@ class TestE2EIntegration:
 
     def test_multiple_transforms_pipeline(self) -> None:
         """Test pipeline with multiple transformation plugins."""
+        from cryoflow_plugin_collections.input.parquet_scan import ParquetScanPlugin
         from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
         from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlugin
 
@@ -86,13 +91,14 @@ class TestE2EIntegration:
             input_df.write_parquet(input_file)
 
             # Set up two transformation plugins
+            input_plugin = ParquetScanPlugin({'input_path': str(input_file)}, tmpdir_path)
             multiply_2 = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': 2}, tmpdir_path)
             multiply_3 = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': 3}, tmpdir_path)
             output_file = tmpdir_path / 'output.parquet'
             output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline (10 * 2 * 3 = 60, 20 * 2 * 3 = 120, 30 * 2 * 3 = 180)
-            result = run_pipeline(input_file, [multiply_2, multiply_3], [output_plugin])
+            result = run_pipeline([input_plugin], [multiply_2, multiply_3], [output_plugin])
 
             # Verify result
             assert isinstance(result, Success)
@@ -101,6 +107,7 @@ class TestE2EIntegration:
 
     def test_pipeline_with_subdirectory_output(self) -> None:
         """Test pipeline creates subdirectories for output."""
+        from cryoflow_plugin_collections.input.parquet_scan import ParquetScanPlugin
         from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
 
         with TemporaryDirectory() as tmpdir:
@@ -111,11 +118,12 @@ class TestE2EIntegration:
             input_df.write_parquet(input_file)
 
             # Output to nested directory
+            input_plugin = ParquetScanPlugin({'input_path': str(input_file)}, tmpdir_path)
             output_file = tmpdir_path / 'results' / 'nested' / 'output.parquet'
             output_plugin = ParquetWriterPlugin({'output_path': str(output_file)}, tmpdir_path)
 
             # Run pipeline
-            result = run_pipeline(input_file, [], [output_plugin])
+            result = run_pipeline([input_plugin], [], [output_plugin])
 
             # Verify result
             assert isinstance(result, Success)
@@ -124,7 +132,8 @@ class TestE2EIntegration:
     def test_relative_path_resolution_in_config(self) -> None:
         """Test that relative paths in config are resolved relative to config directory."""
         from cryoflow_core.config import load_config
-        from cryoflow_core.loader import load_plugins
+        from cryoflow_core.loader import load_plugins, get_plugins
+        from cryoflow_core.plugin import InputPlugin, OutputPlugin
 
         with TemporaryDirectory() as tmpdir:
             # Create project structure:
@@ -146,11 +155,18 @@ class TestE2EIntegration:
             input_df = pl.DataFrame({'value': [100, 200, 300]})
             input_df.write_parquet(input_file)
 
-            # Create config with relative paths
+            # Create config with relative paths using input_plugins
             config_file = config_dir / 'config.toml'
             config_content = """\
-input_path = "data/input.parquet"
 transform_plugins = []
+
+[[input_plugins]]
+name = "parquet_scan"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+
+[input_plugins.options]
+input_path = "data/input.parquet"
 
 [[output_plugins]]
 name = "parquet_writer"
@@ -167,20 +183,20 @@ output_path = "data/output/result.parquet"
             assert isinstance(config_result, Success)
             cfg = config_result.unwrap()
 
-            # Verify input_path was resolved correctly
-            expected_input = (config_dir / 'data' / 'input.parquet').resolve()
-            assert cfg.input_path == expected_input
+            # Verify input plugin config
+            assert len(cfg.input_plugins) == 1
+            assert cfg.input_plugins[0].options['input_path'] == 'data/input.parquet'
 
             # Load plugins and verify they can resolve paths
             pm = load_plugins(cfg, config_file)
-            from cryoflow_core.loader import get_plugins
-            from cryoflow_core.plugin import OutputPlugin
-
+            input_plugins = get_plugins(pm, InputPlugin)
             output_plugins = get_plugins(pm, OutputPlugin)
+
+            assert len(input_plugins) == 1
             assert len(output_plugins) == 1
 
-            # Run pipeline (this will test that output plugin resolves path correctly)
-            result = run_pipeline(cfg.input_path, [], output_plugins)
+            # Run pipeline (this will test that plugins resolve paths correctly)
+            result = run_pipeline(input_plugins, [], output_plugins)
 
             # Verify result
             assert isinstance(result, Success)
@@ -197,9 +213,6 @@ class TestCheckCommand:
 
     def test_check_command_success(self) -> None:
         """Test successful dry-run check with valid config."""
-        from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
-        from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlugin
-
         with TemporaryDirectory() as tmpdir:
             # Create input file
             input_file = Path(tmpdir) / 'input.parquet'
@@ -209,6 +222,12 @@ class TestCheckCommand:
             # Create config file
             config_file = Path(tmpdir) / 'config.toml'
             config_content = f"""\
+[[input_plugins]]
+name = "parquet_scan"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+
+[input_plugins.options]
 input_path = "{input_file}"
 
 [[transform_plugins]]
@@ -252,9 +271,6 @@ output_path = "{tmpdir}/output.parquet"
 
     def test_check_command_with_verbose(self) -> None:
         """Test check command with verbose flag."""
-        from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
-        from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlugin
-
         with TemporaryDirectory() as tmpdir:
             # Create input file
             input_file = Path(tmpdir) / 'input.parquet'
@@ -264,6 +280,12 @@ output_path = "{tmpdir}/output.parquet"
             # Create config file
             config_file = Path(tmpdir) / 'config.toml'
             config_content = f"""\
+[[input_plugins]]
+name = "parquet_scan"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+
+[input_plugins.options]
 input_path = "{input_file}"
 
 [[transform_plugins]]
@@ -306,6 +328,12 @@ output_path = "{tmpdir}/output.parquet"
             # Create config file with invalid column name
             config_file = Path(tmpdir) / 'config.toml'
             config_content = f"""\
+[[input_plugins]]
+name = "parquet_scan"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+
+[input_plugins.options]
 input_path = "{input_file}"
 
 [[transform_plugins]]

@@ -21,10 +21,11 @@ from cryoflow_core.loader import (
     get_plugins,
     load_plugins,
 )
-from cryoflow_core.plugin import BasePlugin, OutputPlugin, TransformPlugin
+from cryoflow_core.plugin import BasePlugin, InputPlugin, OutputPlugin, TransformPlugin
 
 from .conftest import (
     BrokenInitPlugin,
+    DummyInputPlugin,
     DummyOutputPlugin,
     DummyTransformPlugin,
 )
@@ -32,6 +33,24 @@ from .conftest import (
 # ---------------------------------------------------------------------------
 # Fixtures specific to loader tests
 # ---------------------------------------------------------------------------
+
+INPUT_PLUGIN_SOURCE = """\
+from typing import Any
+import polars as pl
+from returns.result import Success, Result
+from cryoflow_core.plugin import InputPlugin, FrameData
+
+
+class MyInputPlugin(InputPlugin):
+    def name(self) -> str:
+        return "my_input"
+
+    def execute(self) -> Result[FrameData, Exception]:
+        return Success(pl.LazyFrame({'a': [1, 2, 3]}))
+
+    def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
+        return Success({'a': pl.Int64})
+"""
 
 TRANSFORM_PLUGIN_SOURCE = """\
 from typing import Any
@@ -84,6 +103,14 @@ EMPTY_MODULE_SOURCE = """\
 # No plugins here
 x = 42
 """
+
+
+@pytest.fixture()
+def input_plugin_py_file(tmp_path):
+    """Create a .py file with an InputPlugin implementation."""
+    p = tmp_path / 'my_input_plugin.py'
+    p.write_text(INPUT_PLUGIN_SOURCE)
+    return p
 
 
 @pytest.fixture()
@@ -226,18 +253,22 @@ class TestLoadModuleFromDotpath:
 class TestDiscoverPluginClasses:
     def test_discovers_concrete_classes(self):
         mod = types.ModuleType('fake_mod')
+        setattr(mod, 'DummyInputPlugin', DummyInputPlugin)  # pyright: ignore[reportAttributeAccessIssue]
         setattr(mod, 'DummyTransformPlugin', DummyTransformPlugin)  # pyright: ignore[reportAttributeAccessIssue]
         setattr(mod, 'DummyOutputPlugin', DummyOutputPlugin)  # pyright: ignore[reportAttributeAccessIssue]
         classes = _discover_plugin_classes('test', mod)
+        assert DummyInputPlugin in classes
         assert DummyTransformPlugin in classes
         assert DummyOutputPlugin in classes
 
     def test_excludes_abstract_classes(self):
         mod = types.ModuleType('fake_mod')
         setattr(mod, 'TransformPlugin', TransformPlugin)  # pyright: ignore[reportAttributeAccessIssue]
+        setattr(mod, 'InputPlugin', InputPlugin)  # pyright: ignore[reportAttributeAccessIssue]
         setattr(mod, 'DummyTransformPlugin', DummyTransformPlugin)  # pyright: ignore[reportAttributeAccessIssue]
         classes = _discover_plugin_classes('test', mod)
         assert TransformPlugin not in classes
+        assert InputPlugin not in classes
         assert DummyTransformPlugin in classes
 
     def test_excludes_base_classes(self):
@@ -270,6 +301,18 @@ class TestInstantiatePlugins:
         instances = _instantiate_plugins('test', [DummyTransformPlugin], opts, tmp_path)
         assert instances[0].options == {'threshold': 42}
 
+    def test_label_propagation(self, tmp_path):
+        """Test that label is correctly passed to plugin instances."""
+        opts = {}
+        instances = _instantiate_plugins('test', [DummyTransformPlugin], opts, tmp_path, label='sales')
+        assert instances[0].label == 'sales'
+
+    def test_default_label(self, tmp_path):
+        """Test that default label is 'default'."""
+        opts = {}
+        instances = _instantiate_plugins('test', [DummyTransformPlugin], opts, tmp_path)
+        assert instances[0].label == 'default'
+
     def test_broken_init_raises(self, tmp_path):
         with pytest.raises(PluginLoadError, match='failed to instantiate'):
             _instantiate_plugins('test', [BrokenInitPlugin], {}, tmp_path)
@@ -281,18 +324,24 @@ class TestInstantiatePlugins:
 
 
 class TestPluginHookRelay:
+    def test_register_input_plugins(self, tmp_path):
+        i = DummyInputPlugin({}, tmp_path)
+        relay = _PluginHookRelay([i], [], [])
+        assert relay.register_input_plugins() == [i]
+
     def test_register_transform_plugins(self, tmp_path):
         t = DummyTransformPlugin({}, tmp_path)
-        relay = _PluginHookRelay([t], [])
+        relay = _PluginHookRelay([], [t], [])
         assert relay.register_transform_plugins() == [t]
 
     def test_register_output_plugins(self, tmp_path):
         o = DummyOutputPlugin({}, tmp_path)
-        relay = _PluginHookRelay([], [o])
+        relay = _PluginHookRelay([], [], [o])
         assert relay.register_output_plugins() == [o]
 
     def test_empty_lists(self):
-        relay = _PluginHookRelay([], [])
+        relay = _PluginHookRelay([], [], [])
+        assert relay.register_input_plugins() == []
         assert relay.register_transform_plugins() == []
         assert relay.register_output_plugins() == []
 
@@ -305,13 +354,12 @@ class TestPluginHookRelay:
 class TestLoadPlugins:
     def _make_config(
         self,
+        input_plugins: list[PluginConfig] | None = None,
         transform_plugins: list[PluginConfig] | None = None,
         output_plugins: list[PluginConfig] | None = None,
     ) -> CryoflowConfig:
-        from pathlib import Path
-
         return CryoflowConfig(
-            input_path=Path('/data/in.parquet'),
+            input_plugins=input_plugins or [],
             transform_plugins=transform_plugins or [],
             output_plugins=output_plugins or [],
         )
@@ -338,6 +386,42 @@ class TestLoadPlugins:
         pm = load_plugins(cfg, config_file)
         transforms = get_plugins(pm, TransformPlugin)
         assert len(transforms) == 0
+
+    def test_input_plugin_loaded(self, tmp_path, input_plugin_py_file):
+        cfg = self._make_config(
+            input_plugins=[
+                PluginConfig(
+                    name='my_input',
+                    module=str(input_plugin_py_file),
+                    enabled=True,
+                )
+            ]
+        )
+        config_file = tmp_path / 'config.toml'
+        config_file.write_text('')
+        pm = load_plugins(cfg, config_file)
+        inputs = get_plugins(pm, InputPlugin)
+        assert len(inputs) == 1
+        assert inputs[0].name() == 'my_input'
+
+    def test_input_plugin_label_propagated(self, tmp_path, input_plugin_py_file):
+        """Test that label from PluginConfig is passed to the plugin instance."""
+        cfg = self._make_config(
+            input_plugins=[
+                PluginConfig(
+                    name='my_input',
+                    module=str(input_plugin_py_file),
+                    enabled=True,
+                    label='sales',
+                )
+            ]
+        )
+        config_file = tmp_path / 'config.toml'
+        config_file.write_text('')
+        pm = load_plugins(cfg, config_file)
+        inputs = get_plugins(pm, InputPlugin)
+        assert len(inputs) == 1
+        assert inputs[0].label == 'sales'
 
     def test_transform_plugin_loaded(self, tmp_path, plugin_py_file):
         cfg = self._make_config(
@@ -447,25 +531,42 @@ class TestLoadPlugins:
 
 
 class TestGetPlugins:
+    def test_get_plugins_empty_input(self):
+        pm = pluggy.PluginManager('cryoflow')
+        pm.add_hookspecs(CryoflowSpecs)
+        relay = _PluginHookRelay([], [], [])
+        pm.register(relay)
+        assert get_plugins(pm, InputPlugin) == []
+
     def test_get_plugins_empty_transform(self):
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
-        relay = _PluginHookRelay([], [])
+        relay = _PluginHookRelay([], [], [])
         pm.register(relay)
         assert get_plugins(pm, TransformPlugin) == []
 
     def test_get_plugins_empty_output(self):
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
-        relay = _PluginHookRelay([], [])
+        relay = _PluginHookRelay([], [], [])
         pm.register(relay)
         assert get_plugins(pm, OutputPlugin) == []
+
+    def test_get_plugins_with_input(self, tmp_path):
+        pm = pluggy.PluginManager('cryoflow')
+        pm.add_hookspecs(CryoflowSpecs)
+        i = DummyInputPlugin({}, tmp_path)
+        relay = _PluginHookRelay([i], [], [])
+        pm.register(relay)
+        result = get_plugins(pm, InputPlugin)
+        assert len(result) == 1
+        assert result[0] is i
 
     def test_get_plugins_with_transform(self, tmp_path):
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
         t = DummyTransformPlugin({}, tmp_path)
-        relay = _PluginHookRelay([t], [])
+        relay = _PluginHookRelay([], [t], [])
         pm.register(relay)
         result = get_plugins(pm, TransformPlugin)
         assert len(result) == 1
@@ -475,7 +576,7 @@ class TestGetPlugins:
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
         o = DummyOutputPlugin({}, tmp_path)
-        relay = _PluginHookRelay([], [o])
+        relay = _PluginHookRelay([], [], [o])
         pm.register(relay)
         result = get_plugins(pm, OutputPlugin)
         assert len(result) == 1
@@ -485,7 +586,7 @@ class TestGetPlugins:
         """Test that ValueError is raised for unsupported plugin types."""
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
-        relay = _PluginHookRelay([], [])
+        relay = _PluginHookRelay([], [], [])
         pm.register(relay)
 
         # BasePlugin directly should raise an error
