@@ -989,67 +989,74 @@ Once you've implemented a plugin, you can use it in `config.toml`.
 
 ```toml
 input_path = "data/input.parquet"
-output_target = "data/output.parquet"
 
 # TransformPlugin configuration
-[[plugins]]
+[[transform_plugins]]
 name = "my-transform"
 module = "my_cryoflow_plugins.transform.my_transform"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 column_name = "value"
 multiplier = 2
 
 # OutputPlugin configuration
-[[plugins]]
+[[output_plugins]]
 name = "my-output"
 module = "my_cryoflow_plugins.output.my_output"
 enabled = true
-[plugins.options]
+[output_plugins.options]
 output_path = "data/output.parquet"
 ```
 
 ### Chaining Multiple Plugins
 
+TransformPlugins are chained in definition order. Each OutputPlugin receives the same transformed data (fan-out).
+
 ```toml
 input_path = "data/sales.parquet"
-output_target = "data/processed.parquet"
 
 # Filtering
-[[plugins]]
+[[transform_plugins]]
 name = "filter-high-value"
 module = "my_plugins.transform.filter"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 column_name = "total_amount"
 threshold = 1000
 
 # Add column
-[[plugins]]
+[[transform_plugins]]
 name = "add-tax"
 module = "my_plugins.transform.tax_calculator"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 amount_column = "total_amount"
 tax_rate = 0.1
 output_column = "tax"
 
 # Aggregation
-[[plugins]]
+[[transform_plugins]]
 name = "aggregate"
 module = "my_plugins.transform.aggregator"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 group_by = ["region", "category"]
 agg_columns = ["total_amount", "tax"]
 
-# Output
-[[plugins]]
+# Output (multiple definitions supported: same data is passed to each OutputPlugin)
+[[output_plugins]]
 name = "parquet-writer"
 module = "my_plugins.output.parquet_writer"
 enabled = true
-[plugins.options]
+[output_plugins.options]
 output_path = "data/processed.parquet"
+
+[[output_plugins]]
+name = "ipc-writer"
+module = "my_plugins.output.ipc_writer"
+enabled = true
+[output_plugins.options]
+output_path = "data/processed.ipc"
 ```
 
 ### Using Filesystem Paths
@@ -1057,16 +1064,16 @@ output_path = "data/processed.parquet"
 You can also specify file paths directly without installing the module as a Python package.
 
 ```toml
-[[plugins]]
+[[transform_plugins]]
 name = "local-plugin"
 module = "./my_local_plugins/transform.py"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 some_option = "value"
 
-[[plugins]]
+[[output_plugins]]
 name = "absolute-path-plugin"
-module = "/home/user/plugins/my_plugin.py"
+module = "/home/user/plugins/my_output_plugin.py"
 enabled = true
 ```
 

@@ -50,7 +50,8 @@ class PluginConfig(BaseModel):
 
 class CryoflowConfig(BaseModel):
     input_path: Path  # Use Path instead of FilePath to avoid enforcing file existence at config load time
-    plugins: list[PluginConfig]
+    transform_plugins: list[PluginConfig]
+    output_plugins: list[PluginConfig]
 ```
 
 > **Implementation Notes**:
@@ -137,15 +138,15 @@ All file paths in cryoflow configuration are resolved **relative to the director
   # Resolves to: /project/config/data/input.parquet
   ```
 
-**Plugin option paths** (in `plugins.options`):
+**Plugin option paths** (in `output_plugins.options`):
 - Must be resolved by plugin implementations using `BasePlugin.resolve_path()`
 - Example:
   ```toml
-  [[plugins]]
+  [[output_plugins]]
   name = "parquet_writer"
   module = "cryoflow_plugin_collections.output.parquet_writer"
 
-  [plugins.options]
+  [output_plugins.options]
   output_path = "data/output.parquet"
   # Plugin must call: self.resolve_path(self.options['output_path'])
   # Resolves to: /project/config/data/output.parquet

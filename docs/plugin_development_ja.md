@@ -984,67 +984,74 @@ pip install -e .
 
 ```toml
 input_path = "data/input.parquet"
-output_target = "data/output.parquet"
 
 # TransformPlugin の設定
-[[plugins]]
+[[transform_plugins]]
 name = "my-transform"
 module = "my_cryoflow_plugins.transform.my_transform"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 column_name = "value"
 multiplier = 2
 
 # OutputPlugin の設定
-[[plugins]]
+[[output_plugins]]
 name = "my-output"
 module = "my_cryoflow_plugins.output.my_output"
 enabled = true
-[plugins.options]
+[output_plugins.options]
 output_path = "data/output.parquet"
 ```
 
 ### 複数プラグインのチェーン
 
+TransformPlugin は定義順にチェーンされ、OutputPlugin は変換済みの同一データを受け取る（fan-out）。
+
 ```toml
 input_path = "data/sales.parquet"
-output_target = "data/processed.parquet"
 
 # フィルタリング
-[[plugins]]
+[[transform_plugins]]
 name = "filter-high-value"
 module = "my_plugins.transform.filter"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 column_name = "total_amount"
 threshold = 1000
 
 # カラム追加
-[[plugins]]
+[[transform_plugins]]
 name = "add-tax"
 module = "my_plugins.transform.tax_calculator"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 amount_column = "total_amount"
 tax_rate = 0.1
 output_column = "tax"
 
 # 集計
-[[plugins]]
+[[transform_plugins]]
 name = "aggregate"
 module = "my_plugins.transform.aggregator"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 group_by = ["region", "category"]
 agg_columns = ["total_amount", "tax"]
 
-# 出力
-[[plugins]]
+# 出力（複数定義可能: 同一データを各OutputPluginに渡す）
+[[output_plugins]]
 name = "parquet-writer"
 module = "my_plugins.output.parquet_writer"
 enabled = true
-[plugins.options]
+[output_plugins.options]
 output_path = "data/processed.parquet"
+
+[[output_plugins]]
+name = "ipc-writer"
+module = "my_plugins.output.ipc_writer"
+enabled = true
+[output_plugins.options]
+output_path = "data/processed.ipc"
 ```
 
 ### ファイルシステムパスの使用
@@ -1052,16 +1059,16 @@ output_path = "data/processed.parquet"
 モジュールをPythonパッケージとしてインストールせず、直接ファイルパスで指定することも可能です。
 
 ```toml
-[[plugins]]
+[[transform_plugins]]
 name = "local-plugin"
 module = "./my_local_plugins/transform.py"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 some_option = "value"
 
-[[plugins]]
+[[output_plugins]]
 name = "absolute-path-plugin"
-module = "/home/user/plugins/my_plugin.py"
+module = "/home/user/plugins/my_output_plugin.py"
 enabled = true
 ```
 
