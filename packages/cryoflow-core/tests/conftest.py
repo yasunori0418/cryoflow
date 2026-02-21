@@ -31,7 +31,7 @@ class DummyInputPlugin(InputPlugin):
         return Success(pl.LazyFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']}))
 
     def dry_run(self) -> Success[dict[str, pl.DataType]]:
-        return Success({'a': pl.Int64, 'b': pl.String})
+        return Success({'a': pl.Int64(), 'b': pl.String()})
 
 
 class DummyTransformPlugin(TransformPlugin):

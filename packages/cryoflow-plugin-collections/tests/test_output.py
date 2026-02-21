@@ -95,7 +95,7 @@ class TestParquetWriterPlugin:
         with TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
             output_path = tmpdir_path / 'output.parquet'
-            schema = {'value': pl.Int64(), 'name': pl.Utf8()}
+            schema: dict[str, pl.DataType] = {'value': pl.Int64(), 'name': pl.Utf8()}
             plugin = ParquetWriterPlugin({'output_path': str(output_path)}, tmpdir_path)
 
             result = plugin.dry_run(schema)
@@ -107,7 +107,7 @@ class TestParquetWriterPlugin:
         """Test dry_run error when output_path is missing."""
         with TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            schema = {'value': pl.Int64()}
+            schema: dict[str, pl.DataType] = {'value': pl.Int64()}
             plugin = ParquetWriterPlugin({}, tmpdir_path)
 
             result = plugin.dry_run(schema)
@@ -120,7 +120,7 @@ class TestParquetWriterPlugin:
         with TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
             output_path = tmpdir_path / 'subdir' / 'output.parquet'
-            schema = {'value': pl.Int64()}
+            schema: dict[str, pl.DataType] = {'value': pl.Int64()}
             plugin = ParquetWriterPlugin({'output_path': str(output_path)}, tmpdir_path)
 
             result = plugin.dry_run(schema)
@@ -161,7 +161,7 @@ class TestParquetWriterPlugin:
             config_dir = Path(tmpdir) / 'config'
             config_dir.mkdir()
 
-            schema = {'value': pl.Int64()}
+            schema: dict[str, pl.DataType] = {'value': pl.Int64()}
             plugin = ParquetWriterPlugin({'output_path': 'data/output.parquet'}, config_dir)
 
             result = plugin.dry_run(schema)

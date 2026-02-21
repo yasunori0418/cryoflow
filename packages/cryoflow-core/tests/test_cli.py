@@ -1,6 +1,7 @@
 """Tests for cryoflow_core.cli module."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pluggy
@@ -23,33 +24,33 @@ runner = CliRunner()
 
 
 class TestHelpDisplay:
-    def test_no_args_shows_help(self):
+    def test_no_args_shows_help(self) -> None:
         result = runner.invoke(app, [])
         # Typer with no_args_is_help may return 0 or 2 depending on version
         assert result.exit_code in (0, 2)
         assert 'Usage' in result.output or 'usage' in result.output.lower()
 
-    def test_help_flag(self):
+    def test_help_flag(self) -> None:
         result = runner.invoke(app, ['--help'])
         assert result.exit_code == 0
         assert 'Usage' in result.output
 
-    def test_help_short_flag(self):
+    def test_help_short_flag(self) -> None:
         result = runner.invoke(app, ['-h'])
         assert result.exit_code == 0
         assert 'Usage' in result.output
 
-    def test_run_help(self):
+    def test_run_help(self) -> None:
         result = runner.invoke(app, ['run', '--help'])
         assert result.exit_code == 0
         assert '--config' in result.output
 
-    def test_run_help_short_flag(self):
+    def test_run_help_short_flag(self) -> None:
         result = runner.invoke(app, ['run', '-h'])
         assert result.exit_code == 0
         assert '--config' in result.output
 
-    def test_check_help_short_flag(self):
+    def test_check_help_short_flag(self) -> None:
         result = runner.invoke(app, ['check', '-h'])
         assert result.exit_code == 0
         assert '--config' in result.output
@@ -61,13 +62,13 @@ class TestHelpDisplay:
 
 
 class TestVersionDisplay:
-    def test_version_flag(self):
+    def test_version_flag(self) -> None:
         result = runner.invoke(app, ['--version'])
         assert result.exit_code == 0
         assert 'cryoflow version' in result.output
         assert 'cryoflow-plugin-collections version' in result.output
 
-    def test_version_short_flag(self):
+    def test_version_short_flag(self) -> None:
         result = runner.invoke(app, ['-v'])
         assert result.exit_code == 0
         assert 'cryoflow version' in result.output
@@ -80,12 +81,12 @@ class TestVersionDisplay:
 
 
 class TestRunSuccess:
-    def test_run_with_valid_config_no_input(self, tmp_path):
+    def test_run_with_valid_config_no_input(self, tmp_path: Path) -> None:
         """Without input plugin mocked, command should report 'No input plugin configured'."""
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:
@@ -106,12 +107,12 @@ class TestRunSuccess:
         assert result.exit_code == 1
         assert '[ERROR] No input plugin configured' in result.output
 
-    def test_run_with_valid_config_no_output(self, tmp_path):
+    def test_run_with_valid_config_no_output(self, tmp_path: Path) -> None:
         """With input plugin but no output plugin, should report 'No output plugin configured'."""
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:
@@ -132,11 +133,11 @@ class TestRunSuccess:
         assert result.exit_code == 1
         assert '[ERROR] No output plugin configured' in result.output
 
-    def test_output_contains_input_plugins(self, tmp_path):
+    def test_output_contains_input_plugins(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm, _plugin_type):
+        def mock_get_plugins(_pm: Any, _plugin_type: Any) -> list[Any]:
             return []
 
         with (
@@ -148,11 +149,11 @@ class TestRunSuccess:
 
         assert 'input_plugins' in result.output
 
-    def test_output_contains_plugin_count(self, tmp_path):
+    def test_output_contains_plugin_count(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm, _plugin_type):
+        def mock_get_plugins(_pm: Any, _plugin_type: Any) -> list[Any]:
             return []
 
         with (
@@ -165,11 +166,11 @@ class TestRunSuccess:
         # VALID_TOML has 1 input + 1 transform + 0 output = 2 enabled plugins
         assert 'plugin(s)' in result.output
 
-    def test_minimal_config(self, tmp_path):
+    def test_minimal_config(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(MINIMAL_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:
@@ -197,18 +198,18 @@ class TestRunSuccess:
 
 
 class TestRunErrors:
-    def test_nonexistent_file(self, tmp_path):
+    def test_nonexistent_file(self, tmp_path: Path) -> None:
         result = runner.invoke(app, ['run', '--config', str(tmp_path / 'nonexistent.toml')])
         assert result.exit_code != 0
 
-    def test_config_load_error(self, tmp_path):
+    def test_config_load_error(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'bad.toml'
         config_file.write_text('invalid = [[[')
 
         result = runner.invoke(app, ['run', '--config', str(config_file)])
         assert result.exit_code == 1
 
-    def test_plugin_load_error(self, tmp_path):
+    def test_plugin_load_error(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
@@ -226,11 +227,11 @@ class TestRunErrors:
 
 
 class TestDefaultConfigPath:
-    def test_default_config_path_used(self, tmp_path):
+    def test_default_config_path_used(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(MINIMAL_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:
@@ -271,7 +272,7 @@ class TestDefaultConfigPath:
 
 
 class TestCheckSuccess:
-    def test_check_config_loaded_message(self, tmp_path):
+    def test_check_config_loaded_message(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
@@ -281,11 +282,11 @@ class TestCheckSuccess:
 
         assert '[CHECK] Config loaded:' in result.output
 
-    def test_check_plugin_count_message(self, tmp_path):
+    def test_check_plugin_count_message(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:
@@ -306,11 +307,11 @@ class TestCheckSuccess:
         # VALID_TOML has 1 input + 1 transform + 0 output = 2 enabled plugins
         assert '[CHECK] Loaded 2 plugin(s) successfully.' in result.output
 
-    def test_check_dry_run_success(self, tmp_path):
+    def test_check_dry_run_success(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:
@@ -333,11 +334,11 @@ class TestCheckSuccess:
         assert result.exit_code == 0
         assert '[SUCCESS] Validation completed successfully' in result.output
 
-    def test_check_outputs_schema(self, tmp_path):
+    def test_check_outputs_schema(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:
@@ -367,18 +368,18 @@ class TestCheckSuccess:
 
 
 class TestCheckErrors:
-    def test_nonexistent_file(self, tmp_path):
+    def test_nonexistent_file(self, tmp_path: Path) -> None:
         result = runner.invoke(app, ['check', '--config', str(tmp_path / 'nonexistent.toml')])
         assert result.exit_code != 0
 
-    def test_config_load_error(self, tmp_path):
+    def test_config_load_error(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'bad.toml'
         config_file.write_text('invalid = [[[')
 
         result = runner.invoke(app, ['check', '--config', str(config_file)])
         assert result.exit_code == 1
 
-    def test_plugin_load_error(self, tmp_path):
+    def test_plugin_load_error(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
@@ -389,11 +390,11 @@ class TestCheckErrors:
         assert result.exit_code == 1
         assert 'plugin failed to load' in result.output
 
-    def test_no_input_plugin(self, tmp_path):
+    def test_no_input_plugin(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:
@@ -414,11 +415,11 @@ class TestCheckErrors:
         assert result.exit_code == 1
         assert '[ERROR] No input plugin configured' in result.output
 
-    def test_no_output_plugin(self, tmp_path):
+    def test_no_output_plugin(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:
@@ -439,11 +440,11 @@ class TestCheckErrors:
         assert result.exit_code == 1
         assert '[ERROR] No output plugin configured' in result.output
 
-    def test_multiple_output_plugins_succeed(self, tmp_path):
+    def test_multiple_output_plugins_succeed(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:
@@ -466,11 +467,11 @@ class TestCheckErrors:
         assert result.exit_code == 0
         assert '[SUCCESS] Validation completed successfully' in result.output
 
-    def test_dry_run_failure(self, tmp_path):
+    def test_dry_run_failure(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:
@@ -500,11 +501,11 @@ class TestCheckErrors:
 
 
 class TestCheckDefaultConfigPath:
-    def test_default_config_path_used(self, tmp_path):
+    def test_default_config_path_used(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(MINIMAL_TOML)
 
-        def mock_get_plugins(_pm, plugin_type):
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
             from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
             if plugin_type is InputPlugin:

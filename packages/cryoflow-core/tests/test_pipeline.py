@@ -1,9 +1,10 @@
 """Tests for the data processing pipeline."""
 
 from pathlib import Path
+from typing import Any
 
 import polars as pl
-from returns.result import Failure, Result, Success
+from returns.result import Failure, Success
 
 from cryoflow_core.pipeline import (
     LabeledDataMap,
@@ -189,7 +190,7 @@ class TestExecuteOutput:
         executed = []
 
         class TrackingOutputPlugin(OutputPlugin):
-            def __init__(self, track_id: str, options, config_dir):
+            def __init__(self, track_id: str, options: dict[str, Any], config_dir: Path) -> None:
                 super().__init__(options, config_dir)
                 self._track_id = track_id
 
@@ -291,7 +292,7 @@ class TestRunPipeline:
             def execute(self) -> FailureResult[Exception]:
                 return FailureResult(FileNotFoundError('file not found'))
 
-            def dry_run(self):
+            def dry_run(self) -> FailureResult[Exception]:
                 return FailureResult(FileNotFoundError('file not found'))
 
         input_plugin = FailingInputPlugin({}, tmp_path)
@@ -416,7 +417,7 @@ class TestExecuteDryRunChain:
 
     def test_empty_plugin_chain(self) -> None:
         """Test dry-run with no transformation plugins."""
-        schema = {'a': pl.Int64, 'b': pl.String}
+        schema: dict[str, pl.DataType] = {'a': pl.Int64(), 'b': pl.String()}
         initial = Success(schema)
         result = execute_dry_run_chain(initial, [])
 
@@ -425,20 +426,20 @@ class TestExecuteDryRunChain:
 
     def test_single_plugin_success(self, tmp_path: Path) -> None:
         """Test dry-run with single successful plugin."""
-        from cryoflow_core.plugin import TransformPlugin
+        from cryoflow_core.plugin import FrameData, TransformPlugin
         from returns.result import Success as SuccessResult
 
         class DummyTransformPlugin(TransformPlugin):
             def name(self) -> str:
                 return 'dummy_transform'
 
-            def execute(self, df):
+            def execute(self, df: FrameData) -> SuccessResult[FrameData]:
                 return SuccessResult(df)
 
             def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
                 return SuccessResult(schema)
 
-        schema = {'a': pl.Int64}
+        schema: dict[str, pl.DataType] = {'a': pl.Int64()}
         initial = Success(schema)
         result = execute_dry_run_chain(initial, [DummyTransformPlugin({}, tmp_path)])
 
@@ -447,20 +448,20 @@ class TestExecuteDryRunChain:
 
     def test_plugin_validation_failure(self, tmp_path: Path) -> None:
         """Test dry-run where plugin validation fails."""
-        from cryoflow_core.plugin import TransformPlugin
+        from cryoflow_core.plugin import FrameData, TransformPlugin
         from returns.result import Failure as FailureResult
 
         class FailingValidationPlugin(TransformPlugin):
             def name(self) -> str:
                 return 'failing_validation'
 
-            def execute(self, df):
+            def execute(self, df: FrameData) -> FailureResult[Exception]:
                 return FailureResult(ValueError('execution error'))
 
             def dry_run(self, schema: dict[str, pl.DataType]) -> FailureResult[Exception]:
                 return FailureResult(ValueError("Column 'missing_col' not found"))
 
-        schema = {'a': pl.Int64}
+        schema: dict[str, pl.DataType] = {'a': pl.Int64()}
         initial = Success(schema)
         result = execute_dry_run_chain(initial, [FailingValidationPlugin({}, tmp_path)])
 
@@ -469,14 +470,14 @@ class TestExecuteDryRunChain:
 
     def test_propagate_initial_failure(self, tmp_path: Path) -> None:
         """Test that initial Failure is propagated."""
-        from cryoflow_core.plugin import TransformPlugin
+        from cryoflow_core.plugin import FrameData, TransformPlugin
         from returns.result import Success as SuccessResult
 
         class DummyPlugin(TransformPlugin):
             def name(self) -> str:
                 return 'dummy'
 
-            def execute(self, df):
+            def execute(self, df: FrameData) -> SuccessResult[FrameData]:
                 return SuccessResult(df)
 
             def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
@@ -495,20 +496,20 @@ class TestExecuteOutputDryRun:
 
     def test_output_dry_run_success(self, tmp_path: Path) -> None:
         """Test output dry-run with successful validation."""
-        from cryoflow_core.plugin import OutputPlugin
+        from cryoflow_core.plugin import FrameData, OutputPlugin
         from returns.result import Success as SuccessResult
 
         class DummyOutputPlugin(OutputPlugin):
             def name(self) -> str:
                 return 'dummy_output'
 
-            def execute(self, df):
+            def execute(self, df: FrameData) -> SuccessResult[None]:
                 return SuccessResult(None)
 
             def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
                 return SuccessResult(schema)
 
-        schema = {'a': pl.Int64, 'b': pl.String}
+        schema: dict[str, pl.DataType] = {'a': pl.Int64(), 'b': pl.String()}
         initial = Success(schema)
         result = execute_output_dry_run(initial, [DummyOutputPlugin({}, tmp_path)])
 
@@ -517,20 +518,20 @@ class TestExecuteOutputDryRun:
 
     def test_output_dry_run_failure(self, tmp_path: Path) -> None:
         """Test output dry-run with validation failure."""
-        from cryoflow_core.plugin import OutputPlugin
+        from cryoflow_core.plugin import FrameData, OutputPlugin
         from returns.result import Failure as FailureResult
 
         class FailingOutputPlugin(OutputPlugin):
             def name(self) -> str:
                 return 'failing_output'
 
-            def execute(self, df):
+            def execute(self, df: FrameData) -> FailureResult[Exception]:
                 return FailureResult(ValueError('execution error'))
 
             def dry_run(self, schema: dict[str, pl.DataType]) -> FailureResult[Exception]:
                 return FailureResult(ValueError('Invalid output schema'))
 
-        schema = {'a': pl.Int64}
+        schema: dict[str, pl.DataType] = {'a': pl.Int64()}
         initial = Success(schema)
         result = execute_output_dry_run(initial, [FailingOutputPlugin({}, tmp_path)])
 
@@ -539,14 +540,14 @@ class TestExecuteOutputDryRun:
 
     def test_output_dry_run_propagate_failure(self, tmp_path: Path) -> None:
         """Test that upstream failure is propagated."""
-        from cryoflow_core.plugin import OutputPlugin
+        from cryoflow_core.plugin import FrameData, OutputPlugin
         from returns.result import Success as SuccessResult
 
         class DummyOutputPlugin(OutputPlugin):
             def name(self) -> str:
                 return 'dummy_output'
 
-            def execute(self, df):
+            def execute(self, df: FrameData) -> SuccessResult[None]:
                 return SuccessResult(None)
 
             def dry_run(self, schema: dict[str, pl.DataType]) -> SuccessResult[dict[str, pl.DataType]]:
@@ -585,7 +586,7 @@ class TestRunDryRunPipeline:
             def name(self) -> str:
                 return 'failing_input'
 
-            def execute(self):
+            def execute(self) -> FailureResult[Exception]:
                 return FailureResult(FileNotFoundError('file not found'))
 
             def dry_run(self) -> FailureResult[Exception]:
@@ -601,14 +602,14 @@ class TestRunDryRunPipeline:
 
     def test_dry_run_pipeline_transform_validation_fails(self, tmp_path: Path) -> None:
         """Test dry-run when transform validation fails."""
-        from cryoflow_core.plugin import TransformPlugin
+        from cryoflow_core.plugin import FrameData, TransformPlugin
         from returns.result import Failure as FailureResult
 
         class FailingTransformPlugin(TransformPlugin):
             def name(self) -> str:
                 return 'failing_transform'
 
-            def execute(self, df):
+            def execute(self, df: FrameData) -> FailureResult[Exception]:
                 return FailureResult(ValueError('execution error'))
 
             def dry_run(self, schema: dict[str, pl.DataType]) -> FailureResult[Exception]:
@@ -625,14 +626,14 @@ class TestRunDryRunPipeline:
 
     def test_dry_run_pipeline_output_validation_fails(self, tmp_path: Path) -> None:
         """Test dry-run when output validation fails."""
-        from cryoflow_core.plugin import OutputPlugin
+        from cryoflow_core.plugin import FrameData, OutputPlugin
         from returns.result import Failure as FailureResult, Success as SuccessResult
 
         class FailingOutputPlugin(OutputPlugin):
             def name(self) -> str:
                 return 'failing_output'
 
-            def execute(self, df):
+            def execute(self, df: FrameData) -> SuccessResult[None]:
                 return SuccessResult(None)
 
             def dry_run(self, schema: dict[str, pl.DataType]) -> FailureResult[Exception]:
