@@ -55,7 +55,7 @@ class TestPluginConfig:
 class TestCryoflowConfig:
     def test_valid(self):
         cfg = CryoflowConfig(
-            input_path='/data/in.parquet',
+            input_path=Path('/data/in.parquet'),
             plugins=[PluginConfig(name='p', module='m')],
         )
         assert isinstance(cfg.input_path, Path)
