@@ -69,7 +69,7 @@ class TestParquetWriterPlugin:
 
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
-        assert "output_path" in str(result.failure())
+        assert 'output_path' in str(result.failure())
 
     def test_execute_overwrites_existing_file(self) -> None:
         """Test that existing file is overwritten."""

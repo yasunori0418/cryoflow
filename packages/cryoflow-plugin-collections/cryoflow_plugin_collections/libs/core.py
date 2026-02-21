@@ -24,8 +24,8 @@ from cryoflow_core.plugin import (
 )
 
 __all__ = [
-    "FrameData",  # Type alias: LazyFrame | DataFrame
-    "BasePlugin",  # Base class for all plugins
-    "TransformPlugin",  # Base class for transform plugins
-    "OutputPlugin",  # Base class for output plugins
+    'FrameData',  # Type alias: LazyFrame | DataFrame
+    'BasePlugin',  # Base class for all plugins
+    'TransformPlugin',  # Base class for transform plugins
+    'OutputPlugin',  # Base class for output plugins
 ]

@@ -118,15 +118,10 @@ _modules = [
 ]
 
 # Build __all__ from all module exports with deduplication
-_all_exports = [
-    name
-    for _mod in _modules
-    for name in dir(_mod)
-    if not name.startswith('_')
-]
+_all_exports = [name for _mod in _modules for name in dir(_mod) if not name.startswith('_')]
 
 # Remove duplicates while preserving order, then assign to __all__
-__all__ = list(dict.fromkeys(_all_exports)) # pyright: ignore[reportUnsupportedDunderAll]
+__all__ = list(dict.fromkeys(_all_exports))  # pyright: ignore[reportUnsupportedDunderAll]
 
 # Clean up temporary references
 del _modules, _all_exports

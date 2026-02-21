@@ -55,7 +55,7 @@ class TestColumnMultiplierPlugin:
 
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
-        assert "column_name" in str(result.failure())
+        assert 'column_name' in str(result.failure())
 
     def test_execute_missing_multiplier(self, tmp_path) -> None:
         """Test error when multiplier option is missing."""
@@ -66,15 +66,12 @@ class TestColumnMultiplierPlugin:
 
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
-        assert "multiplier" in str(result.failure())
+        assert 'multiplier' in str(result.failure())
 
     def test_execute_column_not_found(self, tmp_path) -> None:
         """Test error when specified column does not exist."""
         df = pl.LazyFrame({'value': [1, 2, 3]})
-        plugin = ColumnMultiplierPlugin(
-            {'column_name': 'unknown_col', 'multiplier': 2},
-            tmp_path
-        )
+        plugin = ColumnMultiplierPlugin({'column_name': 'unknown_col', 'multiplier': 2}, tmp_path)
 
         result = plugin.execute(df)
 
@@ -85,9 +82,9 @@ class TestColumnMultiplierPlugin:
         try:
             if hasattr(lazy_result, 'collect'):
                 lazy_result.collect()
-            assert False, "Expected ColumnNotFoundError"
+            assert False, 'Expected ColumnNotFoundError'
         except Exception as e:
-            assert "unknown_col" in str(e) or "not found" in str(e)
+            assert 'unknown_col' in str(e) or 'not found' in str(e)
 
     def test_dry_run_success(self, tmp_path) -> None:
         """Test successful dry_run validation."""
@@ -112,16 +109,13 @@ class TestColumnMultiplierPlugin:
     def test_dry_run_column_not_in_schema(self, tmp_path) -> None:
         """Test dry_run error when column not in schema."""
         schema = {'value': pl.Int64}
-        plugin = ColumnMultiplierPlugin(
-            {'column_name': 'unknown_col', 'multiplier': 2},
-            tmp_path
-        )
+        plugin = ColumnMultiplierPlugin({'column_name': 'unknown_col', 'multiplier': 2}, tmp_path)
 
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
-        assert "not found in schema" in str(result.failure())
+        assert 'not found in schema' in str(result.failure())
 
     def test_dry_run_non_numeric_column(self, tmp_path) -> None:
         """Test dry_run error when column is not numeric."""
@@ -132,7 +126,7 @@ class TestColumnMultiplierPlugin:
 
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
-        assert "numeric type" in str(result.failure())
+        assert 'numeric type' in str(result.failure())
 
     @pytest.mark.parametrize(
         'dtype',
