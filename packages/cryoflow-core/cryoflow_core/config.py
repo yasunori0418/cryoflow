@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 from xdg_base_dirs import xdg_config_home
 from returns.result import Result, Failure, safe
 
+from cryoflow_core.result import bind_safe
+
 
 class PluginConfig(BaseModel):
     """Configuration for a single plugin."""
@@ -27,6 +29,9 @@ class CryoflowConfig(BaseModel):
 
 class ConfigLoadError(Exception):
     """Raised when configuration loading fails."""
+
+
+_config_bind_safe = bind_safe(ConfigLoadError)
 
 
 def get_config_path(path: Optional[Path]) -> Path:
@@ -123,7 +128,7 @@ def load_config(config_path: Path) -> Result[CryoflowConfig, ConfigLoadError]:
     return (
         _read_file(config_path)
         .alt(lambda e: ConfigLoadError(f'Failed to read config file: {e}'))
-        .bind(lambda raw: _parse_toml(raw).alt(lambda e: ConfigLoadError(f'Failed to parse TOML config: {e}')))
-        .bind(lambda data: _validate_config(data).alt(lambda e: ConfigLoadError(f'Config validation failed: {e}')))
+        .bind(_config_bind_safe(_parse_toml, 'Failed to parse TOML config'))
+        .bind(_config_bind_safe(_validate_config, 'Config validation failed'))
         .map(lambda cfg: _apply_path_resolution(cfg, config_dir))
     )
