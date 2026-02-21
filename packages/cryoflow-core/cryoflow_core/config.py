@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 from xdg_base_dirs import xdg_config_home
-from returns.result import Result, Success, Failure
+from returns.result import Result, Failure, safe
 
 
 class PluginConfig(BaseModel):
@@ -63,6 +63,42 @@ def _resolve_path_relative_to_config(path: Path, config_dir: Path) -> Path:
     return path.resolve()
 
 
+@safe
+def _read_file(path: Path) -> bytes:
+    """Read file bytes from path.
+
+    Raises:
+        OSError: If the file cannot be read.
+    """
+    return path.read_bytes()
+
+
+@safe
+def _parse_toml(raw: bytes) -> dict:
+    """Parse TOML bytes to a dictionary.
+
+    Raises:
+        tomllib.TOMLDecodeError: If the TOML syntax is invalid.
+    """
+    return tomllib.loads(raw.decode())
+
+
+@safe
+def _validate_config(data: dict) -> CryoflowConfig:
+    """Validate raw config dict against CryoflowConfig schema.
+
+    Raises:
+        Exception: If Pydantic validation fails.
+    """
+    return CryoflowConfig(**data)
+
+
+def _apply_path_resolution(cfg: CryoflowConfig, config_dir: Path) -> CryoflowConfig:
+    """Apply input_path resolution relative to config directory."""
+    cfg.input_path = _resolve_path_relative_to_config(cfg.input_path, config_dir)
+    return cfg
+
+
 def load_config(config_path: Path) -> Result[CryoflowConfig, ConfigLoadError]:
     """Load and validate a TOML configuration file.
 
@@ -70,12 +106,10 @@ def load_config(config_path: Path) -> Result[CryoflowConfig, ConfigLoadError]:
         config_path: Path to the TOML configuration file.
 
     Returns:
-        Validated CryoflowConfig instance with input_path resolved relative
-        to the config file directory.
-
-    Raises:
-        ConfigLoadError: If the file is not found, TOML parsing fails,
-            or Pydantic validation fails.
+        Success containing a validated CryoflowConfig instance with
+        input_path resolved relative to the config file directory.
+        Failure containing ConfigLoadError if the file is not found,
+        cannot be read, contains invalid TOML, or fails Pydantic validation.
 
     Note:
         Relative paths in input_path are resolved relative to the directory
@@ -84,23 +118,12 @@ def load_config(config_path: Path) -> Result[CryoflowConfig, ConfigLoadError]:
     if not config_path.exists():
         return Failure(ConfigLoadError(f'Config file not found: {config_path}'))
 
-    try:
-        raw = config_path.read_bytes()
-    except OSError as e:
-        return Failure(ConfigLoadError(f'Failed to read config file: {e}'))
-
-    try:
-        data = tomllib.loads(raw.decode())
-    except tomllib.TOMLDecodeError as e:
-        return Failure(ConfigLoadError(f'Failed to parse TOML config: {e}'))
-
-    try:
-        cfg = CryoflowConfig(**data)
-    except Exception as e:
-        return Failure(ConfigLoadError(f'Config validation failed: {e}'))
-
-    # Resolve input_path relative to config directory
     config_dir = config_path.parent.resolve()
-    cfg.input_path = _resolve_path_relative_to_config(cfg.input_path, config_dir)
 
-    return Success(cfg)
+    return (
+        _read_file(config_path)
+        .alt(lambda e: ConfigLoadError(f'Failed to read config file: {e}'))
+        .bind(lambda raw: _parse_toml(raw).alt(lambda e: ConfigLoadError(f'Failed to parse TOML config: {e}')))
+        .bind(lambda data: _validate_config(data).alt(lambda e: ConfigLoadError(f'Config validation failed: {e}')))
+        .map(lambda cfg: _apply_path_resolution(cfg, config_dir))
+    )
