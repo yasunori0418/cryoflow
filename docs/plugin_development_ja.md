@@ -10,32 +10,36 @@
 - [3. 開発環境のセットアップ](#3-開発環境のセットアップ)
   - [3.1 必要なパッケージ](#31-必要なパッケージ)
   - [3.2 プロジェクト構造](#32-プロジェクト構造)
-- [4. TransformPlugin 実装ガイド](#4-transformplugin-実装ガイド)
-  - [4.1 基本実装](#41-基本実装)
-  - [4.2 実装例: カラム乗算プラグイン](#42-実装例-カラム乗算プラグイン)
-  - [4.3 LazyFrame の活用](#43-lazyframe-の活用)
-- [5. OutputPlugin 実装ガイド](#5-outputplugin-実装ガイド)
+- [4. InputPlugin 実装ガイド](#4-inputplugin-実装ガイド)
+  - [4.1 ラベル機能とマルチストリーム処理](#41-ラベル機能とマルチストリーム処理)
+  - [4.2 基本実装](#42-基本実装)
+  - [4.3 実装例: CSV ファイル読み込みプラグイン](#43-実装例-csv-ファイル読み込みプラグイン)
+- [5. TransformPlugin 実装ガイド](#5-transformplugin-実装ガイド)
   - [5.1 基本実装](#51-基本実装)
-  - [5.2 実装例: Parquet 出力プラグイン](#52-実装例-parquet-出力プラグイン)
-- [6. dry_run メソッド実装](#6-dry_run-メソッド実装)
-  - [6.1 目的と役割](#61-目的と役割)
-  - [6.2 実装パターン](#62-実装パターン)
-- [7. エラーハンドリング](#7-エラーハンドリング)
-  - [7.1 Result 型の使用](#71-result-型の使用)
-  - [7.2 エラーメッセージのベストプラクティス](#72-エラーメッセージのベストプラクティス)
-  - [7.3 よくあるエラーパターン](#73-よくあるエラーパターン)
-- [8. テストの書き方](#8-テストの書き方)
-  - [8.1 基本的なテスト構造](#81-基本的なテスト構造)
-  - [8.2 実装例](#82-実装例)
-- [9. プラグインの配布](#9-プラグインの配布)
-  - [9.1 パッケージ構造](#91-パッケージ構造)
-  - [9.2 依存関係の定義](#92-依存関係の定義)
-  - [9.3 配布方法](#93-配布方法)
-- [10. 設定ファイルでの使用](#10-設定ファイルでの使用)
-- [11. リファレンス](#11-リファレンス)
-  - [11.1 型定義](#111-型定義)
-  - [11.2 基底クラス API](#112-基底クラス-api)
-  - [11.3 Polars メソッド参照](#113-polars-メソッド参照)
+  - [5.2 実装例: カラム乗算プラグイン](#52-実装例-カラム乗算プラグイン)
+  - [5.3 LazyFrame の活用](#53-lazyframe-の活用)
+- [6. OutputPlugin 実装ガイド](#6-outputplugin-実装ガイド)
+  - [6.1 基本実装](#61-基本実装)
+  - [6.2 実装例: Parquet 出力プラグイン](#62-実装例-parquet-出力プラグイン)
+- [7. dry_run メソッド実装](#7-dry_run-メソッド実装)
+  - [7.1 目的と役割](#71-目的と役割)
+  - [7.2 実装パターン](#72-実装パターン)
+- [8. エラーハンドリング](#8-エラーハンドリング)
+  - [8.1 Result 型の使用](#81-result-型の使用)
+  - [8.2 エラーメッセージのベストプラクティス](#82-エラーメッセージのベストプラクティス)
+  - [8.3 よくあるエラーパターン](#83-よくあるエラーパターン)
+- [9. テストの書き方](#9-テストの書き方)
+  - [9.1 基本的なテスト構造](#91-基本的なテスト構造)
+  - [9.2 実装例](#92-実装例)
+- [10. プラグインの配布](#10-プラグインの配布)
+  - [10.1 パッケージ構造](#101-パッケージ構造)
+  - [10.2 依存関係の定義](#102-依存関係の定義)
+  - [10.3 配布方法](#103-配布方法)
+- [11. 設定ファイルでの使用](#11-設定ファイルでの使用)
+- [12. リファレンス](#12-リファレンス)
+  - [12.1 型定義](#121-型定義)
+  - [12.2 基底クラス API](#122-基底クラス-api)
+  - [12.3 Polars メソッド参照](#123-polars-メソッド参照)
 
 ---
 
@@ -52,7 +56,8 @@ Cryoflow は、Polars LazyFrame を中核としたプラグイン駆動型の列
 ### このガイドで学べること
 
 - プラグインの基本構造と種類
-- TransformPlugin と OutputPlugin の実装方法
+- InputPlugin、TransformPlugin、OutputPlugin の実装方法
+- ラベル機能を使ったマルチストリーム処理
 - エラーハンドリングとテストのベストプラクティス
 - プラグインのパッケージング・配布方法
 
@@ -62,7 +67,13 @@ Cryoflow は、Polars LazyFrame を中核としたプラグイン駆動型の列
 
 ### 2.1 プラグインの種類
 
-Cryoflow には2種類のプラグインがあります。
+Cryoflow には3種類のプラグインがあります。
+
+#### InputPlugin（入力プラグイン）
+
+- **役割**: データソースからデータを読み込み、FrameData を生成する
+- **用途**: ファイル読み込み（Parquet/IPC/CSV等）、データベースクエリなど
+- **特徴**: `execute` は引数なし。LazyFrame を返すことを推奨
 
 #### TransformPlugin（変換プラグイン）
 
@@ -75,6 +86,14 @@ Cryoflow には2種類のプラグインがあります。
 - **役割**: データフレームを受け取り、ファイルやデータベースなどに出力する
 - **用途**: Parquet/CSV/IPC 出力、データベース書き込み、API送信など
 - **特徴**: `collect()` や `sink_*()` を呼び出し、実際にデータ処理を実行する
+
+**プラグイン種別の比較:**
+
+| プラグイン種別 | execute の引数 | execute の戻り値 | 役割 |
+|---|---|---|---|
+| **InputPlugin** | なし | `Result[FrameData, Exception]` | データを生成・読み込む |
+| **TransformPlugin** | `df: FrameData` | `Result[FrameData, Exception]` | データを変換する |
+| **OutputPlugin** | `df: FrameData` | `Result[None, Exception]` | データを出力する |
 
 ### 2.2 基本アーキテクチャ
 
@@ -138,9 +157,11 @@ class BasePlugin(ABC):
    ↓
 4. [オプション] dry_run による事前検証 (cryoflow check)
    ↓
-5. execute メソッドの実行 (cryoflow run)
+5. InputPlugin の execute 実行（データ読み込み）
    ↓
-6. 結果の出力
+6. TransformPlugin の execute 実行（データ変換）
+   ↓
+7. OutputPlugin の execute 実行（データ出力）
 ```
 
 ---
@@ -176,6 +197,7 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 
 # 基底クラスと型定義のインポート
 from cryoflow_plugin_collections.libs.core import (
+    InputPlugin,
     TransformPlugin,
     OutputPlugin,
     FrameData,
@@ -193,6 +215,9 @@ my-cryoflow-plugins/
 ├── pyproject.toml
 ├── my_plugins/
 │   ├── __init__.py
+│   ├── input/
+│   │   ├── __init__.py
+│   │   └── my_input.py        # InputPlugin 実装
 │   ├── transform/
 │   │   ├── __init__.py
 │   │   └── my_transform.py    # TransformPlugin 実装
@@ -200,15 +225,161 @@ my-cryoflow-plugins/
 │       ├── __init__.py
 │       └── my_output.py        # OutputPlugin 実装
 └── tests/
+    ├── test_input.py
     ├── test_transform.py
     └── test_output.py
 ```
 
 ---
 
-## 4. TransformPlugin 実装ガイド
+## 4. InputPlugin 実装ガイド
 
-### 4.1 基本実装
+### 4.1 ラベル機能とマルチストリーム処理
+
+すべてのプラグインは `label` を持ちます（デフォルト値: `'default'`）。
+
+`label` は、**複数の入力データストリームを識別**するために使用されます。同じラベルを持つプラグイン同士が連携します:
+
+```
+InputPlugin(label='sales')  →  data_map['sales']  →  TransformPlugin(label='sales')
+InputPlugin(label='master') →  data_map['master'] →  TransformPlugin(label='master')
+```
+
+単一データストリームの場合は、`label` を省略するか `'default'` を指定します。
+
+### 4.2 基本実装
+
+```python
+from cryoflow_plugin_collections.libs.polars import pl
+from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
+from cryoflow_plugin_collections.libs.core import InputPlugin, FrameData
+
+
+class MyInputPlugin(InputPlugin):
+    def name(self) -> str:
+        """プラグイン識別名（ログやエラーメッセージに使用）"""
+        return 'my_input'
+
+    def execute(self) -> Result[FrameData, Exception]:
+        """データを読み込む（引数なし）"""
+        try:
+            # self.options からオプションを取得
+            input_path_opt = self.options.get('input_path')
+            if input_path_opt is None:
+                return Failure(ValueError("Option 'input_path' is required"))
+
+            # self.resolve_path() で相対パスを設定ファイル基準で解決
+            input_path = self.resolve_path(input_path_opt)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+
+            # LazyFrame を返す（collect() は呼ばない）
+            return Success(pl.scan_parquet(input_path))
+        except Exception as e:
+            return Failure(e)
+
+    def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
+        """実データを読み込まずにスキーマを返す"""
+        try:
+            input_path_opt = self.options.get('input_path')
+            if input_path_opt is None:
+                return Failure(ValueError("Option 'input_path' is required"))
+
+            input_path = self.resolve_path(input_path_opt)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+
+            # スキーマのみ取得（実データは読み込まない）
+            return Success(dict(pl.scan_parquet(input_path).collect_schema()))
+        except Exception as e:
+            return Failure(e)
+```
+
+### 4.3 実装例: CSV ファイル読み込みプラグイン
+
+CSV ファイルを読み込むプラグインの実装例です。
+
+```python
+"""CSV ファイル入力プラグイン"""
+
+from cryoflow_plugin_collections.libs.polars import pl
+from cryoflow_plugin_collections.libs.returns import Failure, Result, Success
+from cryoflow_plugin_collections.libs.core import FrameData, InputPlugin
+
+
+class CsvScanPlugin(InputPlugin):
+    """CSV ファイルからデータを読み込む
+
+    Options:
+        input_path (str): 入力 CSV ファイルのパス
+        separator (str): 区切り文字（デフォルト: ','）
+        has_header (bool): ヘッダー行の有無（デフォルト: True）
+    """
+
+    def name(self) -> str:
+        return 'csv_scan'
+
+    def execute(self) -> Result[FrameData, Exception]:
+        """CSV ファイルを読み込む
+
+        Returns:
+            LazyFrame を含む Result、または失敗時の Exception
+        """
+        try:
+            input_path_opt = self.options.get('input_path')
+            if input_path_opt is None:
+                return Failure(ValueError("Option 'input_path' is required"))
+
+            input_path = self.resolve_path(input_path_opt)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+
+            separator = self.options.get('separator', ',')
+            has_header = self.options.get('has_header', True)
+
+            return Success(
+                pl.scan_csv(
+                    input_path,
+                    separator=separator,
+                    has_header=has_header,
+                )
+            )
+        except Exception as e:
+            return Failure(e)
+
+    def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
+        """スキーマを取得する
+
+        Returns:
+            スキーマ dict を含む Result、または失敗時の Exception
+        """
+        try:
+            input_path_opt = self.options.get('input_path')
+            if input_path_opt is None:
+                return Failure(ValueError("Option 'input_path' is required"))
+
+            input_path = self.resolve_path(input_path_opt)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+
+            separator = self.options.get('separator', ',')
+            has_header = self.options.get('has_header', True)
+
+            schema = pl.scan_csv(
+                input_path,
+                separator=separator,
+                has_header=has_header,
+            ).collect_schema()
+            return Success(dict(schema))
+        except Exception as e:
+            return Failure(e)
+```
+
+---
+
+## 5. TransformPlugin 実装ガイド
+
+### 5.1 基本実装
 
 TransformPlugin は以下の3つのメソッドを実装する必要があります。
 
@@ -261,7 +432,7 @@ class MyTransformPlugin(TransformPlugin):
             return Failure(e)
 ```
 
-### 4.2 実装例: カラム乗算プラグイン
+### 5.2 実装例: カラム乗算プラグイン
 
 実際の実装例として、数値カラムに係数を乗算するプラグインを見てみましょう。
 
@@ -357,7 +528,7 @@ class ColumnMultiplierPlugin(TransformPlugin):
             return Failure(e)
 ```
 
-### 4.3 LazyFrame の活用
+### 5.3 LazyFrame の活用
 
 TransformPlugin では、データの実体は触らず、計算グラフのみを構築します。
 
@@ -383,9 +554,9 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
 
 ---
 
-## 5. OutputPlugin 実装ガイド
+## 6. OutputPlugin 実装ガイド
 
-### 5.1 基本実装
+### 6.1 基本実装
 
 OutputPlugin は TransformPlugin と似ていますが、戻り値の型が異なります。
 
@@ -439,7 +610,7 @@ class MyOutputPlugin(OutputPlugin):
             return Failure(e)
 ```
 
-### 5.2 実装例: Parquet 出力プラグイン
+### 6.2 実装例: Parquet 出力プラグイン
 
 ```python
 """Parquet ファイル出力プラグイン"""
@@ -526,9 +697,9 @@ class ParquetWriterPlugin(OutputPlugin):
 
 ---
 
-## 6. dry_run メソッド実装
+## 7. dry_run メソッド実装
 
-### 6.1 目的と役割
+### 7.1 目的と役割
 
 `dry_run` メソッドは、実際のデータを処理せずに以下を検証します。
 
@@ -539,7 +710,7 @@ class ParquetWriterPlugin(OutputPlugin):
 
 これにより、本実行前に問題を検出できます（`cryoflow check` コマンド）。
 
-### 6.2 実装パターン
+### 7.2 実装パターン
 
 #### パターン1: スキーマを変更しないプラグイン
 
@@ -620,9 +791,9 @@ def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Ex
 
 ---
 
-## 7. エラーハンドリング
+## 8. エラーハンドリング
 
-### 7.1 Result 型の使用
+### 8.1 Result 型の使用
 
 Cryoflow では `returns` ライブラリの `Result` 型を使用して、エラーハンドリングを統一しています。
 
@@ -641,7 +812,7 @@ return Failure(ValueError("Invalid configuration"))
 - エラーハンドリングが型安全
 - パイプライン全体で一貫したエラー処理
 
-### 7.2 エラーメッセージのベストプラクティス
+### 8.2 エラーメッセージのベストプラクティス
 
 #### ✅ 良いエラーメッセージ
 
@@ -678,7 +849,7 @@ return Failure(ValueError("Invalid input"))
 return Failure(ValueError("Schema validation failed at line 42"))
 ```
 
-### 7.3 よくあるエラーパターン
+### 8.3 よくあるエラーパターン
 
 ```python
 def execute(self, df: FrameData) -> Result[FrameData, Exception]:
@@ -721,9 +892,9 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
 
 ---
 
-## 8. テストの書き方
+## 9. テストの書き方
 
-### 8.1 基本的なテスト構造
+### 9.1 基本的なテスト構造
 
 pytest を使用してプラグインをテストします。
 
@@ -809,7 +980,7 @@ class TestMyTransformPlugin:
         assert "numeric" in str(result.failure()).lower()
 ```
 
-### 8.2 実装例
+### 9.2 実装例
 
 ```python
 """ColumnMultiplierPlugin のテスト"""
@@ -891,9 +1062,9 @@ class TestColumnMultiplierPlugin:
 
 ---
 
-## 9. プラグインの配布
+## 10. プラグインの配布
 
-### 9.1 パッケージ構造
+### 10.1 パッケージ構造
 
 ```
 my-cryoflow-plugins/
@@ -902,6 +1073,9 @@ my-cryoflow-plugins/
 ├── pyproject.toml
 ├── my_cryoflow_plugins/
 │   ├── __init__.py
+│   ├── input/
+│   │   ├── __init__.py
+│   │   └── my_input.py
 │   ├── transform/
 │   │   ├── __init__.py
 │   │   └── my_transform.py
@@ -909,11 +1083,12 @@ my-cryoflow-plugins/
 │       ├── __init__.py
 │       └── my_output.py
 └── tests/
+    ├── test_input.py
     ├── test_transform.py
     └── test_output.py
 ```
 
-### 9.2 依存関係の定義
+### 10.2 依存関係の定義
 
 `pyproject.toml` の設定例：
 
@@ -943,7 +1118,7 @@ build-backend = "hatchling.build"
 testpaths = ["tests"]
 ```
 
-### 9.3 配布方法
+### 10.3 配布方法
 
 #### 方法1: PyPI に公開
 
@@ -976,13 +1151,19 @@ pip install -e .
 
 ---
 
-## 10. 設定ファイルでの使用
+## 11. 設定ファイルでの使用
 
 プラグインを実装したら、`config.toml` で使用できます。
 
 ### 基本的な使用例
 
 ```toml
+# InputPlugin の設定
+[[input_plugins]]
+name = "parquet-input"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+[input_plugins.options]
 input_path = "data/input.parquet"
 
 # TransformPlugin の設定
@@ -1008,6 +1189,12 @@ output_path = "data/output.parquet"
 TransformPlugin は定義順にチェーンされ、OutputPlugin は変換済みの同一データを受け取る（fan-out）。
 
 ```toml
+# InputPlugin の設定
+[[input_plugins]]
+name = "sales-input"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+[input_plugins.options]
 input_path = "data/sales.parquet"
 
 # フィルタリング
@@ -1054,6 +1241,58 @@ enabled = true
 output_path = "data/processed.ipc"
 ```
 
+### マルチストリーム設定例
+
+`label` を使用して、複数の入力データストリームを扱う設定例です。
+
+```toml
+# 売上データを読み込む
+[[input_plugins]]
+name = "sales-input"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+label = "sales"
+[input_plugins.options]
+input_path = "data/sales.parquet"
+
+# マスターデータを読み込む
+[[input_plugins]]
+name = "master-input"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+label = "master"
+[input_plugins.options]
+input_path = "data/master.parquet"
+
+# 売上データに対する変換（label = "sales"）
+[[transform_plugins]]
+name = "sales-filter"
+module = "my_plugins.transform.filter"
+enabled = true
+label = "sales"
+[transform_plugins.options]
+column_name = "amount"
+threshold = 1000
+
+# 売上データの出力
+[[output_plugins]]
+name = "sales-output"
+module = "cryoflow_plugin_collections.output.parquet_write"
+enabled = true
+label = "sales"
+[output_plugins.options]
+output_path = "data/filtered_sales.parquet"
+```
+
+**ラベルの対応関係**:
+
+```
+InputPlugin(label='sales')  →  TransformPlugin(label='sales')  →  OutputPlugin(label='sales')
+InputPlugin(label='master') →  (変換なし)                      →  (出力なし)
+```
+
+ラベルに対応する TransformPlugin や OutputPlugin が存在しない場合、そのデータストリームはそのまま無視されます。
+
 ### ファイルシステムパスの使用
 
 モジュールをPythonパッケージとしてインストールせず、直接ファイルパスで指定することも可能です。
@@ -1074,9 +1313,9 @@ enabled = true
 
 ---
 
-## 11. リファレンス
+## 12. リファレンス
 
-### 11.1 型定義
+### 12.1 型定義
 
 ```python
 # cryoflow_plugin_collections.libs から re-export されている型
@@ -1096,7 +1335,7 @@ Schema = dict[str, DataType]
 PluginOptions = dict[str, Any]
 ```
 
-### 11.2 基底クラス API
+### 12.2 基底クラス API
 
 #### BasePlugin
 
@@ -1161,6 +1400,41 @@ class BasePlugin(ABC):
         """
 ```
 
+#### InputPlugin
+
+```python
+from cryoflow_plugin_collections.libs.core import InputPlugin, FrameData
+from cryoflow_plugin_collections.libs.returns import Result
+import polars as pl
+
+class InputPlugin(BasePlugin):
+    @abstractmethod
+    def execute(self) -> Result[FrameData, Exception]:
+        """データを読み込み FrameData として返す。
+
+        引数なし。データソースから直接データを生成する。
+
+        Returns:
+            Success: 読み込んだデータフレーム（LazyFrame 推奨）
+            Failure: 読み込みエラー
+
+        Note:
+            - 可能な限り LazyFrame として処理すること
+            - collect() を呼ばないこと（OutputPlugin で呼ばれる）
+        """
+
+    @abstractmethod
+    def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
+        """実データを読み込まずにスキーマを返す。
+
+        引数なし。ファイルのメタデータのみを取得する。
+
+        Returns:
+            Success: スキーマ（カラム名 → DataType のマッピング）
+            Failure: スキーマ取得エラー
+        """
+```
+
 #### TransformPlugin
 
 ```python
@@ -1209,7 +1483,16 @@ class OutputPlugin(BasePlugin):
         """
 ```
 
-### 11.3 Polars メソッド参照
+### 組み込みプラグイン
+
+`cryoflow-plugin-collections` パッケージに同梱されている組み込みプラグイン：
+
+| プラグイン | モジュール |
+|---|---|
+| IPC (Arrow) 入力 | `cryoflow_plugin_collections.input.ipc_scan` |
+| Parquet 入力 | `cryoflow_plugin_collections.input.parquet_scan` |
+
+### 12.3 Polars メソッド参照
 
 プラグイン開発でよく使用する Polars メソッド：
 
@@ -1294,7 +1577,8 @@ pl.col("old_name").alias("new_name")
 
 ### 学んだこと
 
-- ✅ プラグインの基本構造と種類
+- ✅ プラグインの基本構造と種類（InputPlugin / TransformPlugin / OutputPlugin）
+- ✅ InputPlugin の実装方法とラベル機能によるマルチストリーム処理
 - ✅ TransformPlugin と OutputPlugin の実装方法
 - ✅ dry_run メソッドによる事前検証
 - ✅ Result 型によるエラーハンドリング
