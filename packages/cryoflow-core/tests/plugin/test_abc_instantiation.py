@@ -1,5 +1,7 @@
 """Tests for ABC instantiation in plugin module."""
 
+from pathlib import Path
+
 import pytest
 
 from cryoflow_core.plugin import BasePlugin, InputPlugin, OutputPlugin, TransformPlugin
@@ -22,7 +24,7 @@ class TestABCInstantiation:
         with pytest.raises(TypeError):
             OutputPlugin({})  # type: ignore[abstract]
 
-    def test_partial_implementation_raises(self):
+    def test_partial_implementation_raises(self, tmp_path: Path):
         """Only implementing name() should still raise TypeError."""
 
         class PartialPlugin(TransformPlugin):
@@ -30,4 +32,4 @@ class TestABCInstantiation:
                 return 'partial'
 
         with pytest.raises(TypeError):
-            PartialPlugin({})
+            PartialPlugin({}, tmp_path)  # type: ignore[abstract]

@@ -1,5 +1,7 @@
 """Tests for plugin inheritance relationships."""
 
+from pathlib import Path
+
 from cryoflow_core.plugin import BasePlugin, InputPlugin, OutputPlugin, TransformPlugin
 
 from ..conftest import DummyInputPlugin, DummyOutputPlugin, DummyTransformPlugin
@@ -24,14 +26,14 @@ class TestInheritance:
     def test_dummy_output_is_output(self):
         assert issubclass(DummyOutputPlugin, OutputPlugin)
 
-    def test_isinstance_check_input(self, tmp_path):
+    def test_isinstance_check_input(self, tmp_path: Path):
         p = DummyInputPlugin({}, tmp_path)
         assert isinstance(p, BasePlugin)
         assert isinstance(p, InputPlugin)
         assert not isinstance(p, TransformPlugin)
         assert not isinstance(p, OutputPlugin)
 
-    def test_isinstance_check_transform(self, tmp_path):
+    def test_isinstance_check_transform(self, tmp_path: Path):
         p = DummyTransformPlugin({}, tmp_path)
         assert isinstance(p, BasePlugin)
         assert isinstance(p, TransformPlugin)

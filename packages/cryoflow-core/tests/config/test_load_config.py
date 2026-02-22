@@ -1,5 +1,7 @@
 """Tests for load_config function."""
 
+from pathlib import Path
+
 from returns.result import Failure, Success
 
 from cryoflow_core.config import load_config
@@ -25,7 +27,7 @@ class TestLoadConfig:
         assert cfg.transform_plugins == []
         assert cfg.output_plugins == []
 
-    def test_file_not_found(self, tmp_path):
+    def test_file_not_found(self, tmp_path: Path):
         result = load_config(tmp_path / 'nonexistent.toml')
         assert isinstance(result, Failure)
         assert 'Config file not found' in str(result.failure())
@@ -40,7 +42,7 @@ class TestLoadConfig:
         assert isinstance(result, Failure)
         assert 'Config validation failed' in str(result.failure())
 
-    def test_read_error(self, tmp_path):
+    def test_read_error(self, tmp_path: Path):
         config_file = tmp_path / 'unreadable.toml'
         config_file.write_text('dummy')
         config_file.chmod(0o000)
@@ -65,7 +67,7 @@ class TestLoadConfig:
         assert cfg.output_plugins[0].name == 'plugin_c'
         assert cfg.output_plugins[0].options == {'key': 'value'}
 
-    def test_label_default_value(self, tmp_path):
+    def test_label_default_value(self, tmp_path: Path):
         """Test that label defaults to 'default' when not specified."""
         config_file = tmp_path / 'config.toml'
         config_file.write_text("""\
@@ -81,7 +83,7 @@ module = "my_mod"
         cfg = result.unwrap()
         assert cfg.input_plugins[0].label == 'default'
 
-    def test_label_custom_value(self, tmp_path):
+    def test_label_custom_value(self, tmp_path: Path):
         """Test that label is correctly parsed from TOML."""
         config_file = tmp_path / 'config.toml'
         config_file.write_text("""\

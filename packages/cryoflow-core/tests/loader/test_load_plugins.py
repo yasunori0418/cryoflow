@@ -1,5 +1,7 @@
 """Tests for load_plugins function."""
 
+from pathlib import Path
+
 import pluggy
 import pytest
 
@@ -22,14 +24,14 @@ class TestLoadPlugins:
             output_plugins=output_plugins or [],
         )
 
-    def test_empty_plugins(self, tmp_path):
+    def test_empty_plugins(self, tmp_path: Path):
         cfg = self._make_config()
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
         pm = load_plugins(cfg, config_file)
         assert isinstance(pm, pluggy.PluginManager)
 
-    def test_disabled_plugin_skipped(self, tmp_path, plugin_py_file):
+    def test_disabled_plugin_skipped(self, tmp_path: Path, plugin_py_file: Path):
         cfg = self._make_config(
             transform_plugins=[
                 PluginConfig(
@@ -45,7 +47,7 @@ class TestLoadPlugins:
         transforms = get_plugins(pm, TransformPlugin)
         assert len(transforms) == 0
 
-    def test_input_plugin_loaded(self, tmp_path, input_plugin_py_file):
+    def test_input_plugin_loaded(self, tmp_path, input_plugin_py_file: Path):
         cfg = self._make_config(
             input_plugins=[
                 PluginConfig(
@@ -62,7 +64,7 @@ class TestLoadPlugins:
         assert len(inputs) == 1
         assert inputs[0].name() == 'my_input'
 
-    def test_input_plugin_label_propagated(self, tmp_path, input_plugin_py_file):
+    def test_input_plugin_label_propagated(self, tmp_path: Path, input_plugin_py_file: Path):
         """Test that label from PluginConfig is passed to the plugin instance."""
         cfg = self._make_config(
             input_plugins=[
@@ -81,7 +83,7 @@ class TestLoadPlugins:
         assert len(inputs) == 1
         assert inputs[0].label == 'sales'
 
-    def test_transform_plugin_loaded(self, tmp_path, plugin_py_file):
+    def test_transform_plugin_loaded(self, tmp_path: Path, plugin_py_file: Path):
         cfg = self._make_config(
             transform_plugins=[
                 PluginConfig(
@@ -98,7 +100,7 @@ class TestLoadPlugins:
         assert len(transforms) == 1
         assert transforms[0].name() == 'my_transform'
 
-    def test_output_plugin_loaded(self, tmp_path, output_plugin_py_file):
+    def test_output_plugin_loaded(self, tmp_path: Path, output_plugin_py_file: Path):
         cfg = self._make_config(
             output_plugins=[
                 PluginConfig(
@@ -115,7 +117,7 @@ class TestLoadPlugins:
         assert len(outputs) == 1
         assert outputs[0].name() == 'my_output'
 
-    def test_existing_pm_accepted(self, tmp_path):
+    def test_existing_pm_accepted(self, tmp_path: Path):
         cfg = self._make_config()
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
@@ -124,7 +126,7 @@ class TestLoadPlugins:
         pm = load_plugins(cfg, config_file, pm=existing_pm)
         assert pm is existing_pm
 
-    def test_plugin_load_error_propagates(self, tmp_path):
+    def test_plugin_load_error_propagates(self, tmp_path: Path):
         cfg = self._make_config(
             transform_plugins=[
                 PluginConfig(
@@ -139,7 +141,7 @@ class TestLoadPlugins:
         with pytest.raises(PluginLoadError):
             load_plugins(cfg, config_file)
 
-    def test_dotpath_plugin_loaded(self, tmp_path):
+    def test_dotpath_plugin_loaded(self, tmp_path: Path):
         """Test the dotpath branch of _load_single_plugin (loader.py:158)."""
         cfg = self._make_config(
             transform_plugins=[
@@ -157,7 +159,7 @@ class TestLoadPlugins:
         assert len(transforms) == 1
         assert transforms[0].name() == 'dotpath_transform'
 
-    def test_both_plugin_types(self, tmp_path, plugin_py_file, output_plugin_py_file):
+    def test_both_plugin_types(self, tmp_path: Path, plugin_py_file: Path, output_plugin_py_file: Path):
         cfg = self._make_config(
             transform_plugins=[
                 PluginConfig(

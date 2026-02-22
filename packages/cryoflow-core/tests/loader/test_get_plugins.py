@@ -1,5 +1,7 @@
 """Tests for get_plugins function."""
 
+from pathlib import Path
+
 import pluggy
 import pytest
 
@@ -32,7 +34,7 @@ class TestGetPlugins:
         pm.register(relay)
         assert get_plugins(pm, OutputPlugin) == []
 
-    def test_get_plugins_with_input(self, tmp_path):
+    def test_get_plugins_with_input(self, tmp_path: Path):
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
         i = DummyInputPlugin({}, tmp_path)
@@ -42,7 +44,7 @@ class TestGetPlugins:
         assert len(result) == 1
         assert result[0] is i
 
-    def test_get_plugins_with_transform(self, tmp_path):
+    def test_get_plugins_with_transform(self, tmp_path: Path):
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
         t = DummyTransformPlugin({}, tmp_path)
@@ -52,7 +54,7 @@ class TestGetPlugins:
         assert len(result) == 1
         assert result[0] is t
 
-    def test_get_plugins_with_output(self, tmp_path):
+    def test_get_plugins_with_output(self, tmp_path: Path):
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
         o = DummyOutputPlugin({}, tmp_path)

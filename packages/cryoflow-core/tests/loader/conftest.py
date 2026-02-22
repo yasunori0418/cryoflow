@@ -1,6 +1,7 @@
 """Fixtures and constants for loader tests."""
 
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -77,7 +78,7 @@ x = 42
 
 
 @pytest.fixture()
-def input_plugin_py_file(tmp_path):
+def input_plugin_py_file(tmp_path: Path):
     """Create a .py file with an InputPlugin implementation."""
     p = tmp_path / 'my_input_plugin.py'
     p.write_text(INPUT_PLUGIN_SOURCE)
@@ -85,7 +86,7 @@ def input_plugin_py_file(tmp_path):
 
 
 @pytest.fixture()
-def plugin_py_file(tmp_path):
+def plugin_py_file(tmp_path: Path):
     """Create a .py file with a TransformPlugin implementation."""
     p = tmp_path / 'my_plugin.py'
     p.write_text(TRANSFORM_PLUGIN_SOURCE)
@@ -93,7 +94,7 @@ def plugin_py_file(tmp_path):
 
 
 @pytest.fixture()
-def output_plugin_py_file(tmp_path):
+def output_plugin_py_file(tmp_path: Path):
     """Create a .py file with an OutputPlugin implementation."""
     p = tmp_path / 'my_output_plugin.py'
     p.write_text(OUTPUT_PLUGIN_SOURCE)
@@ -101,7 +102,7 @@ def output_plugin_py_file(tmp_path):
 
 
 @pytest.fixture()
-def both_plugins_py_file(tmp_path):
+def both_plugins_py_file(tmp_path: Path):
     """Create a .py file with both Transform and Output plugins."""
     p = tmp_path / 'both_plugins.py'
     p.write_text(BOTH_PLUGINS_SOURCE)

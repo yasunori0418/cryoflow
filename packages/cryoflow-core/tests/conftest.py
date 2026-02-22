@@ -154,7 +154,7 @@ key = "value"
 
 
 @pytest.fixture()
-def valid_config_file(tmp_path):
+def valid_config_file(tmp_path: Path) -> Path:
     """Create a temporary valid TOML config file."""
     p = tmp_path / 'config.toml'
     p.write_text(VALID_TOML)
@@ -162,7 +162,7 @@ def valid_config_file(tmp_path):
 
 
 @pytest.fixture()
-def minimal_config_file(tmp_path):
+def minimal_config_file(tmp_path: Path) -> Path:
     """Create a temporary minimal TOML config file."""
     p = tmp_path / 'config.toml'
     p.write_text(MINIMAL_TOML)
@@ -170,7 +170,7 @@ def minimal_config_file(tmp_path):
 
 
 @pytest.fixture()
-def invalid_syntax_config_file(tmp_path):
+def invalid_syntax_config_file(tmp_path: Path) -> Path:
     """Create a temporary TOML config file with syntax errors."""
     p = tmp_path / 'config.toml'
     p.write_text(INVALID_TOML_SYNTAX)
@@ -178,7 +178,7 @@ def invalid_syntax_config_file(tmp_path):
 
 
 @pytest.fixture()
-def missing_fields_config_file(tmp_path):
+def missing_fields_config_file(tmp_path: Path) -> Path:
     """Create a temporary TOML config file with missing required fields."""
     p = tmp_path / 'config.toml'
     p.write_text(MISSING_FIELDS_TOML)
@@ -186,7 +186,7 @@ def missing_fields_config_file(tmp_path):
 
 
 @pytest.fixture()
-def multi_plugin_config_file(tmp_path):
+def multi_plugin_config_file(tmp_path: Path) -> Path:
     """Create a temporary TOML config file with multiple plugins."""
     p = tmp_path / 'config.toml'
     p.write_text(MULTI_PLUGIN_TOML)
@@ -199,12 +199,12 @@ def multi_plugin_config_file(tmp_path):
 
 
 @pytest.fixture()
-def sample_lazyframe():
+def sample_lazyframe() -> pl.LazyFrame:
     """Return a sample Polars LazyFrame."""
     return pl.LazyFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']})
 
 
 @pytest.fixture()
-def sample_dataframe():
+def sample_dataframe() -> pl.DataFrame:
     """Return a sample Polars DataFrame."""
     return pl.DataFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']})

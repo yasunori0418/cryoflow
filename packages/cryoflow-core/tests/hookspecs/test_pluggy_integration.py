@@ -1,5 +1,7 @@
 """Tests for pluggy integration with hookspecs."""
 
+from pathlib import Path
+
 import pluggy
 
 from cryoflow_core.hookspecs import CryoflowSpecs, hookimpl
@@ -9,7 +11,7 @@ from ..conftest import DummyInputPlugin, DummyOutputPlugin, DummyTransformPlugin
 
 
 class TestPluggyIntegration:
-    def test_input_hookspec_registration_and_call(self, tmp_path):
+    def test_input_hookspec_registration_and_call(self, tmp_path: Path):
         """Register hookspec, add hookimpl for input, call hook, verify results."""
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
@@ -27,7 +29,7 @@ class TestPluggyIntegration:
         assert len(flat) == 1
         assert flat[0] is inp
 
-    def test_hookspec_registration_and_call(self, tmp_path):
+    def test_hookspec_registration_and_call(self, tmp_path: Path):
         """Register hookspec, add hookimpl, call hook, verify results."""
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
@@ -46,7 +48,7 @@ class TestPluggyIntegration:
         assert len(flat) == 1
         assert flat[0] is transform
 
-    def test_output_hookimpl(self, tmp_path):
+    def test_output_hookimpl(self, tmp_path: Path):
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
 
@@ -63,7 +65,7 @@ class TestPluggyIntegration:
         assert len(flat) == 1
         assert flat[0] is output
 
-    def test_multiple_hookimpls(self, tmp_path):
+    def test_multiple_hookimpls(self, tmp_path: Path):
         """Multiple hookimpls should all contribute to the result."""
         pm = pluggy.PluginManager('cryoflow')
         pm.add_hookspecs(CryoflowSpecs)
