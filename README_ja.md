@@ -383,6 +383,31 @@ examples ディレクトリに含まれるもの：
 
 このプロジェクトは MIT ライセンスの下でライセンスされています。詳細については [LICENSE](LICENSE) ファイルを参照してください。
 
+## 謝辞 (Credits)
+
+cryoflow はプラグイン開発を簡便にするために、以下のライブラリの API を re-export しています。これらのプロジェクトの作者・コントリビュータの皆様に感謝申し上げます。
+
+### [Polars](https://github.com/pola-rs/polars)
+
+`cryoflow_plugin_collections.libs.polars` は、プラグイン開発者の依存関係管理の負荷を軽減するために、Polars のパブリック API をすべて re-export しています。
+
+Polars は [MIT ライセンス](https://github.com/pola-rs/polars/blob/main/LICENSE) のもとで公開されています。
+
+```
+Copyright (c) 2025 Ritchie Vink
+Copyright (c) 2024 (Some portions) NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+```
+
+### [returns](https://github.com/dry-python/returns)
+
+`cryoflow_plugin_collections.libs.returns` は、プラグイン開発者が鉄道指向プログラミングを行えるよう、returns ライブラリから `Result`、`Success`、`Failure`、`ResultE`、`safe`、`Maybe`、`Some`、`Nothing`、`maybe` を re-export しています。
+
+returns は [BSD 2-Clause ライセンス](https://github.com/dry-python/returns/blob/master/LICENSE) のもとで公開されています。
+
+```
+Copyright 2016-2021 dry-python organization
+```
+
 ## 貢献
 
 貢献をお待ちしています。プルリクエストを提出していただければ幸いです。

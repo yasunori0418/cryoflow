@@ -384,6 +384,31 @@ English documentation is available as `docs/{filename}.md`.
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) file for details.
 
+## Credits
+
+cryoflow re-exports APIs from the following libraries to simplify plugin development. We gratefully acknowledge the authors and contributors of these projects.
+
+### [Polars](https://github.com/pola-rs/polars)
+
+`cryoflow_plugin_collections.libs.polars` re-exports the complete Polars public API to reduce dependency management overhead for plugin developers.
+
+Polars is licensed under the [MIT License](https://github.com/pola-rs/polars/blob/main/LICENSE).
+
+```
+Copyright (c) 2025 Ritchie Vink
+Copyright (c) 2024 (Some portions) NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+```
+
+### [returns](https://github.com/dry-python/returns)
+
+`cryoflow_plugin_collections.libs.returns` re-exports `Result`, `Success`, `Failure`, `ResultE`, `safe`, `Maybe`, `Some`, `Nothing`, and `maybe` from the returns library to provide railway-oriented programming utilities for plugin developers.
+
+returns is licensed under the [BSD 2-Clause License](https://github.com/dry-python/returns/blob/master/LICENSE).
+
+```
+Copyright 2016-2021 dry-python organization
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
