@@ -51,7 +51,6 @@ Config Load -> Plugin Discovery -> Pipeline Construction -> Execution / Output
 ## ドキュメント
 
 - `docs/spec.md`: 仕様書（インターフェース設計、データモデル、Hook仕様を含む）
-- `docs/implements_step_plan.md`: 実装計画
 
 日本語版のドキュメント: `{filename}_ja.md`
 英語版のドキュメント: `{filename}.md`
