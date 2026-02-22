@@ -1,0 +1,138 @@
+"""Tests for CsvScanPlugin."""
+
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+import polars as pl
+from returns.result import Failure, Success
+
+from cryoflow_plugin_collections.input.csv_scan import CsvScanPlugin
+
+
+class TestCsvScanPlugin:
+    """Tests for CsvScanPlugin."""
+
+    def test_execute_returns_lazyframe(self, tmp_path: Path) -> None:
+        """Test that execute returns a LazyFrame."""
+        csv_path = tmp_path / 'input.csv'
+        df = pl.DataFrame({'value': [1, 2, 3], 'name': ['a', 'b', 'c']})
+        df.write_csv(csv_path)
+        plugin = CsvScanPlugin({'input_path': str(csv_path)}, tmp_path)
+
+        result = plugin.execute()
+
+        assert isinstance(result, Success)
+        assert isinstance(result.unwrap(), pl.LazyFrame)
+
+    def test_execute_data_correctness(self, tmp_path: Path) -> None:
+        """Test that execute returns correct data."""
+        csv_path = tmp_path / 'input.csv'
+        df = pl.DataFrame({'value': [10, 20, 30], 'name': ['a', 'b', 'c']})
+        df.write_csv(csv_path)
+        plugin = CsvScanPlugin({'input_path': str(csv_path)}, tmp_path)
+
+        result = plugin.execute()
+
+        assert isinstance(result, Success)
+        lazy_result = result.unwrap()
+        assert isinstance(lazy_result, pl.LazyFrame)
+        collected = lazy_result.collect()
+        assert collected.to_dict(as_series=False) == {
+            'value': [10, 20, 30],
+            'name': ['a', 'b', 'c'],
+        }
+
+    def test_execute_missing_input_path(self, tmp_path: Path) -> None:
+        """Test error when input_path option is missing."""
+        plugin = CsvScanPlugin({}, tmp_path)
+
+        result = plugin.execute()
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), ValueError)
+        assert 'input_path' in str(result.failure())
+
+    def test_execute_file_not_found(self, tmp_path: Path) -> None:
+        """Test error when input file does not exist."""
+        plugin = CsvScanPlugin(
+            {'input_path': str(tmp_path / 'nonexistent.csv')}, tmp_path
+        )
+
+        result = plugin.execute()
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), FileNotFoundError)
+
+    def test_execute_with_relative_path(self) -> None:
+        """Test that relative paths are resolved relative to config_dir."""
+        with TemporaryDirectory() as tmpdir:
+            config_dir = Path(tmpdir) / 'config'
+            config_dir.mkdir()
+            data_dir = config_dir / 'data'
+            data_dir.mkdir()
+            csv_path = data_dir / 'input.csv'
+            pl.DataFrame({'value': [1, 2, 3]}).write_csv(csv_path)
+            plugin = CsvScanPlugin({'input_path': 'data/input.csv'}, config_dir)
+
+            result = plugin.execute()
+
+            assert isinstance(result, Success)
+            assert isinstance(result.unwrap(), pl.LazyFrame)
+
+    def test_dry_run_returns_schema(self, tmp_path: Path) -> None:
+        """Test successful dry_run returns schema dict."""
+        csv_path = tmp_path / 'input.csv'
+        df = pl.DataFrame({'value': [1, 2, 3], 'name': ['a', 'b', 'c']})
+        df.write_csv(csv_path)
+        plugin = CsvScanPlugin({'input_path': str(csv_path)}, tmp_path)
+
+        result = plugin.dry_run()
+
+        assert isinstance(result, Success)
+        schema = result.unwrap()
+        assert isinstance(schema, dict)
+        assert schema['value'] == pl.Int64()
+        assert schema['name'] == pl.String()
+
+    def test_dry_run_missing_input_path(self, tmp_path: Path) -> None:
+        """Test dry_run error when input_path option is missing."""
+        plugin = CsvScanPlugin({}, tmp_path)
+
+        result = plugin.dry_run()
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), ValueError)
+        assert 'input_path' in str(result.failure())
+
+    def test_dry_run_file_not_found(self, tmp_path: Path) -> None:
+        """Test dry_run error when input file does not exist."""
+        plugin = CsvScanPlugin(
+            {'input_path': str(tmp_path / 'nonexistent.csv')}, tmp_path
+        )
+
+        result = plugin.dry_run()
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), FileNotFoundError)
+
+    def test_dry_run_with_relative_path(self) -> None:
+        """Test dry_run with relative paths resolved relative to config_dir."""
+        with TemporaryDirectory() as tmpdir:
+            config_dir = Path(tmpdir) / 'config'
+            config_dir.mkdir()
+            data_dir = config_dir / 'data'
+            data_dir.mkdir()
+            csv_path = data_dir / 'input.csv'
+            pl.DataFrame({'value': [1, 2, 3]}).write_csv(csv_path)
+            plugin = CsvScanPlugin({'input_path': 'data/input.csv'}, config_dir)
+
+            result = plugin.dry_run()
+
+            assert isinstance(result, Success)
+            assert isinstance(result.unwrap(), dict)
+
+    def test_name(self, tmp_path: Path) -> None:
+        """Test plugin name."""
+        plugin = CsvScanPlugin({}, tmp_path)
+
+        assert plugin.name() == 'csv_scan'
