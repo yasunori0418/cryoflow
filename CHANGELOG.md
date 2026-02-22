@@ -51,31 +51,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Configuration File Migration
 
-The `input_path` key under `[run]` is removed. Input data sources must now be declared as `InputPlugin` entries under `[[run.input_plugins]]`.
+The top-level `input_path` key is removed. Input data sources must now be declared as `[[input_plugins]]` entries.
 
 ```toml
 # Before (0.1.x)
-[run]
 input_path = "data/input.parquet"
 
-[[run.plugins]]
+[[plugins]]
+name = "column-multiplier"
 module = "cryoflow_plugin_collections.transform.multiplier"
 
-[[run.plugins]]
+[[plugins]]
+name = "parquet-writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 
 # After (0.2.0)
-[[run.input_plugins]]
+[[input_plugins]]
+name = "parquet-scan"
 module = "cryoflow_plugin_collections.input.parquet_scan"
 label = "default"
-[run.input_plugins.options]
-path = "data/input.parquet"
+[input_plugins.options]
+input_path = "data/input.parquet"
 
-[[run.transform_plugins]]
+[[transform_plugins]]
+name = "column-multiplier"
 module = "cryoflow_plugin_collections.transform.multiplier"
 label = "default"
 
-[[run.output_plugins]]
+[[output_plugins]]
+name = "parquet-writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 label = "default"
 ```
