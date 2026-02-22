@@ -17,7 +17,7 @@ def test_polars_reexport():
 
 def test_returns_reexport():
     """Test returns re-export works correctly."""
-    from cryoflow_plugin_collections.libs.returns import Failure, Result, Success
+    from cryoflow_plugin_collections.libs.returns.result import Failure, Result, Success
 
     # Verify Success works
     result: Result[int, str] = Success(42)
@@ -25,12 +25,12 @@ def test_returns_reexport():
 
     # Verify Failure works
     error_result: Result[int, str] = Failure('error')
-    assert error_result.failure()
+    assert isinstance(error_result, Failure)
 
 
 def test_returns_individual_imports():
     """Test importing individual types/functions from returns re-export."""
-    from cryoflow_plugin_collections.libs.returns import (
+    from cryoflow_plugin_collections.libs.returns.result import (
         Failure,
         Result,
         ResultE,
@@ -50,7 +50,7 @@ def test_returns_individual_imports():
     assert result.unwrap() == 42
 
     error_result: Result[int, str] = Failure('error')
-    assert error_result.failure()
+    assert isinstance(error_result, Failure)
 
     # Test safe decorator
     @safe
@@ -63,19 +63,15 @@ def test_returns_individual_imports():
     assert success_result.unwrap() == 10
 
     failure_result = may_fail(-1)
-    assert failure_result.failure()
+    assert isinstance(failure_result, Failure)
 
 
 def test_returns_extended_apis():
     """Test extended returns APIs are available."""
-    from cryoflow_plugin_collections.libs.returns import (
-        IO,
+    from cryoflow_plugin_collections.libs.returns.maybe import (
         Maybe,
         Nothing,
         Some,
-        bind,
-        flow,
-        pipe,
     )
 
     # Test Maybe monad
@@ -85,73 +81,59 @@ def test_returns_extended_apis():
     # Nothing is a singleton value, not a container instance
     assert Nothing is not None
 
-    # Test pipeline utilities
-    def add_one(x: int) -> int:
-        return x + 1
-
-    def multiply_two(x: int) -> int:
-        return x * 2
-
-    # Test flow (applies functions left-to-right starting from a value)
-    result_flow = flow(5, add_one, multiply_two)
-    assert result_flow == 12
-
-    # Test pipe (composes functions into a new function)
-    composed_fn = pipe(add_one, multiply_two)
-    assert callable(composed_fn)
-    assert composed_fn(5) == 12
-
-    # Test IO container
-    assert IO is not None
-    assert callable(bind)
-
 
 def test_returns_complete_api_export():
-    """Test that all returns major module APIs are exported."""
-    from cryoflow_plugin_collections.libs import returns as returns_reexport
+    """Test that result and maybe submodule APIs are exported."""
+    from cryoflow_plugin_collections.libs.returns import maybe as maybe_module
+    from cryoflow_plugin_collections.libs.returns import result as result_module
 
-    # Verify we have a substantial number of APIs re-exported
-    # (returns has 140+ unique public APIs across all modules after deduplication)
-    assert len(returns_reexport.__all__) > 140
+    # Verify result types are present
+    assert 'Result' in result_module.__all__
+    assert 'Success' in result_module.__all__
+    assert 'Failure' in result_module.__all__
+    assert 'ResultE' in result_module.__all__
+    assert 'safe' in result_module.__all__
 
-    # Verify major container types are present
-    assert 'Result' in returns_reexport.__all__
-    assert 'Success' in returns_reexport.__all__
-    assert 'Failure' in returns_reexport.__all__
-    assert 'Maybe' in returns_reexport.__all__
-    assert 'Some' in returns_reexport.__all__
-    assert 'Nothing' in returns_reexport.__all__
-    assert 'IO' in returns_reexport.__all__
-    assert 'Future' in returns_reexport.__all__
-
-    # Verify utilities are present
-    assert 'flow' in returns_reexport.__all__
-    assert 'pipe' in returns_reexport.__all__
-    assert 'bind' in returns_reexport.__all__
-    assert 'safe' in returns_reexport.__all__
+    # Verify maybe types are present
+    assert 'Maybe' in maybe_module.__all__
+    assert 'Some' in maybe_module.__all__
+    assert 'Nothing' in maybe_module.__all__
+    assert 'maybe' in maybe_module.__all__
 
 
 def test_returns_type_identity():
     """Test that re-exported objects are identical to originals."""
+    import returns.maybe
     import returns.result
-    from cryoflow_plugin_collections.libs.returns import (
+    from cryoflow_plugin_collections.libs.returns.maybe import (
+        Maybe,
+        Nothing,
+        Some,
+    )
+    from cryoflow_plugin_collections.libs.returns.result import (
         Failure,
         Result,
         Success,
         safe,
     )
 
-    # Verify objects are identical (not copies)
+    # Verify result objects are identical (not copies)
     assert Result is returns.result.Result
     assert Success is returns.result.Success
     assert Failure is returns.result.Failure
     assert safe is returns.result.safe
+
+    # Verify maybe objects are identical (not copies)
+    assert Maybe is returns.maybe.Maybe
+    assert Nothing is returns.maybe.Nothing
+    assert Some is returns.maybe.Some
 
 
 def test_core_reexport():
     """Test core re-export works correctly."""
     from cryoflow_plugin_collections.libs.core import (
         FrameData,
+        InputPlugin,
         OutputPlugin,
         TransformPlugin,
     )
@@ -159,6 +141,7 @@ def test_core_reexport():
     # Verify imports are accessible
     assert FrameData is not None
     assert TransformPlugin is not None
+    assert InputPlugin is not None
     assert OutputPlugin is not None
 
 
@@ -233,9 +216,8 @@ def test_polars_complete_api_export():
     # Get all exports from re-export module
     reexport_apis = set(polars_reexport.__all__)
 
-    # Verify all original APIs are re-exported (+1 for 'pl')
+    # Verify all original APIs are re-exported
     assert original_apis.issubset(reexport_apis)
-    assert 'pl' in reexport_apis
 
 
 def test_polars_type_identity():

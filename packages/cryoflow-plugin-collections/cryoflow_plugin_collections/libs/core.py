@@ -18,16 +18,14 @@ Usage:
 """
 
 from cryoflow_core.plugin import (
-    BasePlugin,
-    FrameData,
-    InputPlugin,
-    OutputPlugin,
-    TransformPlugin,
+    FrameData as FrameData,
+    InputPlugin as InputPlugin,
+    OutputPlugin as OutputPlugin,
+    TransformPlugin as TransformPlugin,
 )
 
 __all__ = [
     'FrameData',  # Type alias: LazyFrame | DataFrame
-    'BasePlugin',  # Base class for all plugins
     'InputPlugin',  # Base class for input plugins
     'TransformPlugin',  # Base class for transform plugins
     'OutputPlugin',  # Base class for output plugins
