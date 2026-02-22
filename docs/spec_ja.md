@@ -40,7 +40,6 @@ Apache Arrow (IPC/Parquet) 形式のデータを入力とし、ユーザー定�
 ### 3.1 データモデル (Pydantic)
 
 ```python
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -49,18 +48,20 @@ class PluginConfig(BaseModel):
     name: str
     module: str  # importlibで読み込むパス
     enabled: bool = True
+    label: str = 'default'  # マルチストリームルーティング用ラベル
     options: dict[str, Any] = Field(default_factory=dict) # プラグイン固有設定
 
 class CryoflowConfig(BaseModel):
-    input_path: Path  # FilePathだとファイル存在チェックが入るためPathを使用
+    input_plugins: list[PluginConfig]
     transform_plugins: list[PluginConfig]
     output_plugins: list[PluginConfig]
 ```
 
 > **実装時の変更点**:
 > - `GlobalConfig` → `CryoflowConfig` にリネーム（より明確な名前）
-> - `input_path` の型を `FilePath` → `Path` に変更（設定ロード時にファイル存在を強制しないため）
 > - Python 3.14 ビルトイン型（`list`, `dict`）を使用（`typing.List`, `typing.Dict` は非推奨）
+> - `input_path` は v0.2.0 で削除。データソースは `InputPlugin` エントリとして宣言するように変更
+> - `label` を v0.2.0 で `PluginConfig` に追加。ラベルベースのマルチストリームルーティングに使用
 
 ### 3.2 プラグイン基底クラス (ABC)
 
@@ -113,6 +114,10 @@ hookspec = pluggy.HookspecMarker("cryoflow")
 
 class CryoflowSpecs:
     @hookspec
+    def register_input_plugins(self) -> list[InputPlugin]:
+        """入力プラグインのインスタンスを返す"""
+
+    @hookspec
     def register_transform_plugins(self) -> list[TransformPlugin]:
         """変換プラグインのインスタンスを返す"""
 
@@ -132,23 +137,23 @@ cryoflowの設定ファイルで指定される全てのファイルパスは、
 
 #### 設定ファイルのパス
 
-**`input_path`** (`config.toml`内):
-- `load_config()`が設定オブジェクトを返す前に自動的に解決される
-- 例:
+**プラグインオプションのパス** (`input_plugins.options`、`output_plugins.options` など):
+- プラグイン実装側で`BasePlugin.resolve_path()`を使用して解決する必要がある
+- 例（InputPlugin）:
   ```toml
-  # config.tomlが /project/config/config.toml にある場合
+  [[input_plugins]]
+  name = "parquet-scan"
+  module = "cryoflow_plugin_collections.input.parquet_scan"
+  [input_plugins.options]
   input_path = "data/input.parquet"
+  # プラグイン内で: self.resolve_path(self.options['input_path'])
   # 解決結果: /project/config/data/input.parquet
   ```
-
-**プラグインオプションのパス** (`output_plugins.options`内):
-- プラグイン実装側で`BasePlugin.resolve_path()`を使用して解決する必要がある
-- 例:
+- 例（OutputPlugin）:
   ```toml
   [[output_plugins]]
-  name = "parquet_writer"
+  name = "parquet-writer"
   module = "cryoflow_plugin_collections.output.parquet_writer"
-
   [output_plugins.options]
   output_path = "data/output.parquet"
   # プラグイン内で: self.resolve_path(self.options['output_path'])
@@ -314,11 +319,13 @@ cryoflow run [-c CONFIG] [-v]
 
 ```
 Config loaded: /home/user/.config/cryoflow/config.toml
-  input_path: data/input.parquet
-  plugins:    2 plugin(s)
+  input_plugins:     1 plugin(s)
+  transform_plugins: 1 plugin(s)
+  output_plugins:    1 plugin(s)
+    - input_plugin (my.input) [enabled]
     - transform_plugin (my.transform) [enabled]
     - output_plugin (my.output) [enabled]
-Loaded 2 plugin(s) successfully.
+Loaded 3 plugin(s) successfully.
 
 Executing pipeline...
 INFO: Executing 1 transformation plugin(s)...

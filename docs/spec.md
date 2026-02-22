@@ -37,7 +37,6 @@ Processes Apache Arrow (IPC/Parquet) format data through a chain of user-defined
 ### 3.1 Data Models (Pydantic)
 
 ```python
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -46,18 +45,20 @@ class PluginConfig(BaseModel):
     name: str
     module: str  # Path to load with importlib
     enabled: bool = True
+    label: str = 'default'  # Label for multi-stream routing
     options: dict[str, Any] = Field(default_factory=dict)  # Plugin-specific configuration
 
 class CryoflowConfig(BaseModel):
-    input_path: Path  # Use Path instead of FilePath to avoid enforcing file existence at config load time
+    input_plugins: list[PluginConfig]
     transform_plugins: list[PluginConfig]
     output_plugins: list[PluginConfig]
 ```
 
 > **Implementation Notes**:
 > - `GlobalConfig` renamed to `CryoflowConfig` (clearer naming)
-> - `input_path` type changed from `FilePath` to `Path` (don't enforce file existence at config load time)
 > - Uses Python 3.14 built-in types (`list`, `dict`) instead of deprecated `typing.List`, `typing.Dict`
+> - `input_path` removed in v0.2.0; data sources are now declared as `InputPlugin` entries
+> - `label` added to `PluginConfig` in v0.2.0 for multi-stream label-based routing
 
 ### 3.2 Plugin Base Classes (ABC)
 
@@ -110,6 +111,10 @@ hookspec = pluggy.HookspecMarker("cryoflow")
 
 class CryoflowSpecs:
     @hookspec
+    def register_input_plugins(self) -> list[InputPlugin]:
+        """Return instances of input plugins"""
+
+    @hookspec
     def register_transform_plugins(self) -> list[TransformPlugin]:
         """Return instances of transformation plugins"""
 
@@ -129,23 +134,23 @@ All file paths in cryoflow configuration are resolved **relative to the director
 
 #### Configuration Paths
 
-**`input_path`** (in `config.toml`):
-- Automatically resolved by `load_config()` before returning the configuration object
-- Example:
+**Plugin option paths** (in `input_plugins.options`, `output_plugins.options`, etc.):
+- Must be resolved by plugin implementations using `BasePlugin.resolve_path()`
+- Example (InputPlugin):
   ```toml
-  # If config.toml is at /project/config/config.toml
+  [[input_plugins]]
+  name = "parquet-scan"
+  module = "cryoflow_plugin_collections.input.parquet_scan"
+  [input_plugins.options]
   input_path = "data/input.parquet"
+  # Plugin must call: self.resolve_path(self.options['input_path'])
   # Resolves to: /project/config/data/input.parquet
   ```
-
-**Plugin option paths** (in `output_plugins.options`):
-- Must be resolved by plugin implementations using `BasePlugin.resolve_path()`
-- Example:
+- Example (OutputPlugin):
   ```toml
   [[output_plugins]]
-  name = "parquet_writer"
+  name = "parquet-writer"
   module = "cryoflow_plugin_collections.output.parquet_writer"
-
   [output_plugins.options]
   output_path = "data/output.parquet"
   # Plugin must call: self.resolve_path(self.options['output_path'])
@@ -311,11 +316,13 @@ cryoflow run [-c CONFIG] [-v]
 
 ```
 Config loaded: /home/user/.config/cryoflow/config.toml
-  input_path: data/input.parquet
-  plugins:    2 plugin(s)
+  input_plugins:     1 plugin(s)
+  transform_plugins: 1 plugin(s)
+  output_plugins:    1 plugin(s)
+    - input_plugin (my.input) [enabled]
     - transform_plugin (my.transform) [enabled]
     - output_plugin (my.output) [enabled]
-Loaded 2 plugin(s) successfully.
+Loaded 3 plugin(s) successfully.
 
 Executing pipeline...
 INFO: Executing 1 transformation plugin(s)...
