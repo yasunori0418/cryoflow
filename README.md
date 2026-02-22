@@ -103,21 +103,26 @@ nix develop ./dev
 Create a `config.toml` file:
 
 ```toml
+[[input_plugins]]
+name = "parquet-scan"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+label = "default"
+[input_plugins.options]
 input_path = "data/input.parquet"
 
-[[plugins]]
+[[transform_plugins]]
 name = "column-multiplier"
 module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 column_name = "amount"
 multiplier = 2
 
-[[plugins]]
+[[output_plugins]]
 name = "parquet-writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
-[plugins.options]
+[output_plugins.options]
 output_path = "data/output.parquet"
 ```
 
@@ -177,14 +182,15 @@ cryoflow check -c config.toml -v
 
 The configuration file uses TOML format and defines:
 
-- **input_path**: Path to input Parquet or IPC file
-- **output_target**: Target output specification (plugin-dependent)
-- **plugins**: Array of plugin configurations
+- **input_plugins**: Array of input plugin configurations (data source definitions)
+- **transform_plugins**: Array of transform plugin configurations
+- **output_plugins**: Array of output plugin configurations
 
 Each plugin entry specifies:
 
 - **name**: Plugin identifier
 - **module**: Python module path to load the plugin from
+- **label**: Data stream label for routing (default: `"default"`)
 - **enabled**: Whether the plugin should be executed (true/false)
 - **options**: Plugin-specific configuration options
 
@@ -212,25 +218,29 @@ project/
 ### Example Configuration
 
 ```toml
-# Input specification (relative to config file directory)
+# Input plugin: data source (relative to config file directory)
+[[input_plugins]]
+name = "parquet-scan"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+label = "default"
+[input_plugins.options]
 input_path = "data/sample_sales.parquet"
 
-# First plugin: Transform data
-[[plugins]]
+# Transform plugin: data transformation
+[[transform_plugins]]
 name = "column-multiplier"
 module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 column_name = "total_amount"
 multiplier = 2
 
-# Second plugin: Output result
-[[plugins]]
+# Output plugin: write result (path is also relative to config file directory)
+[[output_plugins]]
 name = "parquet-writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
-[plugins.options]
-# Output path is also relative to config file directory
+[output_plugins.options]
 output_path = "data/output.parquet"
 ```
 
@@ -244,7 +254,22 @@ cryoflow searches for configuration files in the following order:
 
 ## Plugin System
 
-Plugins are the core extension mechanism in cryoflow. There are two types of plugins:
+Plugins are the core extension mechanism in cryoflow. There are three types of plugins:
+
+### InputPlugin
+
+Loads data from a source. Takes no arguments and returns a `FrameData` result.
+
+```python
+class MyInputPlugin(InputPlugin):
+    def execute(self) -> Result[FrameData, Exception]:
+        # Your data loading logic
+        return Success(pl.scan_parquet(self.options['input_path']))
+
+    def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
+        # Return expected schema without loading data
+        return Success(expected_schema)
+```
 
 ### TransformPlugin
 

@@ -103,21 +103,26 @@ nix develop ./dev
 `config.toml` ファイルを作成します：
 
 ```toml
+[[input_plugins]]
+name = "parquet-scan"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+label = "default"
+[input_plugins.options]
 input_path = "data/input.parquet"
 
-[[plugins]]
+[[transform_plugins]]
 name = "column-multiplier"
 module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 column_name = "amount"
 multiplier = 2
 
-[[plugins]]
+[[output_plugins]]
 name = "parquet-writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
-[plugins.options]
+[output_plugins.options]
 output_path = "data/output.parquet"
 ```
 
@@ -177,14 +182,15 @@ cryoflow check -c config.toml -v
 
 設定ファイルは TOML 形式で以下の内容を定義します：
 
-- **input_path**: 入力 Parquet/IPC ファイルのパス
-- **output_target**: 出力対象の指定（プラグイン依存）
-- **plugins**: プラグイン設定の配列
+- **input_plugins**: 入力プラグイン設定の配列（データソース定義）
+- **transform_plugins**: 変換プラグイン設定の配列
+- **output_plugins**: 出力プラグイン設定の配列
 
 各プラグインエントリで指定する項目：
 
 - **name**: プラグイン識別子
 - **module**: プラグインをロードする Python モジュールパス
+- **label**: データストリームのルーティングラベル（デフォルト: `"default"`）
 - **enabled**: プラグインを実行するか（true/false）
 - **options**: プラグイン固有の設定オプション
 
@@ -212,25 +218,29 @@ project/
 ### 設定ファイルの例
 
 ```toml
-# 入力の指定（設定ファイルディレクトリからの相対パス）
+# 入力プラグイン: データソース（設定ファイルディレクトリからの相対パス）
+[[input_plugins]]
+name = "parquet-scan"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+label = "default"
+[input_plugins.options]
 input_path = "data/sample_sales.parquet"
 
-# 最初のプラグイン: データ変換
-[[plugins]]
+# 変換プラグイン: データ変換
+[[transform_plugins]]
 name = "column-multiplier"
 module = "cryoflow_plugin_collections.transform.multiplier"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 column_name = "total_amount"
 multiplier = 2
 
-# 2番目のプラグイン: 結果の出力
-[[plugins]]
+# 出力プラグイン: 結果の書き込み（パスも設定ファイルディレクトリからの相対パス）
+[[output_plugins]]
 name = "parquet-writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
 enabled = true
-[plugins.options]
-# 出力パスも設定ファイルディレクトリからの相対パス
+[output_plugins.options]
 output_path = "data/output.parquet"
 ```
 
@@ -244,7 +254,22 @@ cryoflow は以下の順序で設定ファイルを検索します：
 
 ## プラグインシステム
 
-プラグインはcryoflow の中核の拡張機構です。2つのプラグインタイプがあります：
+プラグインはcryoflow の中核の拡張機構です。3つのプラグインタイプがあります：
+
+### InputPlugin
+
+データソースからデータを読み込みます。引数なしで `FrameData` の結果を返します。
+
+```python
+class MyInputPlugin(InputPlugin):
+    def execute(self) -> Result[FrameData, Exception]:
+        # データ読み込みロジックの実装
+        return Success(pl.scan_parquet(self.options['input_path']))
+
+    def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
+        # データを読み込まずに期待スキーマを返す
+        return Success(expected_schema)
+```
 
 ### TransformPlugin
 
