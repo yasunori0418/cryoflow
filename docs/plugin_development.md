@@ -10,32 +10,36 @@
 - [3. Development Environment Setup](#3-development-environment-setup)
   - [3.1 Required Packages](#31-required-packages)
   - [3.2 Project Structure](#32-project-structure)
-- [4. TransformPlugin Implementation Guide](#4-transformplugin-implementation-guide)
-  - [4.1 Basic Implementation](#41-basic-implementation)
-  - [4.2 Example: Column Multiplier Plugin](#42-example-column-multiplier-plugin)
-  - [4.3 Leveraging LazyFrame](#43-leveraging-lazyframe)
-- [5. OutputPlugin Implementation Guide](#5-outputplugin-implementation-guide)
+- [4. InputPlugin Implementation Guide](#4-inputplugin-implementation-guide)
+  - [4.1 Label Feature and Multi-Stream Processing](#41-label-feature-and-multi-stream-processing)
+  - [4.2 Basic Implementation](#42-basic-implementation)
+  - [4.3 Example: CSV File Reader Plugin](#43-example-csv-file-reader-plugin)
+- [5. TransformPlugin Implementation Guide](#5-transformplugin-implementation-guide)
   - [5.1 Basic Implementation](#51-basic-implementation)
-  - [5.2 Example: Parquet Writer Plugin](#52-example-parquet-writer-plugin)
-- [6. dry_run Method Implementation](#6-dry_run-method-implementation)
-  - [6.1 Purpose and Role](#61-purpose-and-role)
-  - [6.2 Implementation Patterns](#62-implementation-patterns)
-- [7. Error Handling](#7-error-handling)
-  - [7.1 Using Result Type](#71-using-result-type)
-  - [7.2 Error Message Best Practices](#72-error-message-best-practices)
-  - [7.3 Common Error Patterns](#73-common-error-patterns)
-- [8. Writing Tests](#8-writing-tests)
-  - [8.1 Basic Test Structure](#81-basic-test-structure)
-  - [8.2 Implementation Example](#82-implementation-example)
-- [9. Plugin Distribution](#9-plugin-distribution)
-  - [9.1 Package Structure](#91-package-structure)
-  - [9.2 Dependency Definition](#92-dependency-definition)
-  - [9.3 Distribution Methods](#93-distribution-methods)
-- [10. Using in Configuration Files](#10-using-in-configuration-files)
-- [11. Reference](#11-reference)
-  - [11.1 Type Definitions](#111-type-definitions)
-  - [11.2 Base Class API](#112-base-class-api)
-  - [11.3 Polars Method Reference](#113-polars-method-reference)
+  - [5.2 Example: Column Multiplier Plugin](#52-example-column-multiplier-plugin)
+  - [5.3 Leveraging LazyFrame](#53-leveraging-lazyframe)
+- [6. OutputPlugin Implementation Guide](#6-outputplugin-implementation-guide)
+  - [6.1 Basic Implementation](#61-basic-implementation)
+  - [6.2 Example: Parquet Writer Plugin](#62-example-parquet-writer-plugin)
+- [7. dry_run Method Implementation](#7-dry_run-method-implementation)
+  - [7.1 Purpose and Role](#71-purpose-and-role)
+  - [7.2 Implementation Patterns](#72-implementation-patterns)
+- [8. Error Handling](#8-error-handling)
+  - [8.1 Using Result Type](#81-using-result-type)
+  - [8.2 Error Message Best Practices](#82-error-message-best-practices)
+  - [8.3 Common Error Patterns](#83-common-error-patterns)
+- [9. Writing Tests](#9-writing-tests)
+  - [9.1 Basic Test Structure](#91-basic-test-structure)
+  - [9.2 Implementation Example](#92-implementation-example)
+- [10. Plugin Distribution](#10-plugin-distribution)
+  - [10.1 Package Structure](#101-package-structure)
+  - [10.2 Dependency Definition](#102-dependency-definition)
+  - [10.3 Distribution Methods](#103-distribution-methods)
+- [11. Using in Configuration Files](#11-using-in-configuration-files)
+- [12. Reference](#12-reference)
+  - [12.1 Type Definitions](#121-type-definitions)
+  - [12.2 Base Class API](#122-base-class-api)
+  - [12.3 Polars Method Reference](#123-polars-method-reference)
 
 ---
 
@@ -52,7 +56,8 @@ Cryoflow is a plugin-driven, column-oriented data processing CLI tool built on P
 ### What You'll Learn
 
 - Basic structure and types of plugins
-- How to implement TransformPlugin and OutputPlugin
+- How to implement InputPlugin, TransformPlugin, and OutputPlugin
+- Multi-stream processing with the label feature
 - Best practices for error handling and testing
 - Plugin packaging and distribution methods
 
@@ -62,7 +67,13 @@ Cryoflow is a plugin-driven, column-oriented data processing CLI tool built on P
 
 ### 2.1 Plugin Types
 
-Cryoflow has two types of plugins.
+Cryoflow has three types of plugins.
+
+#### InputPlugin (Input Plugin)
+
+- **Role**: Loads data from a data source and produces FrameData
+- **Use cases**: File reading (Parquet/IPC/CSV, etc.), database queries, etc.
+- **Characteristics**: `execute` takes no arguments. Returning a LazyFrame is recommended
 
 #### TransformPlugin (Transformation Plugin)
 
@@ -75,6 +86,14 @@ Cryoflow has two types of plugins.
 - **Role**: Receives a data frame and outputs it to files, databases, etc.
 - **Use cases**: Parquet/CSV/IPC output, database writes, API submissions, etc.
 - **Characteristics**: Calls `collect()` or `sink_*()` to actually execute data processing
+
+**Plugin type comparison:**
+
+| Plugin Type | execute Arguments | execute Return Value | Role |
+|---|---|---|---|
+| **InputPlugin** | none | `Result[FrameData, Exception]` | Generates / loads data |
+| **TransformPlugin** | `df: FrameData` | `Result[FrameData, Exception]` | Transforms data |
+| **OutputPlugin** | `df: FrameData` | `Result[None, Exception]` | Outputs data |
 
 ### 2.2 Basic Architecture
 
@@ -139,9 +158,11 @@ class BasePlugin(ABC):
    ↓
 4. [Optional] Pre-validation via dry_run (cryoflow check)
    ↓
-5. Execute execute method (cryoflow run)
+5. Execute InputPlugin (data loading)
    ↓
-6. Output results
+6. Execute TransformPlugin (data transformation)
+   ↓
+7. Execute OutputPlugin (data output)
 ```
 
 ---
@@ -177,6 +198,7 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 
 # Import base classes and type definitions
 from cryoflow_plugin_collections.libs.core import (
+    InputPlugin,
     TransformPlugin,
     OutputPlugin,
     FrameData,
@@ -194,6 +216,9 @@ my-cryoflow-plugins/
 ├── pyproject.toml
 ├── my_plugins/
 │   ├── __init__.py
+│   ├── input/
+│   │   ├── __init__.py
+│   │   └── my_input.py        # InputPlugin implementation
 │   ├── transform/
 │   │   ├── __init__.py
 │   │   └── my_transform.py    # TransformPlugin implementation
@@ -201,15 +226,161 @@ my-cryoflow-plugins/
 │       ├── __init__.py
 │       └── my_output.py        # OutputPlugin implementation
 └── tests/
+    ├── test_input.py
     ├── test_transform.py
     └── test_output.py
 ```
 
 ---
 
-## 4. TransformPlugin Implementation Guide
+## 4. InputPlugin Implementation Guide
 
-### 4.1 Basic Implementation
+### 4.1 Label Feature and Multi-Stream Processing
+
+All plugins have a `label` (default: `'default'`).
+
+The `label` is used to **identify multiple input data streams**. Plugins with the same label are linked together:
+
+```
+InputPlugin(label='sales')  →  data_map['sales']  →  TransformPlugin(label='sales')
+InputPlugin(label='master') →  data_map['master'] →  TransformPlugin(label='master')
+```
+
+For a single data stream, omit `label` or use `'default'`.
+
+### 4.2 Basic Implementation
+
+```python
+from cryoflow_plugin_collections.libs.polars import pl
+from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
+from cryoflow_plugin_collections.libs.core import InputPlugin, FrameData
+
+
+class MyInputPlugin(InputPlugin):
+    def name(self) -> str:
+        """Plugin identifier name (used in logs and error messages)."""
+        return 'my_input'
+
+    def execute(self) -> Result[FrameData, Exception]:
+        """Load data (no arguments)."""
+        try:
+            # Retrieve options from self.options
+            input_path_opt = self.options.get('input_path')
+            if input_path_opt is None:
+                return Failure(ValueError("Option 'input_path' is required"))
+
+            # Use self.resolve_path() to resolve relative paths against the config dir
+            input_path = self.resolve_path(input_path_opt)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+
+            # Return a LazyFrame (do not call collect())
+            return Success(pl.scan_parquet(input_path))
+        except Exception as e:
+            return Failure(e)
+
+    def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
+        """Return schema without loading actual data."""
+        try:
+            input_path_opt = self.options.get('input_path')
+            if input_path_opt is None:
+                return Failure(ValueError("Option 'input_path' is required"))
+
+            input_path = self.resolve_path(input_path_opt)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+
+            # Retrieve schema only (no actual data loaded)
+            return Success(dict(pl.scan_parquet(input_path).collect_schema()))
+        except Exception as e:
+            return Failure(e)
+```
+
+### 4.3 Example: CSV File Reader Plugin
+
+A complete example of an InputPlugin that reads CSV files.
+
+```python
+"""CSV file input plugin."""
+
+from cryoflow_plugin_collections.libs.polars import pl
+from cryoflow_plugin_collections.libs.returns import Failure, Result, Success
+from cryoflow_plugin_collections.libs.core import FrameData, InputPlugin
+
+
+class CsvScanPlugin(InputPlugin):
+    """Load data from a CSV file.
+
+    Options:
+        input_path (str): Path to the input CSV file.
+        separator (str): Field delimiter (default: ',').
+        has_header (bool): Whether the file has a header row (default: True).
+    """
+
+    def name(self) -> str:
+        return 'csv_scan'
+
+    def execute(self) -> Result[FrameData, Exception]:
+        """Load data from a CSV file.
+
+        Returns:
+            Result containing LazyFrame on success or Exception on failure.
+        """
+        try:
+            input_path_opt = self.options.get('input_path')
+            if input_path_opt is None:
+                return Failure(ValueError("Option 'input_path' is required"))
+
+            input_path = self.resolve_path(input_path_opt)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+
+            separator = self.options.get('separator', ',')
+            has_header = self.options.get('has_header', True)
+
+            return Success(
+                pl.scan_csv(
+                    input_path,
+                    separator=separator,
+                    has_header=has_header,
+                )
+            )
+        except Exception as e:
+            return Failure(e)
+
+    def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
+        """Return the schema without loading actual data.
+
+        Returns:
+            Result containing schema dict on success or Exception on failure.
+        """
+        try:
+            input_path_opt = self.options.get('input_path')
+            if input_path_opt is None:
+                return Failure(ValueError("Option 'input_path' is required"))
+
+            input_path = self.resolve_path(input_path_opt)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+
+            separator = self.options.get('separator', ',')
+            has_header = self.options.get('has_header', True)
+
+            schema = pl.scan_csv(
+                input_path,
+                separator=separator,
+                has_header=has_header,
+            ).collect_schema()
+            return Success(dict(schema))
+        except Exception as e:
+            return Failure(e)
+```
+
+---
+
+## 5. TransformPlugin Implementation Guide
+
+### 5.1 Basic Implementation
 
 TransformPlugin requires implementation of the following three methods.
 
@@ -262,7 +433,7 @@ class MyTransformPlugin(TransformPlugin):
             return Failure(e)
 ```
 
-### 4.2 Example: Column Multiplier Plugin
+### 5.2 Example: Column Multiplier Plugin
 
 Let's look at a real implementation example that multiplies a numeric column by a coefficient.
 
@@ -358,7 +529,7 @@ class ColumnMultiplierPlugin(TransformPlugin):
             return Failure(e)
 ```
 
-### 4.3 Leveraging LazyFrame
+### 5.3 Leveraging LazyFrame
 
 In TransformPlugin, avoid touching actual data and only build computation graphs.
 
@@ -384,9 +555,9 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
 
 ---
 
-## 5. OutputPlugin Implementation Guide
+## 6. OutputPlugin Implementation Guide
 
-### 5.1 Basic Implementation
+### 6.1 Basic Implementation
 
 OutputPlugin is similar to TransformPlugin but has a different return type.
 
@@ -440,7 +611,7 @@ class MyOutputPlugin(OutputPlugin):
             return Failure(e)
 ```
 
-### 5.2 Example: Parquet Writer Plugin
+### 6.2 Example: Parquet Writer Plugin
 
 ```python
 """Parquet file output plugin"""
@@ -477,8 +648,6 @@ class ParquetWriterPlugin(OutputPlugin):
                 return Failure(ValueError("Option 'output_path' is required"))
 
             # resolve_path() to resolve relative paths relative to config file
-
-
             output_path = self.resolve_path(output_path_opt)
 
             # Create parent directory
@@ -510,8 +679,6 @@ class ParquetWriterPlugin(OutputPlugin):
                 return Failure(ValueError("Option 'output_path' is required"))
 
             # resolve_path() to resolve relative paths relative to config file
-
-
             output_path = self.resolve_path(output_path_opt)
 
             # Check if parent directory can be created
@@ -531,9 +698,9 @@ class ParquetWriterPlugin(OutputPlugin):
 
 ---
 
-## 6. dry_run Method Implementation
+## 7. dry_run Method Implementation
 
-### 6.1 Purpose and Role
+### 7.1 Purpose and Role
 
 The `dry_run` method validates the following without processing actual data:
 
@@ -544,7 +711,7 @@ The `dry_run` method validates the following without processing actual data:
 
 This allows detecting problems before actual execution (`cryoflow check` command).
 
-### 6.2 Implementation Patterns
+### 7.2 Implementation Patterns
 
 #### Pattern 1: Plugin that doesn't modify schema
 
@@ -625,9 +792,9 @@ def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Ex
 
 ---
 
-## 7. Error Handling
+## 8. Error Handling
 
-### 7.1 Using Result Type
+### 8.1 Using Result Type
 
 Cryoflow uses the `Result` type from the `returns` library to unify error handling.
 
@@ -646,7 +813,7 @@ return Failure(ValueError("Invalid configuration"))
 - Type-safe error handling
 - Consistent error handling across the pipeline
 
-### 7.2 Error Message Best Practices
+### 8.2 Error Message Best Practices
 
 #### ✅ Good Error Messages
 
@@ -683,7 +850,7 @@ return Failure(ValueError("Invalid input"))
 return Failure(ValueError("Schema validation failed at line 42"))
 ```
 
-### 7.3 Common Error Patterns
+### 8.3 Common Error Patterns
 
 ```python
 def execute(self, df: FrameData) -> Result[FrameData, Exception]:
@@ -726,9 +893,9 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
 
 ---
 
-## 8. Writing Tests
+## 9. Writing Tests
 
-### 8.1 Basic Test Structure
+### 9.1 Basic Test Structure
 
 Use pytest to test plugins.
 
@@ -814,7 +981,7 @@ class TestMyTransformPlugin:
         assert "numeric" in str(result.failure()).lower()
 ```
 
-### 8.2 Implementation Example
+### 9.2 Implementation Example
 
 ```python
 """Tests for ColumnMultiplierPlugin"""
@@ -896,9 +1063,9 @@ class TestColumnMultiplierPlugin:
 
 ---
 
-## 9. Plugin Distribution
+## 10. Plugin Distribution
 
-### 9.1 Package Structure
+### 10.1 Package Structure
 
 ```
 my-cryoflow-plugins/
@@ -907,6 +1074,9 @@ my-cryoflow-plugins/
 ├── pyproject.toml
 ├── my_cryoflow_plugins/
 │   ├── __init__.py
+│   ├── input/
+│   │   ├── __init__.py
+│   │   └── my_input.py
 │   ├── transform/
 │   │   ├── __init__.py
 │   │   └── my_transform.py
@@ -914,11 +1084,12 @@ my-cryoflow-plugins/
 │       ├── __init__.py
 │       └── my_output.py
 └── tests/
+    ├── test_input.py
     ├── test_transform.py
     └── test_output.py
 ```
 
-### 9.2 Dependency Definition
+### 10.2 Dependency Definition
 
 Example `pyproject.toml` configuration:
 
@@ -948,7 +1119,7 @@ build-backend = "hatchling.build"
 testpaths = ["tests"]
 ```
 
-### 9.3 Distribution Methods
+### 10.3 Distribution Methods
 
 #### Method 1: Publish to PyPI
 
@@ -981,100 +1152,171 @@ pip install -e .
 
 ---
 
-## 10. Using in Configuration Files
+## 11. Using in Configuration Files
 
 Once you've implemented a plugin, you can use it in `config.toml`.
 
 ### Basic Usage Example
 
 ```toml
+# InputPlugin configuration
+[[input_plugins]]
+name = "parquet-input"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+[input_plugins.options]
 input_path = "data/input.parquet"
-output_target = "data/output.parquet"
 
 # TransformPlugin configuration
-[[plugins]]
+[[transform_plugins]]
 name = "my-transform"
 module = "my_cryoflow_plugins.transform.my_transform"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 column_name = "value"
 multiplier = 2
 
 # OutputPlugin configuration
-[[plugins]]
+[[output_plugins]]
 name = "my-output"
 module = "my_cryoflow_plugins.output.my_output"
 enabled = true
-[plugins.options]
+[output_plugins.options]
 output_path = "data/output.parquet"
 ```
 
 ### Chaining Multiple Plugins
 
+TransformPlugins are chained in definition order. Each OutputPlugin receives the same transformed data (fan-out).
+
 ```toml
+# InputPlugin configuration
+[[input_plugins]]
+name = "sales-input"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+[input_plugins.options]
 input_path = "data/sales.parquet"
-output_target = "data/processed.parquet"
 
 # Filtering
-[[plugins]]
+[[transform_plugins]]
 name = "filter-high-value"
 module = "my_plugins.transform.filter"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 column_name = "total_amount"
 threshold = 1000
 
 # Add column
-[[plugins]]
+[[transform_plugins]]
 name = "add-tax"
 module = "my_plugins.transform.tax_calculator"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 amount_column = "total_amount"
 tax_rate = 0.1
 output_column = "tax"
 
 # Aggregation
-[[plugins]]
+[[transform_plugins]]
 name = "aggregate"
 module = "my_plugins.transform.aggregator"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 group_by = ["region", "category"]
 agg_columns = ["total_amount", "tax"]
 
-# Output
-[[plugins]]
+# Output (multiple definitions supported: same data is passed to each OutputPlugin)
+[[output_plugins]]
 name = "parquet-writer"
 module = "my_plugins.output.parquet_writer"
 enabled = true
-[plugins.options]
+[output_plugins.options]
 output_path = "data/processed.parquet"
+
+[[output_plugins]]
+name = "ipc-writer"
+module = "my_plugins.output.ipc_writer"
+enabled = true
+[output_plugins.options]
+output_path = "data/processed.ipc"
 ```
+
+### Multi-Stream Configuration Example
+
+Using `label` to work with multiple input data streams.
+
+```toml
+# Load sales data
+[[input_plugins]]
+name = "sales-input"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+label = "sales"
+[input_plugins.options]
+input_path = "data/sales.parquet"
+
+# Load master data
+[[input_plugins]]
+name = "master-input"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+label = "master"
+[input_plugins.options]
+input_path = "data/master.parquet"
+
+# Transform sales data (label = "sales")
+[[transform_plugins]]
+name = "sales-filter"
+module = "my_plugins.transform.filter"
+enabled = true
+label = "sales"
+[transform_plugins.options]
+column_name = "amount"
+threshold = 1000
+
+# Output sales data
+[[output_plugins]]
+name = "sales-output"
+module = "cryoflow_plugin_collections.output.parquet_write"
+enabled = true
+label = "sales"
+[output_plugins.options]
+output_path = "data/filtered_sales.parquet"
+```
+
+**Label associations**:
+
+```
+InputPlugin(label='sales')  →  TransformPlugin(label='sales')  →  OutputPlugin(label='sales')
+InputPlugin(label='master') →  (no transform)                  →  (no output)
+```
+
+Data streams with no corresponding TransformPlugin or OutputPlugin for their label are simply not processed.
 
 ### Using Filesystem Paths
 
 You can also specify file paths directly without installing the module as a Python package.
 
 ```toml
-[[plugins]]
+[[transform_plugins]]
 name = "local-plugin"
 module = "./my_local_plugins/transform.py"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 some_option = "value"
 
-[[plugins]]
+[[output_plugins]]
 name = "absolute-path-plugin"
-module = "/home/user/plugins/my_plugin.py"
+module = "/home/user/plugins/my_output_plugin.py"
 enabled = true
 ```
 
 ---
 
-## 11. Reference
+## 12. Reference
 
-### 11.1 Type Definitions
+### 12.1 Type Definitions
 
 ```python
 # Types re-exported from cryoflow_plugin_collections.libs
@@ -1094,7 +1336,7 @@ Schema = dict[str, DataType]
 PluginOptions = dict[str, Any]
 ```
 
-### 11.2 Base Class API
+### 12.2 Base Class API
 
 #### BasePlugin
 
@@ -1160,6 +1402,41 @@ class BasePlugin(ABC):
         """
 ```
 
+#### InputPlugin
+
+```python
+from cryoflow_plugin_collections.libs.core import InputPlugin, FrameData
+from cryoflow_plugin_collections.libs.returns import Result
+import polars as pl
+
+class InputPlugin(BasePlugin):
+    @abstractmethod
+    def execute(self) -> Result[FrameData, Exception]:
+        """Load and return data as FrameData.
+
+        Takes no arguments. Generates data directly from the data source.
+
+        Returns:
+            Success: Loaded data frame (LazyFrame preferred)
+            Failure: Loading error
+
+        Note:
+            - Process as LazyFrame whenever possible
+            - Don't call collect() (it's called in OutputPlugin)
+        """
+
+    @abstractmethod
+    def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
+        """Return schema without loading actual data.
+
+        Takes no arguments. Reads only file metadata.
+
+        Returns:
+            Success: Schema (column name → DataType mapping)
+            Failure: Schema retrieval error
+        """
+```
+
 #### TransformPlugin
 
 ```python
@@ -1208,7 +1485,16 @@ class OutputPlugin(BasePlugin):
         """
 ```
 
-### 11.3 Polars Method Reference
+### Built-in Plugins
+
+Built-in plugins included in the `cryoflow-plugin-collections` package:
+
+| Plugin | Module |
+|---|---|
+| IPC (Arrow) input | `cryoflow_plugin_collections.input.ipc_scan` |
+| Parquet input | `cryoflow_plugin_collections.input.parquet_scan` |
+
+### 12.3 Polars Method Reference
 
 Commonly used Polars methods in plugin development:
 
@@ -1293,7 +1579,8 @@ This guide explained how to develop Cryoflow plugins.
 
 ### What You Learned
 
-- ✅ Basic structure and types of plugins
+- ✅ Basic structure and types of plugins (InputPlugin / TransformPlugin / OutputPlugin)
+- ✅ How to implement InputPlugin and the label feature for multi-stream processing
 - ✅ How to implement TransformPlugin and OutputPlugin
 - ✅ Pre-validation with dry_run method
 - ✅ Error handling with Result type

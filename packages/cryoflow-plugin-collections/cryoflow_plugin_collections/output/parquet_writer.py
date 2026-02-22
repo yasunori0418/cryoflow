@@ -68,11 +68,7 @@ class ParquetWriterPlugin(OutputPlugin):
             try:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
             except Exception as e:
-                return Failure(
-                    ValueError(
-                        f"Cannot create parent directory for {output_path}: {e}"
-                    )
-                )
+                return Failure(ValueError(f'Cannot create parent directory for {output_path}: {e}'))
 
             return Success(schema)
         except Exception as e:

@@ -11,7 +11,7 @@ def test_polars_reexport():
     assert DataFrame is not None
 
     # Verify actual usage
-    df = pl.DataFrame({"a": [1, 2, 3]})
+    df = pl.DataFrame({'a': [1, 2, 3]})
     assert isinstance(df, DataFrame)
 
 
@@ -24,7 +24,7 @@ def test_returns_reexport():
     assert result.unwrap() == 42
 
     # Verify Failure works
-    error_result: Result[int, str] = Failure("error")
+    error_result: Result[int, str] = Failure('error')
     assert error_result.failure()
 
 
@@ -49,14 +49,14 @@ def test_returns_individual_imports():
     result: Result[int, str] = Success(42)
     assert result.unwrap() == 42
 
-    error_result: Result[int, str] = Failure("error")
+    error_result: Result[int, str] = Failure('error')
     assert error_result.failure()
 
     # Test safe decorator
     @safe
     def may_fail(x: int) -> int:
         if x < 0:
-            raise ValueError("negative")
+            raise ValueError('negative')
         return x * 2
 
     success_result = may_fail(5)
@@ -115,20 +115,20 @@ def test_returns_complete_api_export():
     assert len(returns_reexport.__all__) > 140
 
     # Verify major container types are present
-    assert "Result" in returns_reexport.__all__
-    assert "Success" in returns_reexport.__all__
-    assert "Failure" in returns_reexport.__all__
-    assert "Maybe" in returns_reexport.__all__
-    assert "Some" in returns_reexport.__all__
-    assert "Nothing" in returns_reexport.__all__
-    assert "IO" in returns_reexport.__all__
-    assert "Future" in returns_reexport.__all__
+    assert 'Result' in returns_reexport.__all__
+    assert 'Success' in returns_reexport.__all__
+    assert 'Failure' in returns_reexport.__all__
+    assert 'Maybe' in returns_reexport.__all__
+    assert 'Some' in returns_reexport.__all__
+    assert 'Nothing' in returns_reexport.__all__
+    assert 'IO' in returns_reexport.__all__
+    assert 'Future' in returns_reexport.__all__
 
     # Verify utilities are present
-    assert "flow" in returns_reexport.__all__
-    assert "pipe" in returns_reexport.__all__
-    assert "bind" in returns_reexport.__all__
-    assert "safe" in returns_reexport.__all__
+    assert 'flow' in returns_reexport.__all__
+    assert 'pipe' in returns_reexport.__all__
+    assert 'bind' in returns_reexport.__all__
+    assert 'safe' in returns_reexport.__all__
 
 
 def test_returns_type_identity():
@@ -180,15 +180,15 @@ def test_polars_module_import():
     from cryoflow_plugin_collections.libs import polars as pl
 
     # Pattern 1: Module-level API access
-    assert hasattr(pl, "col")
-    assert hasattr(pl, "lit")
-    assert hasattr(pl, "when")
+    assert hasattr(pl, 'col')
+    assert hasattr(pl, 'lit')
+    assert hasattr(pl, 'when')
 
     # Verify actual usage
-    expr = pl.col("name")
+    expr = pl.col('name')
     assert expr is not None
 
-    df = pl.DataFrame({"x": [1, 2, 3]})
+    df = pl.DataFrame({'x': [1, 2, 3]})
     assert isinstance(df, pl.DataFrame)
 
 
@@ -212,13 +212,13 @@ def test_polars_individual_imports():
     assert callable(scan_parquet)
 
     # Test actual usage
-    expr = col("name")
+    expr = col('name')
     assert expr is not None
 
-    df = DataFrame({"a": [1, 2, 3]})
+    df = DataFrame({'a': [1, 2, 3]})
     assert isinstance(df, DataFrame)
 
-    lf = LazyFrame({"b": ["x", "y", "z"]})
+    lf = LazyFrame({'b': ['x', 'y', 'z']})
     assert isinstance(lf, LazyFrame)
 
 
@@ -228,14 +228,14 @@ def test_polars_complete_api_export():
     from cryoflow_plugin_collections.libs import polars as polars_reexport
 
     # Get all public APIs from original polars
-    original_apis = {name for name in dir(polars) if not name.startswith("_")}
+    original_apis = {name for name in dir(polars) if not name.startswith('_')}
 
     # Get all exports from re-export module
     reexport_apis = set(polars_reexport.__all__)
 
     # Verify all original APIs are re-exported (+1 for 'pl')
     assert original_apis.issubset(reexport_apis)
-    assert "pl" in reexport_apis
+    assert 'pl' in reexport_apis
 
 
 def test_polars_type_identity():

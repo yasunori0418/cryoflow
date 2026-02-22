@@ -53,7 +53,8 @@ class PluginConfig(BaseModel):
 
 class CryoflowConfig(BaseModel):
     input_path: Path  # FilePathだとファイル存在チェックが入るためPathを使用
-    plugins: list[PluginConfig]
+    transform_plugins: list[PluginConfig]
+    output_plugins: list[PluginConfig]
 ```
 
 > **実装時の変更点**:
@@ -140,15 +141,15 @@ cryoflowの設定ファイルで指定される全てのファイルパスは、
   # 解決結果: /project/config/data/input.parquet
   ```
 
-**プラグインオプションのパス** (`plugins.options`内):
+**プラグインオプションのパス** (`output_plugins.options`内):
 - プラグイン実装側で`BasePlugin.resolve_path()`を使用して解決する必要がある
 - 例:
   ```toml
-  [[plugins]]
+  [[output_plugins]]
   name = "parquet_writer"
   module = "cryoflow_plugin_collections.output.parquet_writer"
 
-  [plugins.options]
+  [output_plugins.options]
   output_path = "data/output.parquet"
   # プラグイン内で: self.resolve_path(self.options['output_path'])
   # 解決結果: /project/config/data/output.parquet

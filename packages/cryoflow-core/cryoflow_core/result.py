@@ -31,9 +31,11 @@ def bind_safe(
         ...     .bind(bind_config(_parse_toml, 'Failed to parse TOML config'))
         ... )
     """
+
     def inner(
         fn: Callable[[A], Result[B, Exception]],
         error_msg: str,
     ) -> Callable[[A], Result[B, ExcT]]:
         return lambda x: fn(x).alt(lambda e: error_cls(f'{error_msg}: {e}'))
+
     return inner

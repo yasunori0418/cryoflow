@@ -8,7 +8,7 @@ from returns.result import Failure
 from cryoflow_core.config import get_config_path, load_config
 from cryoflow_core.loader import PluginLoadError, get_plugins, load_plugins
 from cryoflow_core.pipeline import run_dry_run_pipeline
-from cryoflow_core.plugin import OutputPlugin, TransformPlugin
+from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
 
 def execute(config: Path | None):
@@ -30,23 +30,25 @@ def execute(config: Path | None):
         typer.echo(str(e), err=True)
         raise typer.Exit(code=1)
 
-    enabled_count = sum(1 for p in cfg.plugins if p.enabled)
+    enabled_count = sum(1 for p in cfg.input_plugins + cfg.transform_plugins + cfg.output_plugins if p.enabled)
     typer.echo(f'[CHECK] Loaded {enabled_count} plugin(s) successfully.')
 
     # Execute dry-run validation
+    input_plugins = get_plugins(pm, InputPlugin)
     transform_plugins = get_plugins(pm, TransformPlugin)
     output_plugins = get_plugins(pm, OutputPlugin)
+
+    if len(input_plugins) == 0:
+        typer.echo('[ERROR] No input plugin configured', err=True)
+        raise typer.Exit(code=1)
 
     if len(output_plugins) == 0:
         typer.echo('[ERROR] No output plugin configured', err=True)
         raise typer.Exit(code=1)
-    if len(output_plugins) > 1:
-        typer.echo('[ERROR] Multiple output plugins not supported yet', err=True)
-        raise typer.Exit(code=1)
 
     typer.echo('\n[CHECK] Running dry-run validation...')
 
-    result = run_dry_run_pipeline(cfg.input_path, transform_plugins, output_plugins[0])
+    result = run_dry_run_pipeline(input_plugins, transform_plugins, output_plugins)
 
     if isinstance(result, Failure):
         error = result.failure()

@@ -8,8 +8,9 @@ import pytest
 from returns.result import Failure, Success
 
 from cryoflow_core.plugin import (
-    BasePlugin,
+    DEFAULT_LABEL,
     FrameData,
+    InputPlugin,
     OutputPlugin,
     TransformPlugin,
 )
@@ -18,6 +19,19 @@ from cryoflow_core.plugin import (
 # ---------------------------------------------------------------------------
 # Concrete plugin classes for testing (ABC cannot be instantiated directly)
 # ---------------------------------------------------------------------------
+
+
+class DummyInputPlugin(InputPlugin):
+    """Input plugin that returns a fixed LazyFrame."""
+
+    def name(self) -> str:
+        return 'dummy_input'
+
+    def execute(self) -> Success[FrameData]:
+        return Success(pl.LazyFrame({'a': [1, 2, 3], 'b': ['x', 'y', 'z']}))
+
+    def dry_run(self) -> Success[dict[str, pl.DataType]]:
+        return Success({'a': pl.Int64(), 'b': pl.String()})
 
 
 class DummyTransformPlugin(TransformPlugin):
@@ -62,7 +76,7 @@ class FailingTransformPlugin(TransformPlugin):
 class BrokenInitPlugin(TransformPlugin):
     """Plugin that raises during __init__."""
 
-    def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
+    def __init__(self, options: dict[str, Any], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
         raise RuntimeError('broken init')
 
     def name(self) -> str:
@@ -80,48 +94,57 @@ class BrokenInitPlugin(TransformPlugin):
 # ---------------------------------------------------------------------------
 
 VALID_TOML = """\
-input_path = "/data/input.parquet"
+output_plugins = []
 
-[[plugins]]
+[[input_plugins]]
+name = "my_input"
+module = "my_input_mod"
+enabled = true
+
+[[transform_plugins]]
 name = "my_plugin"
 module = "my_module"
 enabled = true
 
-[plugins.options]
+[transform_plugins.options]
 threshold = 42
 """
 
 MINIMAL_TOML = """\
-input_path = "/data/input.parquet"
-plugins = []
+input_plugins = []
+transform_plugins = []
+output_plugins = []
 """
 
 INVALID_TOML_SYNTAX = """\
-input_path = "/data/input.parquet"
-plugins = /invalid  # missing brackets
+input_plugins = /invalid  # missing brackets
+transform_plugins = []
 """
 
 MISSING_FIELDS_TOML = """\
-plugins = []
+transform_plugins = []
 """
 
 MULTI_PLUGIN_TOML = """\
-input_path = "/data/input.parquet"
+[[input_plugins]]
+name = "input_a"
+module = "input_mod_a"
+label = "sales"
 
-[[plugins]]
+[[transform_plugins]]
 name = "plugin_a"
 module = "mod_a"
 
-[[plugins]]
+[[transform_plugins]]
 name = "plugin_b"
 module = "mod_b"
 enabled = false
 
-[[plugins]]
+[[output_plugins]]
 name = "plugin_c"
 module = "mod_c"
 
-[plugins.options]
+[output_plugins.options]
 key = "value"
 """
 

@@ -2,21 +2,27 @@
 # This makes the configuration portable - you can move the entire examples/
 # directory without breaking path references.
 
-# Input data file (relative to this config file)
+[[input_plugins]]
+name = "parquet-scan"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+label = "default"   # omitting label defaults to "default"
+[input_plugins.options]
 input_path = "data/sample_sales.parquet"
 
-[[plugins]]
+[[transform_plugins]]
 name = "column-multiplier"
 module = "cryoflow_plugin_collections.transform.multiplier"
+label = "default"   # applies to data with label "default"
 enabled = true
-[plugins.options]
+[transform_plugins.options]
 column_name = "total_amount"
 multiplier = 2
 
-[[plugins]]
+[[output_plugins]]
 name = "parquet-writer"
 module = "cryoflow_plugin_collections.output.parquet_writer"
+label = "default"   # outputs data with label "default"
 enabled = true
-[plugins.options]
+[output_plugins.options]
 # Output file path (also relative to this config file)
 output_path = "data/output.parquet"
