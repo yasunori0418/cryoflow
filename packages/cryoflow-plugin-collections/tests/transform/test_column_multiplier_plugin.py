@@ -1,4 +1,4 @@
-"""Tests for transformation sample plugins."""
+"""Tests for ColumnMultiplierPlugin."""
 
 import polars as pl
 import pytest

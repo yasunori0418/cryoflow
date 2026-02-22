@@ -1,10 +1,9 @@
-"""Tests for output sample plugins."""
+"""Tests for ParquetWriterPlugin."""
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import polars as pl
-import pytest
 from returns.result import Failure, Success
 
 from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
