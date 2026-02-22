@@ -5,6 +5,96 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-02-22
+
+### Added
+
+- **`InputPlugin` ABC** (`cryoflow-core`):
+  - New `InputPlugin` base class for loading data from arbitrary sources
+  - `execute()` takes no arguments and returns `Result[FrameData, Exception]`
+  - `dry_run()` returns schema without loading actual data
+  - Registered via new `register_input_plugins` hookspec in `hookspecs.py`
+
+- **`label` attribute on `BasePlugin`** (`cryoflow-core`):
+  - All plugins now carry a `label` string (default: `'default'`)
+  - Enables label-based routing of multiple concurrent data streams
+
+- **Concrete `InputPlugin` implementations** (`cryoflow-plugin-collections`):
+  - `cryoflow_plugin_collections.input.parquet_scan` — reads Parquet files via `pl.scan_parquet()`
+  - `cryoflow_plugin_collections.input.ipc_scan` — reads Arrow IPC files via `pl.scan_ipc()`
+
+- **`libs/returns` submodule split** (`cryoflow-plugin-collections`):
+  - `libs/returns/result.py` — re-exports `Result`, `Success`, `Failure`, and related utilities
+  - `libs/returns/maybe.py` — re-exports `Maybe`, `Some`, `Nothing`, and related utilities
+  - Both are re-exported from `libs/returns/__init__.py` for backward compatibility
+
+- **Docs**: InputPlugin guide integrated into `docs/plugin_development.md` / `docs/plugin_development_ja.md`
+
+### Changed
+
+- **BREAKING**: `config.py` — `input_path: Path` field removed from `RunConfig`; replaced by `input_plugins: list[PluginConfig]`
+- **BREAKING**: `config.py` — `plugins` field renamed to `transform_plugins` and `output_plugins` (separate lists)
+- **BREAKING**: `config.py` — `label` field added to `PluginConfig`; required for multi-stream routing
+- **BREAKING**: `pipeline.py` — `load_data()` and `_detect_format()` removed; pipeline now built on `LabeledDataMap` keyed by label
+- **BREAKING**: `loader.py` — `InputPlugin` load/registration added; `label` passed to all plugin instances at instantiation
+
+### Tests
+
+- Reorganized all test files from flat layout into per-module directories (one class per file)
+- Added pipeline tests: label routing, `LabeledDataMap` construction, `execute_transform_chain`, `execute_output`, dry-run pipeline
+- Added `InputPlugin` unit tests, `label` attribute tests
+- Total: 232 tests passing
+
+---
+
+### Migration Guide
+
+#### Configuration File Migration
+
+The `input_path` key under `[run]` is removed. Input data sources must now be declared as `InputPlugin` entries under `[[run.input_plugins]]`.
+
+```toml
+# Before (0.1.x)
+[run]
+input_path = "data/input.parquet"
+
+[[run.plugins]]
+module = "cryoflow_plugin_collections.transform.multiplier"
+
+[[run.plugins]]
+module = "cryoflow_plugin_collections.output.parquet_writer"
+
+# After (0.2.0)
+[[run.input_plugins]]
+module = "cryoflow_plugin_collections.input.parquet_scan"
+label = "default"
+[run.input_plugins.options]
+path = "data/input.parquet"
+
+[[run.transform_plugins]]
+module = "cryoflow_plugin_collections.transform.multiplier"
+label = "default"
+
+[[run.output_plugins]]
+module = "cryoflow_plugin_collections.output.parquet_writer"
+label = "default"
+```
+
+#### Plugin Development Migration
+
+If you have custom plugins that referenced the old `plugins` config key or `load_data()` pipeline API, update as follows:
+
+- Replace `plugins` with `transform_plugins` or `output_plugins` in your config files
+- Remove any code relying on `pipeline.load_data()` or `pipeline._detect_format()`
+- `InputPlugin.execute()` takes **no arguments** (unlike `TransformPlugin` / `OutputPlugin` which receive `df: FrameData`)
+- Assign a `label` to every plugin config entry; use `'default'` for single-stream pipelines
+
+#### `libs/returns` Import Path (unchanged)
+
+The `libs/returns` module was split internally into `result.py` and `maybe.py`, but all public symbols remain importable from `cryoflow_plugin_collections.libs.returns` — no import changes required.
+
+---
+
 ## [0.1.3] - 2026-02-17
 
 ### Added
