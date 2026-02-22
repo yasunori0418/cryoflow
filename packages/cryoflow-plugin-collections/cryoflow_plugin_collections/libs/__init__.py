@@ -11,7 +11,7 @@ Available modules:
 
 Usage (for external plugin developers):
     from cryoflow_plugin_collections.libs.polars import pl
-    from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
+    from cryoflow_plugin_collections.libs.returns.result import Result, Success, Failure
     from cryoflow_plugin_collections.libs.core import TransformPlugin, FrameData
 
 Note: Built-in sample plugins (transform/multiplier, output/parquet_writer)

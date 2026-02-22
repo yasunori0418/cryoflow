@@ -6,6 +6,7 @@ commonly used when developing plugins.
 Usage:
     from cryoflow_plugin_collections.libs.core import (
         FrameData,
+        InputPlugin,
         TransformPlugin,
         OutputPlugin,
     )
@@ -17,15 +18,15 @@ Usage:
 """
 
 from cryoflow_core.plugin import (
-    BasePlugin,
-    FrameData,
-    OutputPlugin,
-    TransformPlugin,
+    FrameData as FrameData,
+    InputPlugin as InputPlugin,
+    OutputPlugin as OutputPlugin,
+    TransformPlugin as TransformPlugin,
 )
 
 __all__ = [
-    "FrameData",  # Type alias: LazyFrame | DataFrame
-    "BasePlugin",  # Base class for all plugins
-    "TransformPlugin",  # Base class for transform plugins
-    "OutputPlugin",  # Base class for output plugins
+    'FrameData',  # Type alias: LazyFrame | DataFrame
+    'InputPlugin',  # Base class for input plugins
+    'TransformPlugin',  # Base class for transform plugins
+    'OutputPlugin',  # Base class for output plugins
 ]

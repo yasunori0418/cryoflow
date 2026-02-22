@@ -36,9 +36,7 @@ class ColumnMultiplierPlugin(TransformPlugin):
             if multiplier is None:
                 return Failure(ValueError("Option 'multiplier' is required"))
 
-            transformed = df.with_columns(
-                (pl.col(column_name) * multiplier).alias(column_name)
-            )
+            transformed = df.with_columns((pl.col(column_name) * multiplier).alias(column_name))
             return Success(transformed)
         except Exception as e:
             return Failure(e)
@@ -62,28 +60,25 @@ class ColumnMultiplierPlugin(TransformPlugin):
                 return Failure(ValueError("Option 'multiplier' is required"))
 
             if column_name not in schema:
-                return Failure(
-                    ValueError(f"Column '{column_name}' not found in schema")
-                )
+                return Failure(ValueError(f"Column '{column_name}' not found in schema"))
 
             dtype = schema[column_name]
             # Check if dtype is a numeric type
             numeric_types = (
-                pl.Int8, pl.Int16, pl.Int32, pl.Int64,
-                pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64,
-                pl.Float32, pl.Float64,
+                pl.Int8,
+                pl.Int16,
+                pl.Int32,
+                pl.Int64,
+                pl.UInt8,
+                pl.UInt16,
+                pl.UInt32,
+                pl.UInt64,
+                pl.Float32,
+                pl.Float64,
             )
             # Handle both type classes and instances
-            if not (
-                isinstance(dtype, numeric_types)
-                or type(dtype) in numeric_types
-            ):
-                return Failure(
-                    ValueError(
-                        f"Column '{column_name}' has type {dtype}, "
-                        "expected numeric type"
-                    )
-                )
+            if not (isinstance(dtype, numeric_types) or type(dtype) in numeric_types):
+                return Failure(ValueError(f"Column '{column_name}' has type {dtype}, expected numeric type"))
 
             return Success(schema)
         except Exception as e:

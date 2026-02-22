@@ -11,7 +11,7 @@ import pluggy
 
 from cryoflow_core.config import CryoflowConfig, PluginConfig
 from cryoflow_core.hookspecs import CryoflowSpecs, hookimpl
-from cryoflow_core.plugin import BasePlugin, OutputPlugin, TransformPlugin
+from cryoflow_core.plugin import BasePlugin, InputPlugin, OutputPlugin, TransformPlugin
 
 
 class PluginLoadError(Exception):
@@ -84,7 +84,7 @@ def _discover_plugin_classes(name: str, module: Any) -> list[type[BasePlugin]]:
         if (
             inspect.isclass(obj)
             and issubclass(obj, BasePlugin)
-            and obj not in (BasePlugin, TransformPlugin, OutputPlugin)
+            and obj not in (BasePlugin, InputPlugin, TransformPlugin, OutputPlugin)
             and not inspect.isabstract(obj)
         ):
             classes.append(obj)
@@ -98,6 +98,7 @@ def _instantiate_plugins(
     classes: list[type[BasePlugin]],
     options: dict[str, Any],
     config_dir: Path,
+    label: str = 'default',
 ) -> list[BasePlugin]:
     """Instantiate discovered plugin classes with options.
 
@@ -106,6 +107,7 @@ def _instantiate_plugins(
         classes: List of plugin classes to instantiate.
         options: Plugin options dictionary.
         config_dir: Directory containing the config file (for path resolution).
+        label: Data stream identifier to pass to plugin instances.
 
     Raises:
         PluginLoadError: If instantiation fails.
@@ -113,7 +115,7 @@ def _instantiate_plugins(
     instances: list[BasePlugin] = []
     for cls in classes:
         try:
-            instances.append(cls(options, config_dir))
+            instances.append(cls(options, config_dir, label))
         except Exception as e:
             raise PluginLoadError(f"Plugin '{name}': failed to instantiate {cls.__name__}: {e}") from e
     return instances
@@ -124,11 +126,17 @@ class _PluginHookRelay:
 
     def __init__(
         self,
+        inputs: list[InputPlugin],
         transforms: list[TransformPlugin],
         outputs: list[OutputPlugin],
     ) -> None:
+        self._inputs = inputs
         self._transforms = transforms
         self._outputs = outputs
+
+    @hookimpl
+    def register_input_plugins(self) -> list[InputPlugin]:
+        return self._inputs
 
     @hookimpl
     def register_transform_plugins(self) -> list[TransformPlugin]:
@@ -159,7 +167,7 @@ def _load_single_plugin(plugin_cfg: PluginConfig, config_dir: Path) -> list[Base
         module = _load_module_from_dotpath(plugin_cfg.name, plugin_cfg.module)
 
     classes = _discover_plugin_classes(plugin_cfg.name, module)
-    return _instantiate_plugins(plugin_cfg.name, classes, plugin_cfg.options, config_dir)
+    return _instantiate_plugins(plugin_cfg.name, classes, plugin_cfg.options, config_dir, plugin_cfg.label)
 
 
 def load_plugins(
@@ -186,10 +194,20 @@ def load_plugins(
 
     config_dir = config_path.parent.resolve()
 
+    all_inputs: list[InputPlugin] = []
     all_transforms: list[TransformPlugin] = []
     all_outputs: list[OutputPlugin] = []
 
-    for plugin_cfg in config.plugins:
+    for plugin_cfg in config.input_plugins:
+        if not plugin_cfg.enabled:
+            continue
+
+        instances = _load_single_plugin(plugin_cfg, config_dir)
+        for inst in instances:
+            if isinstance(inst, InputPlugin):
+                all_inputs.append(inst)
+
+    for plugin_cfg in config.transform_plugins:
         if not plugin_cfg.enabled:
             continue
 
@@ -197,10 +215,17 @@ def load_plugins(
         for inst in instances:
             if isinstance(inst, TransformPlugin):
                 all_transforms.append(inst)
-            elif isinstance(inst, OutputPlugin):
+
+    for plugin_cfg in config.output_plugins:
+        if not plugin_cfg.enabled:
+            continue
+
+        instances = _load_single_plugin(plugin_cfg, config_dir)
+        for inst in instances:
+            if isinstance(inst, OutputPlugin):
                 all_outputs.append(inst)
 
-    relay = _PluginHookRelay(all_transforms, all_outputs)
+    relay = _PluginHookRelay(all_inputs, all_transforms, all_outputs)
     pm.register(relay, name='cryoflow_plugin_relay')
 
     return pm
@@ -210,6 +235,7 @@ T = TypeVar('T', bound=BasePlugin)
 
 # Plugin type to hook name mapping
 _PLUGIN_TYPE_HOOKS: dict[type[BasePlugin], str] = {
+    InputPlugin: 'register_input_plugins',
     TransformPlugin: 'register_transform_plugins',
     OutputPlugin: 'register_output_plugins',
 }
@@ -229,6 +255,7 @@ def get_plugins(pm: pluggy.PluginManager, plugin_type: type[T]) -> list[T]:
         ValueError: If the plugin_type is not supported (not in _PLUGIN_TYPE_HOOKS).
 
     Examples:
+        >>> inputs = get_plugins(pm, InputPlugin)
         >>> transforms = get_plugins(pm, TransformPlugin)
         >>> outputs = get_plugins(pm, OutputPlugin)
     """

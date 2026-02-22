@@ -23,4 +23,4 @@ import polars as pl
 from polars import *  # noqa: F403, F401 # pyright: ignore[reportWildcardImportFromLibrary]
 
 # Build __all__ dynamically to include all polars public APIs plus 'pl'
-__all__ = ["pl"] + [name for name in dir(pl) if not name.startswith("_")] # pyright: ignore[reportUnsupportedDunderAll]
+__all__ = [name for name in dir(pl) if not name.startswith('_')]  # pyright: ignore[reportUnsupportedDunderAll]

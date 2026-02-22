@@ -1,10 +1,9 @@
-"""Tests for output sample plugins."""
+"""Tests for ParquetWriterPlugin."""
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import polars as pl
-import pytest
 from returns.result import Failure, Success
 
 from cryoflow_plugin_collections.output.parquet_writer import ParquetWriterPlugin
@@ -69,7 +68,7 @@ class TestParquetWriterPlugin:
 
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
-        assert "output_path" in str(result.failure())
+        assert 'output_path' in str(result.failure())
 
     def test_execute_overwrites_existing_file(self) -> None:
         """Test that existing file is overwritten."""
@@ -95,7 +94,7 @@ class TestParquetWriterPlugin:
         with TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
             output_path = tmpdir_path / 'output.parquet'
-            schema = {'value': pl.Int64(), 'name': pl.Utf8()}
+            schema: dict[str, pl.DataType] = {'value': pl.Int64(), 'name': pl.Utf8()}
             plugin = ParquetWriterPlugin({'output_path': str(output_path)}, tmpdir_path)
 
             result = plugin.dry_run(schema)
@@ -107,7 +106,7 @@ class TestParquetWriterPlugin:
         """Test dry_run error when output_path is missing."""
         with TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            schema = {'value': pl.Int64()}
+            schema: dict[str, pl.DataType] = {'value': pl.Int64()}
             plugin = ParquetWriterPlugin({}, tmpdir_path)
 
             result = plugin.dry_run(schema)
@@ -120,7 +119,7 @@ class TestParquetWriterPlugin:
         with TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
             output_path = tmpdir_path / 'subdir' / 'output.parquet'
-            schema = {'value': pl.Int64()}
+            schema: dict[str, pl.DataType] = {'value': pl.Int64()}
             plugin = ParquetWriterPlugin({'output_path': str(output_path)}, tmpdir_path)
 
             result = plugin.dry_run(schema)
@@ -161,7 +160,7 @@ class TestParquetWriterPlugin:
             config_dir = Path(tmpdir) / 'config'
             config_dir.mkdir()
 
-            schema = {'value': pl.Int64()}
+            schema: dict[str, pl.DataType] = {'value': pl.Int64()}
             plugin = ParquetWriterPlugin({'output_path': 'data/output.parquet'}, config_dir)
 
             result = plugin.dry_run(schema)

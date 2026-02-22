@@ -1,4 +1,6 @@
-"""Tests for transformation sample plugins."""
+"""Tests for ColumnMultiplierPlugin."""
+
+from pathlib import Path
 
 import polars as pl
 import pytest
@@ -10,7 +12,7 @@ from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlu
 class TestColumnMultiplierPlugin:
     """Tests for ColumnMultiplierPlugin."""
 
-    def test_execute_with_lazyframe(self, tmp_path) -> None:
+    def test_execute_with_lazyframe(self, tmp_path: Path) -> None:
         """Test multiplication with LazyFrame input."""
         df = pl.LazyFrame({'value': [10, 20, 30], 'name': ['a', 'b', 'c']})
         plugin = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': 2}, tmp_path)
@@ -19,11 +21,12 @@ class TestColumnMultiplierPlugin:
 
         assert isinstance(result, Success)
         transformed = result.unwrap()
+        assert isinstance(transformed, pl.LazyFrame)
         collected = transformed.collect()
         assert collected['value'].to_list() == [20, 40, 60]
         assert collected['name'].to_list() == ['a', 'b', 'c']
 
-    def test_execute_with_dataframe(self, tmp_path) -> None:
+    def test_execute_with_dataframe(self, tmp_path: Path) -> None:
         """Test multiplication with DataFrame input."""
         df = pl.DataFrame({'value': [10, 20, 30], 'name': ['a', 'b', 'c']})
         plugin = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': 3}, tmp_path)
@@ -32,9 +35,10 @@ class TestColumnMultiplierPlugin:
 
         assert isinstance(result, Success)
         transformed = result.unwrap()
+        assert isinstance(transformed, pl.DataFrame)
         assert transformed.to_dict(as_series=False)['value'] == [30, 60, 90]
 
-    def test_execute_with_float_multiplier(self, tmp_path) -> None:
+    def test_execute_with_float_multiplier(self, tmp_path: Path) -> None:
         """Test multiplication with float coefficient."""
         df = pl.LazyFrame({'value': [10, 20, 30]})
         plugin = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': 1.5}, tmp_path)
@@ -43,10 +47,11 @@ class TestColumnMultiplierPlugin:
 
         assert isinstance(result, Success)
         transformed = result.unwrap()
+        assert isinstance(transformed, pl.LazyFrame)
         collected = transformed.collect()
         assert collected.to_dict(as_series=False)['value'] == [15.0, 30.0, 45.0]
 
-    def test_execute_missing_column_name(self, tmp_path) -> None:
+    def test_execute_missing_column_name(self, tmp_path: Path) -> None:
         """Test error when column_name option is missing."""
         df = pl.LazyFrame({'value': [1, 2, 3]})
         plugin = ColumnMultiplierPlugin({'multiplier': 2}, tmp_path)
@@ -55,9 +60,9 @@ class TestColumnMultiplierPlugin:
 
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
-        assert "column_name" in str(result.failure())
+        assert 'column_name' in str(result.failure())
 
-    def test_execute_missing_multiplier(self, tmp_path) -> None:
+    def test_execute_missing_multiplier(self, tmp_path: Path) -> None:
         """Test error when multiplier option is missing."""
         df = pl.LazyFrame({'value': [1, 2, 3]})
         plugin = ColumnMultiplierPlugin({'column_name': 'value'}, tmp_path)
@@ -66,15 +71,12 @@ class TestColumnMultiplierPlugin:
 
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
-        assert "multiplier" in str(result.failure())
+        assert 'multiplier' in str(result.failure())
 
-    def test_execute_column_not_found(self, tmp_path) -> None:
+    def test_execute_column_not_found(self, tmp_path: Path) -> None:
         """Test error when specified column does not exist."""
         df = pl.LazyFrame({'value': [1, 2, 3]})
-        plugin = ColumnMultiplierPlugin(
-            {'column_name': 'unknown_col', 'multiplier': 2},
-            tmp_path
-        )
+        plugin = ColumnMultiplierPlugin({'column_name': 'unknown_col', 'multiplier': 2}, tmp_path)
 
         result = plugin.execute(df)
 
@@ -82,16 +84,16 @@ class TestColumnMultiplierPlugin:
         # but the error would occur at collection time
         assert isinstance(result, Success)
         lazy_result = result.unwrap()
+        assert isinstance(lazy_result, pl.LazyFrame)
         try:
-            if hasattr(lazy_result, 'collect'):
-                lazy_result.collect()
-            assert False, "Expected ColumnNotFoundError"
+            lazy_result.collect()
+            assert False, 'Expected ColumnNotFoundError'
         except Exception as e:
-            assert "unknown_col" in str(e) or "not found" in str(e)
+            assert 'unknown_col' in str(e) or 'not found' in str(e)
 
-    def test_dry_run_success(self, tmp_path) -> None:
+    def test_dry_run_success(self, tmp_path: Path) -> None:
         """Test successful dry_run validation."""
-        schema = {'value': pl.Int64(), 'name': pl.Utf8()}
+        schema: dict[str, pl.DataType] = {'value': pl.Int64(), 'name': pl.Utf8()}
         plugin = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': 2}, tmp_path)
 
         result = plugin.dry_run(schema)
@@ -99,9 +101,9 @@ class TestColumnMultiplierPlugin:
         assert isinstance(result, Success)
         assert result.unwrap() == schema
 
-    def test_dry_run_missing_column_name(self, tmp_path) -> None:
+    def test_dry_run_missing_column_name(self, tmp_path: Path) -> None:
         """Test dry_run error when column_name is missing."""
-        schema = {'value': pl.Int64}
+        schema: dict[str, pl.DataType] = {'value': pl.Int64()}
         plugin = ColumnMultiplierPlugin({'multiplier': 2}, tmp_path)
 
         result = plugin.dry_run(schema)
@@ -109,30 +111,27 @@ class TestColumnMultiplierPlugin:
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
 
-    def test_dry_run_column_not_in_schema(self, tmp_path) -> None:
+    def test_dry_run_column_not_in_schema(self, tmp_path: Path) -> None:
         """Test dry_run error when column not in schema."""
-        schema = {'value': pl.Int64}
-        plugin = ColumnMultiplierPlugin(
-            {'column_name': 'unknown_col', 'multiplier': 2},
-            tmp_path
-        )
+        schema: dict[str, pl.DataType] = {'value': pl.Int64()}
+        plugin = ColumnMultiplierPlugin({'column_name': 'unknown_col', 'multiplier': 2}, tmp_path)
 
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
-        assert "not found in schema" in str(result.failure())
+        assert 'not found in schema' in str(result.failure())
 
-    def test_dry_run_non_numeric_column(self, tmp_path) -> None:
+    def test_dry_run_non_numeric_column(self, tmp_path: Path) -> None:
         """Test dry_run error when column is not numeric."""
-        schema = {'name': pl.Utf8}
+        schema: dict[str, pl.DataType] = {'name': pl.String()}
         plugin = ColumnMultiplierPlugin({'column_name': 'name', 'multiplier': 2}, tmp_path)
 
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), ValueError)
-        assert "numeric type" in str(result.failure())
+        assert 'numeric type' in str(result.failure())
 
     @pytest.mark.parametrize(
         'dtype',
@@ -149,16 +148,16 @@ class TestColumnMultiplierPlugin:
             pl.Float64(),
         ],
     )
-    def test_dry_run_accepts_numeric_types(self, dtype, tmp_path) -> None:
+    def test_dry_run_accepts_numeric_types(self, dtype, tmp_path: Path) -> None:
         """Test dry_run accepts all numeric types."""
-        schema = {'value': dtype}
+        schema: dict[str, pl.DataType] = {'value': dtype}
         plugin = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': 2}, tmp_path)
 
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Success)
 
-    def test_name(self, tmp_path) -> None:
+    def test_name(self, tmp_path: Path) -> None:
         """Test plugin name."""
         plugin = ColumnMultiplierPlugin({}, tmp_path)
         assert plugin.name() == 'column_multiplier'

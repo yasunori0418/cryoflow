@@ -24,12 +24,11 @@ Apache Arrow (IPC/Parquet) 形式のデータを入力とし、ユーザー定�
 1. **Config Load**: `XDG_CONFIG_HOME/cryoflow/config.toml` を読み込み、Pydantic で検証。
 2. **Plugin Discovery**: 設定ファイルに基づき、`importlib` で指定モジュールをロードし、`pluggy` に登録。
 3. **Pipeline Construction**:
-* Source (Parquet/IPC) を `pl.scan_*` で LazyFrame 化。
-* `TransformPlugin` フックを順次実行し、計算グラフ (LazyFrame) を構築。
-
+* `InputPlugin` フックを実行し、各プラグインのラベルをキーとした `LabeledDataMap` (ラベル→データの辞書) を構築。
+* `TransformPlugin` フックを、ラベルが一致するデータに対して順次実行し、計算グラフ (LazyFrame) を構築。
 
 4. **Execution / Output**:
-* `OutputPlugin` フックを実行。ここで初めて `collect()` または `sink_*()` が呼ばれ、処理が実行される。
+* `OutputPlugin` フックを実行。ラベルが一致するデータに対して実行される。ここで初めて `collect()` または `sink_*()` が呼ばれ、処理が実行される。
 
 
 
@@ -40,7 +39,6 @@ Apache Arrow (IPC/Parquet) 形式のデータを入力とし、ユーザー定�
 ### 3.1 データモデル (Pydantic)
 
 ```python
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -49,17 +47,20 @@ class PluginConfig(BaseModel):
     name: str
     module: str  # importlibで読み込むパス
     enabled: bool = True
+    label: str = 'default'  # マルチストリームルーティング用ラベル
     options: dict[str, Any] = Field(default_factory=dict) # プラグイン固有設定
 
 class CryoflowConfig(BaseModel):
-    input_path: Path  # FilePathだとファイル存在チェックが入るためPathを使用
-    plugins: list[PluginConfig]
+    input_plugins: list[PluginConfig]
+    transform_plugins: list[PluginConfig]
+    output_plugins: list[PluginConfig]
 ```
 
 > **実装時の変更点**:
 > - `GlobalConfig` → `CryoflowConfig` にリネーム（より明確な名前）
-> - `input_path` の型を `FilePath` → `Path` に変更（設定ロード時にファイル存在を強制しないため）
 > - Python 3.14 ビルトイン型（`list`, `dict`）を使用（`typing.List`, `typing.Dict` は非推奨）
+> - `input_path` は v0.2.0 で削除。データソースは `InputPlugin` エントリとして宣言するように変更
+> - `label` を v0.2.0 で `PluginConfig` に追加。ラベルベースのマルチストリームルーティングに使用
 
 ### 3.2 プラグイン基底クラス (ABC)
 
@@ -67,6 +68,7 @@ class CryoflowConfig(BaseModel):
 
 ```python
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
 import polars as pl
@@ -75,32 +77,56 @@ from returns.result import Result
 # データ型エイリアス
 FrameData = pl.LazyFrame | pl.DataFrame
 
+DEFAULT_LABEL = 'default'
+
 class BasePlugin(ABC):
     """全てのプラグインの基底クラス"""
-    def __init__(self, options: dict[str, Any]):
+
+    def __init__(self, options: dict[str, Any], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
         self.options = options
+        self._config_dir = config_dir
+        self.label = label  # マルチストリームルーティング用ラベル
 
     @abstractmethod
     def name(self) -> str:
         """プラグイン識別名"""
         pass
 
+
+class InputPlugin(BasePlugin):
+    """入力プラグイン"""
+
     @abstractmethod
-    def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
-        """スキーマのみを受け取り、処理後の予想スキーマを返す（またはエラー）"""
-        pass
+    def execute(self) -> Result[FrameData, Exception]:
+        """データをロードして FrameData として返す"""
+
+    @abstractmethod
+    def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
+        """データをロードせずにスキーマを返す"""
+
 
 class TransformPlugin(BasePlugin):
     """データ変換プラグイン"""
+
     @abstractmethod
     def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         pass
 
+    @abstractmethod
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
+        """スキーマのみを受け取り、処理後の予想スキーマを返す（またはエラー）"""
+
+
 class OutputPlugin(BasePlugin):
     """出力プラグイン"""
+
     @abstractmethod
     def execute(self, df: FrameData) -> Result[None, Exception]:
         pass
+
+    @abstractmethod
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
+        """出力用スキーマを検証する"""
 ```
 
 ### 3.3 Hook 仕様 (pluggy hookspec)
@@ -111,6 +137,10 @@ import pluggy
 hookspec = pluggy.HookspecMarker("cryoflow")
 
 class CryoflowSpecs:
+    @hookspec
+    def register_input_plugins(self) -> list[InputPlugin]:
+        """入力プラグインのインスタンスを返す"""
+
     @hookspec
     def register_transform_plugins(self) -> list[TransformPlugin]:
         """変換プラグインのインスタンスを返す"""
@@ -131,24 +161,24 @@ cryoflowの設定ファイルで指定される全てのファイルパスは、
 
 #### 設定ファイルのパス
 
-**`input_path`** (`config.toml`内):
-- `load_config()`が設定オブジェクトを返す前に自動的に解決される
-- 例:
+**プラグインオプションのパス** (`input_plugins.options`、`output_plugins.options` など):
+- プラグイン実装側で`BasePlugin.resolve_path()`を使用して解決する必要がある
+- 例（InputPlugin）:
   ```toml
-  # config.tomlが /project/config/config.toml にある場合
+  [[input_plugins]]
+  name = "parquet-scan"
+  module = "cryoflow_plugin_collections.input.parquet_scan"
+  [input_plugins.options]
   input_path = "data/input.parquet"
+  # プラグイン内で: self.resolve_path(self.options['input_path'])
   # 解決結果: /project/config/data/input.parquet
   ```
-
-**プラグインオプションのパス** (`plugins.options`内):
-- プラグイン実装側で`BasePlugin.resolve_path()`を使用して解決する必要がある
-- 例:
+- 例（OutputPlugin）:
   ```toml
-  [[plugins]]
-  name = "parquet_writer"
+  [[output_plugins]]
+  name = "parquet-writer"
   module = "cryoflow_plugin_collections.output.parquet_writer"
-
-  [plugins.options]
+  [output_plugins.options]
   output_path = "data/output.parquet"
   # プラグイン内で: self.resolve_path(self.options['output_path'])
   # 解決結果: /project/config/data/output.parquet
@@ -160,9 +190,10 @@ cryoflowの設定ファイルで指定される全てのファイルパスは、
 
 ```python
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any], config_dir: Path | None = None) -> None:
+    def __init__(self, options: dict[str, Any], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
         self.options = options
-        self._config_dir = config_dir or Path.cwd()
+        self._config_dir = config_dir
+        self.label = label
 
     def resolve_path(self, path: str | Path) -> Path:
         """設定ファイルのディレクトリを基準にパスを解決する"""
@@ -255,6 +286,14 @@ def execute(self, df: FrameData) -> FrameData:
 
 `dry_run`メソッドは、実際のデータを処理せずにスキーマのみを検査して、処理後の予想スキーマを返します。
 
+プラグイン種別によってシグネチャが異なります:
+
+- **`InputPlugin.dry_run()`**: 引数なし。データを読み込まずにスキーマを返す。
+- **`TransformPlugin.dry_run(schema)`**: 入力スキーマを受け取り、変換後の予想スキーマを返す。
+- **`OutputPlugin.dry_run(schema)`**: 入力スキーマを受け取り、出力の検証を行いスキーマを返す。
+
+`TransformPlugin` / `OutputPlugin` の実装例:
+
 ```python
 def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
     """スキーマを検証し、処理後の予想スキーマを返す"""
@@ -297,27 +336,41 @@ class CustomOutputPlugin(OutputPlugin):
 
 ## 6. CLIコマンド
 
+### 6.0 グローバルオプション
+
+全コマンドに共通するオプション:
+
+```bash
+cryoflow [-v | --version] [-h | --help]
+```
+
+- `-v, --version`: バージョンを表示して終了
+- `-h, --help`: ヘルプを表示して終了
+
 ### 6.1 run コマンド
 
 データ処理パイプラインを実行します。
 
 ```bash
-cryoflow run [-c CONFIG] [-v]
+cryoflow run [-c CONFIG] [-V] [-h]
 ```
 
 **オプション**:
 - `-c, --config CONFIG`: 設定ファイルのパス（指定されない場合はXDG準拠のデフォルトパスを使用）
-- `-v, --verbose`: 詳細ログを出力（DEBUG レベルのログが表示される）
+- `-V, --verbose`: 詳細ログを出力（DEBUG レベルのログが表示される）
+- `-h, --help`: ヘルプを表示して終了
 
 **出力例**:
 
 ```
 Config loaded: /home/user/.config/cryoflow/config.toml
-  input_path: data/input.parquet
-  plugins:    2 plugin(s)
+  input_plugins:     1 plugin(s)
+  transform_plugins: 1 plugin(s)
+  output_plugins:    1 plugin(s)
+    - input_plugin (my.input) [enabled]
     - transform_plugin (my.transform) [enabled]
     - output_plugin (my.output) [enabled]
-Loaded 2 plugin(s) successfully.
+Loaded 3 plugin(s) successfully.
 
 Executing pipeline...
 INFO: Executing 1 transformation plugin(s)...
@@ -330,12 +383,13 @@ INFO:   [1/1] transform_plugin
 パイプライン設定とスキーマを検証します。実際のデータは処理されません。
 
 ```bash
-cryoflow check [-c CONFIG] [-v]
+cryoflow check [-c CONFIG] [-V] [-h]
 ```
 
 **オプション**:
 - `-c, --config CONFIG`: 設定ファイルのパス
-- `-v, --verbose`: 詳細ログを出力
+- `-V, --verbose`: 詳細ログを出力
+- `-h, --help`: ヘルプを表示して終了
 
 **出力例**:
 
@@ -360,3 +414,92 @@ Output schema:
 - プラグインのロード可否確認
 - スキーマ検証（変換後のカラム型を確認）
 - 本実行前のプリフライト確認
+
+---
+
+## 7. 実装詳細
+
+### 7.1 プラグインローダーの動作
+
+プラグインローダー (`cryoflow_core/loader.py`) は、ファイルシステムパスとドット区切りモジュールパスを以下の条件で判別します:
+
+- **ファイルシステムパス** (例: `./plugins/my_plugin.py`): `'/'`、`'\\'` を含む、`.py` で終わる、または `'.'` で始まる場合。`importlib.util.spec_from_file_location()` で直接ロード。
+- **ドット区切りモジュールパス** (例: `cryoflow_plugin_collections.transform.multiplier`): インストール済みパッケージから `importlib.import_module()` でロード。
+
+この仕組みにより、ローカル開発ファイルとインストール済みパッケージのどちらからもプラグインをロードできます。
+
+### 7.2 スキーマ抽出
+
+データソースからスキーマを抽出する際、`FrameData` の種別によって取得方法が異なります:
+
+- **LazyFrame**: `collect_schema()` メソッドでスキーマを取得（データを実体化せずに）
+- **DataFrame**: `schema` プロパティでスキーマを取得
+
+いずれの場合も、スキーマ抽出はノンブロッキングであり、データのロードを引き起こしません。これにより、I/Oオーバーヘッドなしに効率的なdry-run検証が可能です。
+
+```python
+@safe
+def extract_schema(df: FrameData) -> dict[str, pl.DataType]:
+    if isinstance(df, pl.LazyFrame):
+        return df.collect_schema()
+    else:  # DataFrame
+        return df.schema
+```
+
+### 7.3 Result型とエラー伝搬
+
+全プラグインのメソッド (`execute`、`dry_run`) は `returns` ライブラリの `Result[T, Exception]` 型を返します:
+
+```python
+# TransformPlugin: 変換後のデータを返す
+Result[FrameData, Exception]
+
+# OutputPlugin: 成功時は None を返す
+Result[None, Exception]
+```
+
+エラーは `bind()` メソッドによってパイプライン全体に伝搬し、最初の `Failure` で処理を自動停止します。これにより鉄道指向プログラミングが実現され、パイプライン全体を通じて予測可能なエラーハンドリングが保証されます。
+
+### 7.4 ラベル駆動型マルチストリーム処理
+
+各プラグインは `label` 属性を持ち、同じラベルを持つプラグイン同士がデータをやり取りします。これにより、複数の独立したデータストリームを1つのパイプライン設定で並行して処理できます。
+
+#### 型エイリアス
+
+```python
+LabeledDataMap = dict[str, Result[FrameData, Exception]]
+LabeledSchemaMap = dict[str, Result[dict[str, pl.DataType], Exception]]
+```
+
+#### パイプライン実行フロー
+
+```
+Step 1: InputPlugin × N → LabeledDataMap { label: Result[FrameData] }
+Step 2: TransformPlugin × N → 各プラグインの label に一致するデータへ変換を適用
+Step 3: OutputPlugin × N → 各プラグインの label に一致するデータへ出力を実行
+```
+
+ラベルが一致するデータが存在しない場合、`Failure(KeyError(...))` として伝搬します。
+
+#### 設定例
+
+```toml
+[[input_plugins]]
+name = "orders-input"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+label = "orders"
+[input_plugins.options]
+input_path = "data/orders.parquet"
+
+[[transform_plugins]]
+name = "orders-transform"
+module = "my_plugins.transform.orders"
+label = "orders"  # "orders" ラベルのデータのみを処理
+
+[[output_plugins]]
+name = "orders-output"
+module = "cryoflow_plugin_collections.output.parquet_writer"
+label = "orders"  # "orders" ラベルのデータのみを出力
+[output_plugins.options]
+output_path = "data/orders_out.parquet"
+```

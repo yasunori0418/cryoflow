@@ -24,11 +24,11 @@ Processes Apache Arrow (IPC/Parquet) format data through a chain of user-defined
 1. **Config Load**: Load `XDG_CONFIG_HOME/cryoflow/config.toml` and validate with Pydantic.
 2. **Plugin Discovery**: Load specified modules via `importlib` and register with `pluggy` based on configuration.
 3. **Pipeline Construction**:
-   - Convert source (Parquet/IPC) to LazyFrame via `pl.scan_*`.
-   - Execute `TransformPlugin` hooks sequentially to build the computation graph (LazyFrame).
+   - Execute `InputPlugin` hooks and build a `LabeledDataMap` (label → data dictionary) keyed by each plugin's label.
+   - Execute `TransformPlugin` hooks sequentially against the data matching each plugin's label, building the computation graph (LazyFrame).
 
 4. **Execution / Output**:
-   - Execute `OutputPlugin` hooks. This is where `collect()` or `sink_*()` is first called and processing actually runs.
+   - Execute `OutputPlugin` hooks against the data matching each plugin's label. This is where `collect()` or `sink_*()` is first called and processing actually runs.
 
 ---
 
@@ -37,7 +37,6 @@ Processes Apache Arrow (IPC/Parquet) format data through a chain of user-defined
 ### 3.1 Data Models (Pydantic)
 
 ```python
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -46,17 +45,20 @@ class PluginConfig(BaseModel):
     name: str
     module: str  # Path to load with importlib
     enabled: bool = True
+    label: str = 'default'  # Label for multi-stream routing
     options: dict[str, Any] = Field(default_factory=dict)  # Plugin-specific configuration
 
 class CryoflowConfig(BaseModel):
-    input_path: Path  # Use Path instead of FilePath to avoid enforcing file existence at config load time
-    plugins: list[PluginConfig]
+    input_plugins: list[PluginConfig]
+    transform_plugins: list[PluginConfig]
+    output_plugins: list[PluginConfig]
 ```
 
 > **Implementation Notes**:
 > - `GlobalConfig` renamed to `CryoflowConfig` (clearer naming)
-> - `input_path` type changed from `FilePath` to `Path` (don't enforce file existence at config load time)
 > - Uses Python 3.14 built-in types (`list`, `dict`) instead of deprecated `typing.List`, `typing.Dict`
+> - `input_path` removed in v0.2.0; data sources are now declared as `InputPlugin` entries
+> - `label` added to `PluginConfig` in v0.2.0 for multi-stream label-based routing
 
 ### 3.2 Plugin Base Classes (ABC)
 
@@ -64,6 +66,7 @@ While `pluggy` can handle function-based hooks, we use class-based plugins to en
 
 ```python
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
 import polars as pl
@@ -72,32 +75,56 @@ from returns.result import Result
 # Type alias for data
 FrameData = pl.LazyFrame | pl.DataFrame
 
+DEFAULT_LABEL = 'default'
+
 class BasePlugin(ABC):
     """Base class for all plugins"""
-    def __init__(self, options: dict[str, Any]):
+
+    def __init__(self, options: dict[str, Any], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
         self.options = options
+        self._config_dir = config_dir
+        self.label = label  # Label for multi-stream routing
 
     @abstractmethod
     def name(self) -> str:
         """Plugin identification name"""
         pass
 
+
+class InputPlugin(BasePlugin):
+    """Input plugin"""
+
     @abstractmethod
-    def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
-        """Accept schema only and return predicted output schema (or error)"""
-        pass
+    def execute(self) -> Result[FrameData, Exception]:
+        """Load and return data as FrameData"""
+
+    @abstractmethod
+    def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
+        """Return schema without loading data"""
+
 
 class TransformPlugin(BasePlugin):
     """Data transformation plugin"""
+
     @abstractmethod
     def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         pass
 
+    @abstractmethod
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
+        """Accept schema only and return predicted output schema (or error)"""
+
+
 class OutputPlugin(BasePlugin):
     """Output plugin"""
+
     @abstractmethod
     def execute(self, df: FrameData) -> Result[None, Exception]:
         pass
+
+    @abstractmethod
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
+        """Validate schema for output"""
 ```
 
 ### 3.3 Hook Specification (pluggy hookspec)
@@ -108,6 +135,10 @@ import pluggy
 hookspec = pluggy.HookspecMarker("cryoflow")
 
 class CryoflowSpecs:
+    @hookspec
+    def register_input_plugins(self) -> list[InputPlugin]:
+        """Return instances of input plugins"""
+
     @hookspec
     def register_transform_plugins(self) -> list[TransformPlugin]:
         """Return instances of transformation plugins"""
@@ -128,24 +159,24 @@ All file paths in cryoflow configuration are resolved **relative to the director
 
 #### Configuration Paths
 
-**`input_path`** (in `config.toml`):
-- Automatically resolved by `load_config()` before returning the configuration object
-- Example:
+**Plugin option paths** (in `input_plugins.options`, `output_plugins.options`, etc.):
+- Must be resolved by plugin implementations using `BasePlugin.resolve_path()`
+- Example (InputPlugin):
   ```toml
-  # If config.toml is at /project/config/config.toml
+  [[input_plugins]]
+  name = "parquet-scan"
+  module = "cryoflow_plugin_collections.input.parquet_scan"
+  [input_plugins.options]
   input_path = "data/input.parquet"
+  # Plugin must call: self.resolve_path(self.options['input_path'])
   # Resolves to: /project/config/data/input.parquet
   ```
-
-**Plugin option paths** (in `plugins.options`):
-- Must be resolved by plugin implementations using `BasePlugin.resolve_path()`
-- Example:
+- Example (OutputPlugin):
   ```toml
-  [[plugins]]
-  name = "parquet_writer"
+  [[output_plugins]]
+  name = "parquet-writer"
   module = "cryoflow_plugin_collections.output.parquet_writer"
-
-  [plugins.options]
+  [output_plugins.options]
   output_path = "data/output.parquet"
   # Plugin must call: self.resolve_path(self.options['output_path'])
   # Resolves to: /project/config/data/output.parquet
@@ -157,9 +188,10 @@ Plugins receive a `config_dir` parameter in their constructor, which is automati
 
 ```python
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any], config_dir: Path | None = None) -> None:
+    def __init__(self, options: dict[str, Any], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
         self.options = options
-        self._config_dir = config_dir or Path.cwd()
+        self._config_dir = config_dir
+        self.label = label
 
     def resolve_path(self, path: str | Path) -> Path:
         """Resolve a path relative to the config directory."""
@@ -252,6 +284,14 @@ In both cases, it is important to include specific information in error messages
 
 The `dry_run` method inspects the schema only without processing actual data and returns the predicted output schema.
 
+The signature differs by plugin type:
+
+- **`InputPlugin.dry_run()`**: No arguments. Returns schema without loading data.
+- **`TransformPlugin.dry_run(schema)`**: Accepts input schema and returns predicted output schema.
+- **`OutputPlugin.dry_run(schema)`**: Accepts input schema, validates output, and returns schema.
+
+Example for `TransformPlugin` / `OutputPlugin`:
+
 ```python
 def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
     """Validate schema and return predicted output schema"""
@@ -294,27 +334,41 @@ class CustomOutputPlugin(OutputPlugin):
 
 ## 6. CLI Commands
 
+### 6.0 Global Options
+
+Options common to all commands:
+
+```bash
+cryoflow [-v | --version] [-h | --help]
+```
+
+- `-v, --version`: Show version and exit
+- `-h, --help`: Show help message and exit
+
 ### 6.1 run command
 
 Executes the data processing pipeline.
 
 ```bash
-cryoflow run [-c CONFIG] [-v]
+cryoflow run [-c CONFIG] [-V] [-h]
 ```
 
 **Options**:
 - `-c, --config CONFIG`: Configuration file path (if not specified, uses XDG-compliant default path)
-- `-v, --verbose`: Output detailed logs (DEBUG level logs are displayed)
+- `-V, --verbose`: Output detailed logs (DEBUG level logs are displayed)
+- `-h, --help`: Show help message and exit
 
 **Output Example**:
 
 ```
 Config loaded: /home/user/.config/cryoflow/config.toml
-  input_path: data/input.parquet
-  plugins:    2 plugin(s)
+  input_plugins:     1 plugin(s)
+  transform_plugins: 1 plugin(s)
+  output_plugins:    1 plugin(s)
+    - input_plugin (my.input) [enabled]
     - transform_plugin (my.transform) [enabled]
     - output_plugin (my.output) [enabled]
-Loaded 2 plugin(s) successfully.
+Loaded 3 plugin(s) successfully.
 
 Executing pipeline...
 INFO: Executing 1 transformation plugin(s)...
@@ -327,12 +381,13 @@ INFO:   [1/1] transform_plugin
 Validates pipeline configuration and schema without processing actual data.
 
 ```bash
-cryoflow check [-c CONFIG] [-v]
+cryoflow check [-c CONFIG] [-V] [-h]
 ```
 
 **Options**:
 - `-c, --config CONFIG`: Configuration file path
-- `-v, --verbose`: Output detailed logs
+- `-V, --verbose`: Output detailed logs
+- `-h, --help`: Show help message and exit
 
 **Output Example**:
 
@@ -368,21 +423,30 @@ Output schema:
 
 ### 7.1 Plugin Loader Behavior
 
-The plugin loader (`cryoflow_core/loader.py`) distinguishes between filesystem paths and dotted module paths:
+The plugin loader (`cryoflow_core/loader.py`) distinguishes between filesystem paths and dotted module paths using the following conditions:
 
-- **Filesystem Path** (e.g., `./plugins/my_plugin.py`): Loaded directly via `importlib.util.spec_from_file_location()`
-- **Dotted Module Path** (e.g., `cryoflow_plugin_collections.transform.multiplier`): Loaded via `importlib.import_module()` from installed packages
+- **Filesystem Path** (e.g., `./plugins/my_plugin.py`): Contains `'/'` or `'\\'`, ends with `.py`, or starts with `'.'`. Loaded directly via `importlib.util.spec_from_file_location()`.
+- **Dotted Module Path** (e.g., `cryoflow_plugin_collections.transform.multiplier`): Loaded via `importlib.import_module()` from installed packages.
 
 This allows plugins to be loaded either from local development files or from installed Python packages, providing flexibility in plugin distribution and development workflows.
 
-### 7.2 Schema Extraction from Data Sources
+### 7.2 Schema Extraction
 
-The pipeline automatically detects the format (Parquet/IPC) from the input file extension and extracts the schema:
+The method for extracting schema from `FrameData` differs by type:
 
-- **LazyFrame**: Schema is extracted via `schema` property without materializing data
-- **DataFrame**: Schema is extracted via the same `schema` property
+- **LazyFrame**: Schema is extracted via `collect_schema()` without materializing data.
+- **DataFrame**: Schema is extracted via the `schema` property.
 
 In both cases, the schema extraction is non-blocking and does not trigger data loading. This enables efficient dry-run validation without I/O overhead.
+
+```python
+@safe
+def extract_schema(df: FrameData) -> dict[str, pl.DataType]:
+    if isinstance(df, pl.LazyFrame):
+        return df.collect_schema()
+    else:  # DataFrame
+        return df.schema
+```
 
 ### 7.3 Result Type and Error Propagation
 
@@ -397,3 +461,47 @@ Result[None, Exception]
 ```
 
 Errors are propagated through the pipeline using the `bind()` method, which automatically halts processing on the first `Failure` encountered. This implements railway-oriented programming, ensuring predictable error handling across the entire pipeline.
+
+### 7.4 Label-Driven Multi-Stream Processing
+
+Each plugin has a `label` attribute, and plugins with the same label exchange data. This allows multiple independent data streams to be processed in parallel within a single pipeline configuration.
+
+#### Type Aliases
+
+```python
+LabeledDataMap = dict[str, Result[FrameData, Exception]]
+LabeledSchemaMap = dict[str, Result[dict[str, pl.DataType], Exception]]
+```
+
+#### Pipeline Execution Flow
+
+```
+Step 1: InputPlugin × N → LabeledDataMap { label: Result[FrameData] }
+Step 2: TransformPlugin × N → Apply transforms to data matching each plugin's label
+Step 3: OutputPlugin × N → Execute output on data matching each plugin's label
+```
+
+If no data exists for a plugin's label, it propagates as `Failure(KeyError(...))`.
+
+#### Configuration Example
+
+```toml
+[[input_plugins]]
+name = "orders-input"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+label = "orders"
+[input_plugins.options]
+input_path = "data/orders.parquet"
+
+[[transform_plugins]]
+name = "orders-transform"
+module = "my_plugins.transform.orders"
+label = "orders"  # Processes only data with "orders" label
+
+[[output_plugins]]
+name = "orders-output"
+module = "cryoflow_plugin_collections.output.parquet_writer"
+label = "orders"  # Outputs only data with "orders" label
+[output_plugins.options]
+output_path = "data/orders_out.parquet"
+```
