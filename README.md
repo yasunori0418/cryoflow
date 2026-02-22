@@ -365,8 +365,8 @@ The examples directory includes:
 For detailed information, see:
 
 - [Specification](docs/spec.md) - Complete API specification and interface design
-- [Implementation Plan](docs/implements_step_plan.md) - Technical implementation details
-- [Progress](docs/progress.md) - Project development progress
+- [Implementation Plan](docs/archives/implements_step_plan.md) - Early development planning document (archived)
+- [Progress](docs/archives/progress.md) - Early development progress tracking (archived)
 
 English documentation is available as `docs/{filename}.md`.
 日本語ドキュメントは `docs/{filename}_ja.md` をご参照ください。

@@ -365,8 +365,8 @@ examples ディレクトリに含まれるもの：
 詳細な情報については以下をご参照ください：
 
 - [仕様書](docs/spec_ja.md) - 完全な API 仕様とインターフェース設計
-- [実装計画](docs/implements_step_plan_ja.md) - 技術実装の詳細
-- [進捗](docs/progress_ja.md) - プロジェクト開発進捗
+- [実装計画](docs/archives/implements_step_plan_ja.md) - 開発初期の実装計画ドキュメント（アーカイブ済み）
+- [進捗](docs/archives/progress_ja.md) - 開発初期の進捗管理ドキュメント（アーカイブ済み）
 
 英語版のドキュメントは `docs/{filename}.md` をご参照ください。
 
