@@ -76,6 +76,8 @@
         {
           packages = {
             default = pythonSet.mkVirtualEnv "cryoflow-env" workspace.deps.default;
+            # Test environment including dev dependency group (pytest, numpy, etc.)
+            test = pythonSet.mkVirtualEnv "cryoflow-test-env" workspace.deps.all;
           };
 
           # Expose workspace and pythonSet for dev/flake.nix
