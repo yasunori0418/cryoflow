@@ -75,6 +75,7 @@
                 uv
                 ruff
                 pyright
+                actionlint
               ]
               ++ [ virtualenv ];
             env = {
