@@ -2,6 +2,23 @@
 name = "cryoflow-core"
 version = "0.2.0"
 description = "Core framework for cryoflow"
+license = "MIT"
+authors = [
+    {name = "yasunori0418", email = "yasunori.kirin0418@gmail.com"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
 requires-python = ">=3.11"
 dependencies = [
     "typer>=0.21.1",
@@ -11,6 +28,11 @@ dependencies = [
     "returns>=0.23.0",
     "polars>=1.37.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/yasunori0418/cryoflow"
+Repository = "https://github.com/yasunori0418/cryoflow"
+Issues = "https://github.com/yasunori0418/cryoflow/issues"
 
 [build-system]
 requires = ["hatchling"]

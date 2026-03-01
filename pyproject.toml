@@ -3,6 +3,33 @@ name = "cryoflow"
 version = "0.2.0"
 description = "Plug-in-driven column-oriented data processing CLI tool with Polars LazyFrame at its core."
 readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "yasunori0418", email = "yasunori.kirin0418@gmail.com"},
+]
+keywords = [
+    "polars",
+    "data-processing",
+    "cli",
+    "plugin",
+    "dataframe",
+    "lazyframe",
+    "arrow",
+    "parquet",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
 requires-python = ">=3.11"
 dependencies = [
     "polars>=1.37.1",
@@ -12,6 +39,12 @@ dependencies = [
 
 [project.scripts]
 cryoflow = "cryoflow_core.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/yasunori0418/cryoflow"
+Repository = "https://github.com/yasunori0418/cryoflow"
+Issues = "https://github.com/yasunori0418/cryoflow/issues"
+Changelog = "https://github.com/yasunori0418/cryoflow/releases"
 
 [build-system]
 requires = ["hatchling"]
