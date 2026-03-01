@@ -4,7 +4,7 @@ from typer.testing import CliRunner
 
 from cryoflow_core.cli import app
 
-runner = CliRunner(env={"NO_COLOR": "1"})
+runner = CliRunner()
 
 
 class TestHelpDisplay:

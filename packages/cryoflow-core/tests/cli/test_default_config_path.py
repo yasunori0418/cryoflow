@@ -13,7 +13,7 @@ from cryoflow_core.config import CryoflowConfig
 
 from ..conftest import MINIMAL_TOML
 
-runner = CliRunner(env={"NO_COLOR": "1"})
+runner = CliRunner()
 
 
 class TestDefaultConfigPath:

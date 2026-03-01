@@ -11,7 +11,7 @@ from cryoflow_core.cli import app
 
 from ..conftest import MINIMAL_TOML, VALID_TOML
 
-runner = CliRunner(env={"NO_COLOR": "1"})
+runner = CliRunner()
 
 
 class TestRunSuccess:

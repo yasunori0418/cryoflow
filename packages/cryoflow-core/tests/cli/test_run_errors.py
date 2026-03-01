@@ -10,7 +10,7 @@ from cryoflow_core.loader import PluginLoadError
 
 from ..conftest import VALID_TOML
 
-runner = CliRunner(env={"NO_COLOR": "1"})
+runner = CliRunner()
 
 
 class TestRunErrors:
