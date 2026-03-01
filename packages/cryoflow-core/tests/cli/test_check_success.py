@@ -13,7 +13,7 @@ from cryoflow_core.cli import app
 
 from ..conftest import VALID_TOML
 
-runner = CliRunner()
+runner = CliRunner(env={"NO_COLOR": "1"})
 
 
 class TestCheckSuccess:

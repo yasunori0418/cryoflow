@@ -51,7 +51,7 @@ output_path = "{tmpdir}/output.parquet"
             config_file.write_text(config_content)
 
             # Run check command
-            runner = CliRunner()
+            runner = CliRunner(env={"NO_COLOR": "1"})
             result = runner.invoke(app, ['check', '-c', str(config_file)])
 
             # Verify success
@@ -64,7 +64,7 @@ output_path = "{tmpdir}/output.parquet"
 
     def test_check_command_missing_config(self) -> None:
         """Test check command with missing config file."""
-        runner = CliRunner()
+        runner = CliRunner(env={"NO_COLOR": "1"})
         result = runner.invoke(app, ['check', '-c', '/nonexistent/path/config.toml'])
 
         # Verify error
@@ -109,7 +109,7 @@ output_path = "{tmpdir}/output.parquet"
             config_file.write_text(config_content)
 
             # Run check command with verbose flag
-            runner = CliRunner()
+            runner = CliRunner(env={"NO_COLOR": "1"})
             result = runner.invoke(app, ['check', '-c', str(config_file), '-V'])
 
             # Verify success and verbose output
@@ -157,7 +157,7 @@ output_path = "{tmpdir}/output.parquet"
             config_file.write_text(config_content)
 
             # Run check command
-            runner = CliRunner()
+            runner = CliRunner(env={"NO_COLOR": "1"})
             result = runner.invoke(app, ['check', '-c', str(config_file)])
 
             # Verify error
