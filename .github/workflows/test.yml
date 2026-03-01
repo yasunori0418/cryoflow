@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+env:
+  NO_COLOR: "1"
+
 jobs:
   pytest:
     runs-on: ubuntu-latest
