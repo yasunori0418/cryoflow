@@ -7,9 +7,11 @@ on:
       - main
     paths:
       - 'packages/**/*.py'
+      - 'uv.lock'
   pull_request:
     paths:
       - 'packages/**/*.py'
+      - 'uv.lock'
 
 jobs:
   pytest:
