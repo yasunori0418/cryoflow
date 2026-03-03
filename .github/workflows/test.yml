@@ -3,7 +3,13 @@ name: Test
 on:
   workflow_dispatch:
   push:
+    branches-ignore:
+      - main
+    paths:
+      - 'packages/**/*.py'
   pull_request:
+    paths:
+      - 'packages/**/*.py'
 
 jobs:
   pytest:
