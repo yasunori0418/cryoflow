@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "enabledManagers": ["pep621", "nix"],
+  "enabledManagers": ["pep621", "nix", "github-actions"],
   "packageRules": [
     {
       "description": "Create individual PRs for each Python library",
