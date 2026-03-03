@@ -6,6 +6,16 @@ on:
       - main
     paths:
       - "packages/**"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to release'
+        required: true
+        type: choice
+        options:
+          - core
+          - plugin-collections
+          - both
 
 jobs:
   release-core:
@@ -19,20 +29,34 @@ jobs:
 
       - name: Check for cryoflow-core changes
         id: filter
+        if: github.event_name == 'push'
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         with:
           filters: |
             changed:
               - 'packages/cryoflow-core/**'
 
+      - name: Determine if should release
+        id: should-release
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ inputs.package }}" == "core" || "${{ inputs.package }}" == "both" ]]; then
+              echo "release=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "release=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "release=${{ steps.filter.outputs.changed }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Nix
-        if: steps.filter.outputs.changed == 'true'
+        if: steps.should-release.outputs.release == 'true'
         uses: ./.github/actions/setup-nix
         with:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Get version
-        if: steps.filter.outputs.changed == 'true'
+        if: steps.should-release.outputs.release == 'true'
         id: version
         working-directory: packages/cryoflow-core
         run: |
@@ -41,7 +65,7 @@ jobs:
           echo "version_tag=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release (core-v)
-        if: steps.filter.outputs.changed == 'true'
+        if: steps.should-release.outputs.release == 'true'
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           tag_name: ${{ steps.version.outputs.tag }}
@@ -49,7 +73,7 @@ jobs:
           generate_release_notes: true
 
       - name: Create GitHub Release
-        if: steps.filter.outputs.changed == 'true'
+        if: steps.should-release.outputs.release == 'true'
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           tag_name: ${{ steps.version.outputs.version_tag }}
@@ -67,20 +91,34 @@ jobs:
 
       - name: Check for cryoflow-plugin-collections changes
         id: filter
+        if: github.event_name == 'push'
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         with:
           filters: |
             changed:
               - 'packages/cryoflow-plugin-collections/**'
 
+      - name: Determine if should release
+        id: should-release
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ inputs.package }}" == "plugin-collections" || "${{ inputs.package }}" == "both" ]]; then
+              echo "release=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "release=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "release=${{ steps.filter.outputs.changed }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Nix
-        if: steps.filter.outputs.changed == 'true'
+        if: steps.should-release.outputs.release == 'true'
         uses: ./.github/actions/setup-nix
         with:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Get version
-        if: steps.filter.outputs.changed == 'true'
+        if: steps.should-release.outputs.release == 'true'
         id: version
         working-directory: packages/cryoflow-plugin-collections
         run: |
@@ -88,7 +126,7 @@ jobs:
           echo "tag=plugin-collections-v${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
-        if: steps.filter.outputs.changed == 'true'
+        if: steps.should-release.outputs.release == 'true'
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           tag_name: ${{ steps.version.outputs.tag }}

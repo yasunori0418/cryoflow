@@ -1,42 +1,69 @@
 name: Publish to PyPI
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name to publish (e.g. core-v1.0.0 or plugin-collections-v1.0.0)'
+        required: true
+        type: string
 
 jobs:
   publish:
     if: >-
-      startsWith(github.event.release.tag_name, 'core-v') ||
-      startsWith(github.event.release.tag_name, 'plugin-collections-v')
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+          fetch-depth: 0
 
       - name: Setup Nix
         uses: ./.github/actions/setup-nix
         with:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - name: Determine package from tag
-        id: pkg
+      - name: Get tags for this commit
+        id: tags
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          if [[ "$TAG" == core-v* ]]; then
-            echo "package=cryoflow-core" >> "$GITHUB_OUTPUT"
-          elif [[ "$TAG" == plugin-collections-v* ]]; then
-            echo "package=cryoflow-plugin-collections" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.tag_name }}"
           else
-            echo "Unknown tag format: $TAG" >&2
-            exit 1
+            git fetch --tags
+            TAG=$(git tag --points-at ${{ github.event.workflow_run.head_sha }})
           fi
+          CORE_TAG=$(echo "$TAG" | grep '^core-v' || true)
+          PLUGIN_TAG=$(echo "$TAG" | grep '^plugin-collections-v' || true)
+          echo "core_tag=$CORE_TAG" >> "$GITHUB_OUTPUT"
+          echo "plugin_tag=$PLUGIN_TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Build package
-        run: nix shell nixpkgs#uv -c uv build --package ${{ steps.pkg.outputs.package }}
+      - name: Build cryoflow-core
+        if: steps.tags.outputs.core_tag != ''
+        run: nix shell nixpkgs#uv -c uv build --package cryoflow-core
 
-      - name: Publish to PyPI
+      - name: Publish cryoflow-core to PyPI
+        if: steps.tags.outputs.core_tag != ''
+        run: nix shell nixpkgs#uv -c uv publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+
+      - name: Clean dist directory before next build
+        if: steps.tags.outputs.core_tag != '' && steps.tags.outputs.plugin_tag != ''
+        run: rm -rf dist/
+
+      - name: Build cryoflow-plugin-collections
+        if: steps.tags.outputs.plugin_tag != ''
+        run: nix shell nixpkgs#uv -c uv build --package cryoflow-plugin-collections
+
+      - name: Publish cryoflow-plugin-collections to PyPI
+        if: steps.tags.outputs.plugin_tag != ''
         run: nix shell nixpkgs#uv -c uv publish
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
