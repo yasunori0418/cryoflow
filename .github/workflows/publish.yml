@@ -1,26 +1,42 @@
 name: Publish to PyPI
 
 on:
-  workflow_dispatch:
-  push:
-    tags:
-      - "*.*.*"
+  release:
+    types: [published]
 
 jobs:
   publish:
+    if: >-
+      startsWith(github.event.release.tag_name, 'core-v') ||
+      startsWith(github.event.release.tag_name, 'plugin-collections-v')
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
+      - name: Setup Nix
+        uses: ./.github/actions/setup-nix
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - name: Build packages
-        run: uv build --all-packages
+      - name: Determine package from tag
+        id: pkg
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [[ "$TAG" == core-v* ]]; then
+            echo "package=cryoflow-core" >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG" == plugin-collections-v* ]]; then
+            echo "package=cryoflow-plugin-collections" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unknown tag format: $TAG" >&2
+            exit 1
+          fi
+
+      - name: Build package
+        run: nix shell nixpkgs#uv -c uv build --package ${{ steps.pkg.outputs.package }}
 
       - name: Publish to PyPI
-        run: uv publish
+        run: nix shell nixpkgs#uv -c uv publish
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
