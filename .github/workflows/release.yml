@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/**"
+
+jobs:
+  release-core:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Check for cryoflow-core changes
+        id: filter
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        with:
+          filters: |
+            changed:
+              - 'packages/cryoflow-core/**'
+
+      - name: Setup Nix
+        if: steps.filter.outputs.changed == 'true'
+        uses: ./.github/actions/setup-nix
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Get version
+        if: steps.filter.outputs.changed == 'true'
+        id: version
+        working-directory: packages/cryoflow-core
+        run: |
+          VERSION=$(nix shell 'nixpkgs#uv' -c uv version | awk '{print $2}')
+          echo "tag=core-v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_tag=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release (core-v)
+        if: steps.filter.outputs.changed == 'true'
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+
+      - name: Create GitHub Release
+        if: steps.filter.outputs.changed == 'true'
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        with:
+          tag_name: ${{ steps.version.outputs.version_tag }}
+          name: ${{ steps.version.outputs.version_tag }}
+          generate_release_notes: true
+
+  release-plugin-collections:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Check for cryoflow-plugin-collections changes
+        id: filter
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        with:
+          filters: |
+            changed:
+              - 'packages/cryoflow-plugin-collections/**'
+
+      - name: Setup Nix
+        if: steps.filter.outputs.changed == 'true'
+        uses: ./.github/actions/setup-nix
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Get version
+        if: steps.filter.outputs.changed == 'true'
+        id: version
+        working-directory: packages/cryoflow-plugin-collections
+        run: |
+          VERSION=$(nix shell 'nixpkgs#uv' -c uv version | awk '{print $2}')
+          echo "tag=plugin-collections-v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: steps.filter.outputs.changed == 'true'
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
