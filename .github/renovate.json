@@ -1,6 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
+  "nix": {
+    "enabled": true
+  },
+  "lockFileMaintenance": {
+    "enabled": true
+  },
   "enabledManagers": ["pep621", "nix", "github-actions"],
   "packageRules": [
     {
@@ -11,13 +17,13 @@
     {
       "description": "Group root flake.nix inputs together",
       "matchManagers": ["nix"],
-      "matchFileNames": ["flake.lock"],
+      "matchFileNames": ["flake.nix"],
       "groupName": "nix flake inputs (root)"
     },
     {
       "description": "Group dev/flake.nix inputs together",
       "matchManagers": ["nix"],
-      "matchFileNames": ["dev/flake.lock"],
+      "matchFileNames": ["dev/flake.nix"],
       "groupName": "nix flake inputs (dev)"
     }
   ]
