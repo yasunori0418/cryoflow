@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["uv", "nix"],
+  "packageRules": [
+    {
+      "description": "Create individual PRs for each Python library",
+      "matchManagers": ["uv"],
+      "groupName": null
+    },
+    {
+      "description": "Group root flake.nix inputs together",
+      "matchManagers": ["nix"],
+      "matchFileNames": ["flake.lock"],
+      "groupName": "nix flake inputs (root)"
+    },
+    {
+      "description": "Group dev/flake.nix inputs together",
+      "matchManagers": ["nix"],
+      "matchFileNames": ["dev/flake.lock"],
+      "groupName": "nix flake inputs (dev)"
+    }
+  ]
+}
