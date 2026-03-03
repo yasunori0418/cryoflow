@@ -1,6 +1,6 @@
 [project]
 name = "cryoflow"
-version = "0.2.0"
+version = "0.2.2"
 description = "Plug-in-driven column-oriented data processing CLI tool with Polars LazyFrame at its core."
 readme = "README.md"
 license = "MIT"
