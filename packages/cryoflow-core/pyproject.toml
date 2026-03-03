@@ -1,6 +1,6 @@
 [project]
 name = "cryoflow-core"
-version = "0.2.0"
+version = "0.2.2"
 description = "Core framework for cryoflow"
 license = "MIT"
 authors = [

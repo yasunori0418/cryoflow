@@ -50,7 +50,7 @@ wheels = [
 
 [[package]]
 name = "cryoflow"
-version = "0.2.0"
+version = "0.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "cryoflow-core" },
@@ -79,7 +79,7 @@ dev = [
 
 [[package]]
 name = "cryoflow-core"
-version = "0.2.0"
+version = "0.2.2"
 source = { editable = "packages/cryoflow-core" }
 dependencies = [
     { name = "pluggy" },
