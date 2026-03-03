@@ -30,21 +30,21 @@
       "description": "Descriptive PR title for uv.lock maintenance",
       "matchManagers": ["pep621"],
       "matchUpdateTypes": ["lockFileMaintenance"],
-      "prTitle": "chore(deps): lock file maintenance (uv.lock)"
+      "commitMessageExtra": "(uv.lock)"
     },
     {
       "description": "Descriptive PR title for root flake.lock maintenance",
       "matchManagers": ["nix"],
       "matchFileNames": ["flake.nix"],
       "matchUpdateTypes": ["lockFileMaintenance"],
-      "prTitle": "chore(deps): lock file maintenance (flake.lock)"
+      "commitMessageExtra": "(flake.lock)"
     },
     {
       "description": "Descriptive PR title for dev/flake.lock maintenance",
       "matchManagers": ["nix"],
       "matchFileNames": ["dev/flake.nix"],
       "matchUpdateTypes": ["lockFileMaintenance"],
-      "prTitle": "chore(deps): lock file maintenance (dev/flake.lock)"
+      "commitMessageExtra": "(dev/flake.lock)"
     }
   ]
 }
