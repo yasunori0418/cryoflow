@@ -26,3 +26,5 @@ jobs:
 
       - name: Run pytest
         run: nix develop '.?dir=dev#ci' -c pytest
+        env:
+          TERM: "dumb"
