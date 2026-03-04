@@ -25,6 +25,4 @@ jobs:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Run pytest
-        run: nix shell .#test -c pytest
-        env:
-          TERM: "dumb"
+        run: nix develop '.?dir=dev#ci' -c pytest
