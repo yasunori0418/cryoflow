@@ -67,27 +67,29 @@
           virtualenv = editablePythonSet.mkVirtualEnv "cryoflow-dev-env" rootWorkspace.deps.all;
         in
         {
-          devShells.default = pkgs.mkShell {
-            inputsFrom = [ inputs'.root.packages.default ];
-            packages =
-              with pkgs;
-              [
-                uv
-                ruff
-                pyright
-                actionlint
-              ]
-              ++ [ virtualenv ];
-            env = {
-              UV_PYTHON_PREFERENCE = "only-system";
-              UV_NO_SYNC = "1";
-              UV_PYTHON = editablePythonSet.python.interpreter;
-              UV_PYTHON_DOWNLOADS = "never";
+          devShells = {
+            default = pkgs.mkShell {
+              inputsFrom = [ inputs'.root.packages.default ];
+              packages =
+                with pkgs;
+                [
+                  uv
+                  ruff
+                  pyright
+                  actionlint
+                ]
+                ++ [ virtualenv ];
+              env = {
+                UV_PYTHON_PREFERENCE = "only-system";
+                UV_NO_SYNC = "1";
+                UV_PYTHON = editablePythonSet.python.interpreter;
+                UV_PYTHON_DOWNLOADS = "never";
+              };
+              shellHook = ''
+                unset PYTHONPATH
+                export REPO_ROOT=$(git rev-parse --show-superproject-working-tree --show-toplevel)
+              '';
             };
-            shellHook = ''
-              unset PYTHONPATH
-              export REPO_ROOT=$(git rev-parse --show-superproject-working-tree --show-toplevel)
-            '';
           };
         };
     };
