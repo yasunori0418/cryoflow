@@ -1,0 +1,37 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New version (e.g. 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  bump-version:
+    if: github.ref_name != 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Nix
+        uses: ./.github/actions/setup-nix
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Bump version for all packages
+        run: |
+          nix shell nixpkgs#uv -c uv version ${{ inputs.version }}
+          nix shell nixpkgs#uv -c uv version --package cryoflow-core ${{ inputs.version }}
+          nix shell nixpkgs#uv -c uv version --package cryoflow-plugin-collections ${{ inputs.version }}
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml packages/cryoflow-core/pyproject.toml packages/cryoflow-plugin-collections/pyproject.toml
+          git commit -m "chore: bump version to ${{ inputs.version }}"
+          git push
