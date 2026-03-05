@@ -287,9 +287,9 @@ class MyOutputPlugin(OutputPlugin):
         df.sink_parquet("output.parquet")
         return Success(None)
 
-    def dry_run(self, schema: dict) -> Result[None, Exception]:
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
         # 出力可能性を検証
-        return Success(None)
+        return Success(schema)
 ```
 
 すべてのプラグインは `dry_run` メソッドを持ち、実データを流さずにスキーマ検証が可能です。
@@ -355,6 +355,8 @@ examples ディレクトリに含まれるもの：
 詳細な情報については以下をご参照ください：
 
 - [仕様書](docs/spec_ja.md) - 完全な API 仕様とインターフェース設計
+- [プラグイン開発ガイド](docs/plugin_development_ja.md) - カスタムプラグイン開発のガイド
+- [CI/CD ドキュメント](docs/cicd_ja.md) - ワークフローと自動化の詳細
 - [実装計画](docs/archives/implements_step_plan_ja.md) - 開発初期の実装計画ドキュメント（アーカイブ済み）
 - [進捗](docs/archives/progress_ja.md) - 開発初期の進捗管理ドキュメント（アーカイブ済み）
 

@@ -287,9 +287,9 @@ class MyOutputPlugin(OutputPlugin):
         df.sink_parquet("output.parquet")
         return Success(None)
 
-    def dry_run(self, schema: dict) -> Result[None, Exception]:
+    def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
         # Validate output capability
-        return Success(None)
+        return Success(schema)
 ```
 
 All plugins have a `dry_run` method that enables schema validation without processing actual data.
@@ -355,6 +355,8 @@ The examples directory includes:
 For detailed information, see:
 
 - [Specification](docs/spec.md) - Complete API specification and interface design
+- [Plugin Development Guide](docs/plugin_development.md) - Guide for developing custom plugins
+- [CI/CD Documentation](docs/cicd.md) - Workflow and automation details
 - [Implementation Plan](docs/archives/implements_step_plan.md) - Early development planning document (archived)
 - [Progress](docs/archives/progress.md) - Early development progress tracking (archived)
 
