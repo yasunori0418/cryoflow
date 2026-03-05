@@ -1,6 +1,6 @@
 [project]
 name = "cryoflow-plugin-collections"
-version = "0.2.0"
+version = "0.2.2"
 description = "Sample plugin for cryoflow"
 license = "MIT"
 authors = [

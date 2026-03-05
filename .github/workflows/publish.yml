@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag name to publish (e.g. core-v1.0.0 or plugin-collections-v1.0.0)'
+        description: 'Tag name to publish (e.g. 1.0.0)'
         required: true
         type: string
 
@@ -30,40 +30,10 @@ jobs:
         with:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - name: Get tags for this commit
-        id: tags
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAG="${{ inputs.tag_name }}"
-          else
-            git fetch --tags
-            TAG=$(git tag --points-at ${{ github.event.workflow_run.head_sha }})
-          fi
-          CORE_TAG=$(echo "$TAG" | grep '^core-v' || true)
-          PLUGIN_TAG=$(echo "$TAG" | grep '^plugin-collections-v' || true)
-          echo "core_tag=$CORE_TAG" >> "$GITHUB_OUTPUT"
-          echo "plugin_tag=$PLUGIN_TAG" >> "$GITHUB_OUTPUT"
+      - name: Build all packages
+        run: nix shell nixpkgs#uv -c uv build --all-packages
 
-      - name: Build cryoflow-core
-        if: steps.tags.outputs.core_tag != ''
-        run: nix shell nixpkgs#uv -c uv build --package cryoflow-core
-
-      - name: Publish cryoflow-core to PyPI
-        if: steps.tags.outputs.core_tag != ''
-        run: nix shell nixpkgs#uv -c uv publish
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-
-      - name: Clean dist directory before next build
-        if: steps.tags.outputs.core_tag != '' && steps.tags.outputs.plugin_tag != ''
-        run: rm -rf dist/
-
-      - name: Build cryoflow-plugin-collections
-        if: steps.tags.outputs.plugin_tag != ''
-        run: nix shell nixpkgs#uv -c uv build --package cryoflow-plugin-collections
-
-      - name: Publish cryoflow-plugin-collections to PyPI
-        if: steps.tags.outputs.plugin_tag != ''
+      - name: Publish to PyPI
         run: nix shell nixpkgs#uv -c uv publish
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
