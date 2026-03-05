@@ -5,7 +5,8 @@
     "enabled": true
   },
   "lockFileMaintenance": {
-    "enabled": true
+    "enabled": true,
+    "schedule": ["before 5am on monday"]
   },
   "enabledManagers": ["pep621", "nix", "github-actions"],
   "packageRules": [
@@ -18,12 +19,14 @@
       "description": "Group root flake.nix inputs together",
       "matchManagers": ["nix"],
       "matchFileNames": ["flake.nix"],
+      "matchUpdateTypes": ["digest", "pin", "pinDigest"],
       "groupName": "nix flake inputs (root)"
     },
     {
       "description": "Group dev/flake.nix inputs together",
       "matchManagers": ["nix"],
       "matchFileNames": ["dev/flake.nix"],
+      "matchUpdateTypes": ["digest", "pin", "pinDigest"],
       "groupName": "nix flake inputs (dev)"
     },
     {
