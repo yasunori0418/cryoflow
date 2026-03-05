@@ -23,27 +23,17 @@ A plugin-driven columnar data processing CLI tool built on Polars LazyFrame.
 
 ### Using uv (recommended)
 
-Install directly from the GitHub repository:
-
 ```bash
-uv tool install git+https://github.com/yasunori0418/cryoflow
+uv tool install cryoflow
 ```
 
 Try without installing:
 
 ```bash
-uvx --from git+https://github.com/yasunori0418/cryoflow cryoflow --help
-```
-
-> **Note**: After PyPI publication, you can also install with:
-
-```bash
-uv tool install cryoflow
+uvx cryoflow --help
 ```
 
 ### Using pip
-
-> **Note**: Available after PyPI publication.
 
 ```bash
 pip install cryoflow
