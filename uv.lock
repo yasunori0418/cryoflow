@@ -102,7 +102,7 @@ requires-dist = [
 
 [[package]]
 name = "cryoflow-plugin-collections"
-version = "0.2.0"
+version = "0.2.2"
 source = { editable = "packages/cryoflow-plugin-collections" }
 dependencies = [
     { name = "cryoflow-core" },
