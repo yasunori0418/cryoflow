@@ -27,6 +27,7 @@ jobs:
           nix shell nixpkgs#uv -c uv version ${{ inputs.version }}
           nix shell nixpkgs#uv -c uv version --package cryoflow-core ${{ inputs.version }}
           nix shell nixpkgs#uv -c uv version --package cryoflow-plugin-collections ${{ inputs.version }}
+          nix shell nixpkgs#uv -c uv sync
 
       - name: Commit version bump
         run: |
