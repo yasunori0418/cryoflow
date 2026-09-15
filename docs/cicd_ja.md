@@ -12,7 +12,7 @@ cryoflow プロジェクトでは GitHub Actions を使用してCI/CDパイプ�
 ## アーキテクチャ全体図
 
 ```
-[feature branch へのプッシュ / PR]
+[プルリクエストの作成・更新]
         |
         v
     [Test] ← packages/**/*.py または uv.lock の変更時に実行
@@ -42,13 +42,13 @@ cryoflow プロジェクトでは GitHub Actions を使用してCI/CDパイプ�
 
 | 項目 | 内容 |
 |------|------|
-| トリガー | `feature` ブランチへの push、PR、手動実行 |
+| トリガー | PR、手動実行 |
 | 対象パス | `packages/**/*.py`、`uv.lock` |
 | 実行環境 | `ubuntu-latest` |
 
 #### 概要
 
-`main` ブランチ以外へのプッシュやプルリクエスト時に、Pythonソースコードまたはロックファイルが変更された場合にテストを実行します。
+プルリクエストの作成・更新時に、Pythonソースコードまたはロックファイルが変更された場合にテストを実行します。
 
 #### 実行内容
 
@@ -255,7 +255,7 @@ Renovate Bot によって以下の依存関係が自動更新されます。
 通常のリリース手順は以下の通りです。
 
 ```
-1. feature ブランチで開発・テスト（Test ワークフロー）
+1. feature ブランチで開発し、PR を作成してテスト（Test ワークフロー）
 2. Bump Version ワークフロー（手動）でバージョンを更新
 3. main ブランチへ PR をマージ
 4. Release ワークフローが自動実行 → GitHub Release 作成
