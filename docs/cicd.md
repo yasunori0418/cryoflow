@@ -12,7 +12,7 @@ All workflows use Nix to standardize the build environment, installing Nix and c
 ## Architecture Overview
 
 ```
-[Push to feature branch / Pull Request]
+[Pull Request opened / updated]
         |
         v
     [Test] ← Runs when packages/**/*.py or uv.lock changes
@@ -42,13 +42,13 @@ All workflows use Nix to standardize the build environment, installing Nix and c
 
 | Item | Content |
 |------|---------|
-| Trigger | Push to non-main branches, PR, manual execution |
+| Trigger | PR, manual execution |
 | Target paths | `packages/**/*.py`, `uv.lock` |
 | Runner | `ubuntu-latest` |
 
 #### Overview
 
-Runs tests when Python source files or lock files change on pushes to non-main branches or pull requests.
+Runs tests when Python source files or lock files change on pull request creation or update.
 
 #### Steps
 
@@ -255,7 +255,7 @@ Renovate Bot automatically updates the following dependencies.
 The typical release process is as follows:
 
 ```
-1. Develop and test on a feature branch (Test workflow)
+1. Develop on a feature branch and open a PR to run tests (Test workflow)
 2. Run Bump Version workflow (manual) to update the version
 3. Merge PR to main branch
 4. Release workflow runs automatically → GitHub Release created

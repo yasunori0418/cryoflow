@@ -2,12 +2,6 @@ name: Test
 
 on:
   workflow_dispatch:
-  push:
-    branches-ignore:
-      - main
-    paths:
-      - 'packages/**/*.py'
-      - 'uv.lock'
   pull_request:
     paths:
       - 'packages/**/*.py'
