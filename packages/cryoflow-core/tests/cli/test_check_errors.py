@@ -39,6 +39,7 @@ class TestCheckErrors:
 
         assert result.exit_code == 1
         assert 'plugin failed to load' in result.output
+        assert '[ERROR]' not in result.output
 
     def test_no_input_plugin(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'

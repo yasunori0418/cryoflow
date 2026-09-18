@@ -36,3 +36,4 @@ class TestRunErrors:
 
         assert result.exit_code == 1
         assert 'plugin failed to load' in result.output
+        assert '[ERROR]' not in result.output
