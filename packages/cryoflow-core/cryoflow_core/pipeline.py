@@ -1,6 +1,7 @@
 """Data processing pipeline for cryoflow."""
 
 import logging
+from collections.abc import Callable
 
 import polars as pl
 from returns.result import Failure, Result, Success, safe
@@ -58,6 +59,23 @@ def execute_transform_chain(
     return result
 
 
+def _log_schema_size(stage: str) -> Callable[[dict[str, pl.DataType]], dict[str, pl.DataType]]:
+    """Build a pass-through mapper that logs the column count of a schema.
+
+    Args:
+        stage: Label describing the pipeline stage (e.g. 'Input', 'Output').
+
+    Returns:
+        Function that logs the schema size and returns the schema unchanged.
+    """
+
+    def _log(schema: dict[str, pl.DataType]) -> dict[str, pl.DataType]:
+        logger.debug(f'    {stage} schema: {len(schema)} columns')
+        return schema
+
+    return _log
+
+
 def execute_dry_run_chain(
     initial_schema: Result[dict[str, pl.DataType], Exception],
     plugins: list[TransformPlugin],
@@ -78,16 +96,9 @@ def execute_dry_run_chain(
     for i, plugin in enumerate(plugins, 1):
         logger.info(f'  [{i}/{len(plugins)}] {plugin.name()}')
 
-        if isinstance(result, Success):
-            schema = result.unwrap()
-            logger.debug(f'    Input schema: {len(schema)} columns')
+        result = result.map(_log_schema_size('Input')).bind(plugin.dry_run).map(_log_schema_size('Output'))
 
-        result = result.bind(plugin.dry_run)
-
-        if isinstance(result, Success):
-            schema = result.unwrap()
-            logger.debug(f'    Output schema: {len(schema)} columns')
-        else:
+        if isinstance(result, Failure):
             logger.error(f'    Validation failed: {result.failure()}')
             break
 
