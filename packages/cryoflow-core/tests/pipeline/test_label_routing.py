@@ -14,6 +14,7 @@ from cryoflow_core.pipeline import (
     _execute_labeled_transform_chain,
     run_pipeline,
 )
+from cryoflow_core.plugin import FrameData, TransformPlugin
 
 from ..conftest import DummyInputPlugin, DummyOutputPlugin, DummyTransformPlugin
 
@@ -115,3 +116,43 @@ class TestDryRunLabelRouting:
         result = _execute_labeled_output_dry_run(schema_map, [])
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), KeyError)
+
+    def test_dry_run_transform_chain_accumulates_within_label(self, tmp_path: Path) -> None:
+        """Two transform plugins on the same label should chain their schemas."""
+
+        class AddColumnPlugin(TransformPlugin):
+            def name(self) -> str:
+                return 'add_column'
+
+            def execute(self, df: FrameData) -> Success[FrameData]:
+                return Success(df)
+
+            def dry_run(self, schema: dict[str, pl.DataType]) -> Success[dict[str, pl.DataType]]:
+                return Success({**schema, f'added_{len(schema)}': pl.Int64()})
+
+        first = AddColumnPlugin({}, tmp_path, label='sales')
+        second = AddColumnPlugin({}, tmp_path, label='sales')
+        schema_map: LabeledSchemaMap = {'sales': Success({'a': pl.Int64()})}
+        result_map = _execute_labeled_dry_run_transform_chain(schema_map, [first, second])
+        assert isinstance(result_map['sales'], Success)
+        assert result_map['sales'].unwrap() == {'a': pl.Int64(), 'added_1': pl.Int64(), 'added_2': pl.Int64()}
+
+    def test_dry_run_output_returns_last_plugin_label_schema(self, tmp_path: Path) -> None:
+        """With several output plugins the last one's label schema should be returned."""
+        sales_output = DummyOutputPlugin({}, tmp_path, label='sales')
+        stock_output = DummyOutputPlugin({}, tmp_path, label='stock')
+        schema_map: LabeledSchemaMap = {
+            'sales': Success({'amount': pl.Int64()}),
+            'stock': Success({'quantity': pl.Int64()}),
+        }
+        result = _execute_labeled_output_dry_run(schema_map, [sales_output, stock_output])
+        assert isinstance(result, Success)
+        assert result.unwrap() == {'quantity': pl.Int64()}
+
+    def test_dry_run_output_without_default_label(self, tmp_path: Path) -> None:
+        """Output plugin on a non-default label should succeed without a 'default' entry."""
+        plugin = DummyOutputPlugin({}, tmp_path, label='sales')
+        schema_map: LabeledSchemaMap = {'sales': Success({'amount': pl.Int64()})}
+        result = _execute_labeled_output_dry_run(schema_map, [plugin])
+        assert isinstance(result, Success)
+        assert result.unwrap() == {'amount': pl.Int64()}

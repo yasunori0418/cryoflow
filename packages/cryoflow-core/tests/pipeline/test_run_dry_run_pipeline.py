@@ -149,3 +149,36 @@ class TestRunDryRunPipeline:
 
         assert isinstance(result, Success)
         assert result.unwrap() == {'a': pl.Int64(), 'b': pl.String()}
+
+    def test_dry_run_pipeline_label_failures_stay_independent(self, tmp_path: Path) -> None:
+        """A failing transform on one label should not block another label's validation."""
+
+        class StockInputPlugin(InputPlugin):
+            def name(self) -> str:
+                return 'stock_input'
+
+            def execute(self) -> Success[FrameData]:
+                return Success(pl.LazyFrame({'quantity': [1]}))
+
+            def dry_run(self) -> Success[dict[str, pl.DataType]]:
+                return Success({'quantity': pl.Int64()})
+
+        class FailingSalesTransformPlugin(TransformPlugin):
+            def name(self) -> str:
+                return 'failing_sales_transform'
+
+            def execute(self, df: FrameData) -> Failure[Exception]:
+                return Failure(ValueError('execution error'))
+
+            def dry_run(self, schema: dict[str, pl.DataType]) -> Failure[Exception]:
+                return Failure(ValueError('sales validation error'))
+
+        input_sales = DummyInputPlugin({}, tmp_path, label='sales')
+        input_stock = StockInputPlugin({}, tmp_path, label='stock')
+        failing_sales = FailingSalesTransformPlugin({}, tmp_path, label='sales')
+        output_stock = DummyOutputPlugin({}, tmp_path, label='stock')
+
+        result = run_dry_run_pipeline([input_sales, input_stock], [failing_sales], [output_stock])
+
+        assert isinstance(result, Success)
+        assert result.unwrap() == {'quantity': pl.Int64()}
