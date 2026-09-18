@@ -5,50 +5,28 @@ from pathlib import Path
 import typer
 from returns.result import Failure
 
-from cryoflow_core.config import get_config_path, load_config
-from cryoflow_core.loader import get_plugins, load_plugins
+from cryoflow_core.commands.utils import setup_pipeline
 from cryoflow_core.pipeline import run_dry_run_pipeline
-from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
 
 def execute(config: Path | None):
-    config_path = get_config_path(config)
-
-    # Config loading
-    config_result = load_config(config_path)
-    if isinstance(config_result, Failure):
-        typer.echo(str(config_result.failure()), err=True)
+    setup_result = setup_pipeline(config)
+    if isinstance(setup_result, Failure):
+        error = setup_result.failure()
+        message = f'[ERROR] {error}' if isinstance(error, ValueError) else str(error)
+        typer.echo(message, err=True)
         raise typer.Exit(code=1)
-    cfg = config_result.unwrap()
+    setup = setup_result.unwrap()
 
-    typer.echo(f'[CHECK] Config loaded: {config_path}')
+    typer.echo(f'[CHECK] Config loaded: {setup.config_path}')
 
-    # Plugin loading
-    pm_result = load_plugins(cfg, config_path)
-    if isinstance(pm_result, Failure):
-        typer.echo(str(pm_result.failure()), err=True)
-        raise typer.Exit(code=1)
-    pm = pm_result.unwrap()
-
+    cfg = setup.cfg
     enabled_count = sum(1 for p in cfg.input_plugins + cfg.transform_plugins + cfg.output_plugins if p.enabled)
     typer.echo(f'[CHECK] Loaded {enabled_count} plugin(s) successfully.')
 
-    # Execute dry-run validation
-    input_plugins = get_plugins(pm, InputPlugin)
-    transform_plugins = get_plugins(pm, TransformPlugin)
-    output_plugins = get_plugins(pm, OutputPlugin)
-
-    if len(input_plugins) == 0:
-        typer.echo('[ERROR] No input plugin configured', err=True)
-        raise typer.Exit(code=1)
-
-    if len(output_plugins) == 0:
-        typer.echo('[ERROR] No output plugin configured', err=True)
-        raise typer.Exit(code=1)
-
     typer.echo('\n[CHECK] Running dry-run validation...')
 
-    result = run_dry_run_pipeline(input_plugins, transform_plugins, output_plugins)
+    result = run_dry_run_pipeline(setup.input_plugins, setup.transform_plugins, setup.output_plugins)
 
     if isinstance(result, Failure):
         error = result.failure()

@@ -5,22 +5,21 @@ from pathlib import Path
 import typer
 from returns.result import Failure
 
-from cryoflow_core.config import get_config_path, load_config
-from cryoflow_core.loader import get_plugins, load_plugins
+from cryoflow_core.commands.utils import setup_pipeline
 from cryoflow_core.pipeline import run_pipeline
-from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
 
 def execute(config: Path | None):
-    config_path = get_config_path(config)
-
-    config_result = load_config(config_path)
-    if isinstance(config_result, Failure):
-        typer.echo(str(config_result.failure()), err=True)
+    setup_result = setup_pipeline(config)
+    if isinstance(setup_result, Failure):
+        error = setup_result.failure()
+        message = f'[ERROR] {error}' if isinstance(error, ValueError) else str(error)
+        typer.echo(message, err=True)
         raise typer.Exit(code=1)
-    cfg = config_result.unwrap()
+    setup = setup_result.unwrap()
 
-    typer.echo(f'Config loaded: {config_path}')
+    cfg = setup.cfg
+    typer.echo(f'Config loaded: {setup.config_path}')
     typer.echo(f'  input_plugins:     {len(cfg.input_plugins)} plugin(s)')
     for plugin in cfg.input_plugins:
         status = 'enabled' if plugin.enabled else 'disabled'
@@ -34,30 +33,11 @@ def execute(config: Path | None):
         status = 'enabled' if plugin.enabled else 'disabled'
         typer.echo(f'    - {plugin.name} ({plugin.module}) [{status}]')
 
-    pm_result = load_plugins(cfg, config_path)
-    if isinstance(pm_result, Failure):
-        typer.echo(str(pm_result.failure()), err=True)
-        raise typer.Exit(code=1)
-    pm = pm_result.unwrap()
-
     enabled_count = sum(1 for p in cfg.input_plugins + cfg.transform_plugins + cfg.output_plugins if p.enabled)
     typer.echo(f'Loaded {enabled_count} plugin(s) successfully.')
 
-    # Execute pipeline
-    input_plugins = get_plugins(pm, InputPlugin)
-    transform_plugins = get_plugins(pm, TransformPlugin)
-    output_plugins = get_plugins(pm, OutputPlugin)
-
-    if len(input_plugins) == 0:
-        typer.echo('[ERROR] No input plugin configured', err=True)
-        raise typer.Exit(code=1)
-
-    if len(output_plugins) == 0:
-        typer.echo('[ERROR] No output plugin configured', err=True)
-        raise typer.Exit(code=1)
-
     typer.echo('\nExecuting pipeline...')
-    result = run_pipeline(input_plugins, transform_plugins, output_plugins)
+    result = run_pipeline(setup.input_plugins, setup.transform_plugins, setup.output_plugins)
 
     if isinstance(result, Failure):
         error = result.failure()
