@@ -146,7 +146,7 @@ ruff check --fix .
 
 Key settings (from `pyproject.toml`):
 
-- Target version: Python 3.14
+- Target version: Python 3.11
 - Line length: 120 characters
 - Quote style: single quotes
 
