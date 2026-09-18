@@ -64,6 +64,10 @@ testpaths = ["packages/cryoflow-core/tests", "packages/cryoflow-plugin-collectio
 target-version = "py314"
 line-length = 120
 
+[tool.ruff.lint]
+# BLE001: returns 流儀で `except Exception` を `Failure` に変換するのがプロジェクト方針のため除外
+ignore = ["BLE001"]
+
 [tool.ruff.format]
 quote-style = "single"
 
