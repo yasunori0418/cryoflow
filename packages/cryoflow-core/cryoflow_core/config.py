@@ -2,7 +2,7 @@
 
 import tomllib
 from pathlib import Path
-from typing import Any, NamedTuple, Optional
+from typing import Any, NamedTuple
 
 from pydantic import BaseModel, Field
 from returns.result import Failure, Result, Success, safe
@@ -43,7 +43,7 @@ class ConfigInfo(NamedTuple):
 _config_bind_safe = bind_safe(ConfigLoadError)
 
 
-def get_config_path(path: Optional[Path]) -> Path:
+def get_config_path(path: Path | None) -> Path:
     """Returns the `path` passed in the argument or the default `$XDG_CONFIG_HOME/cryoflow/config.toml`.
 
     - If the argument is None, return `$XDG_CONFIG_HOME/cryoflow/config.toml`

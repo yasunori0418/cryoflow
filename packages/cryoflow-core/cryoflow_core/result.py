@@ -1,6 +1,7 @@
 """A convenient wrapper function to make the `returns` library easier to use."""
 
-from typing import Callable, Type, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 from returns.result import Result
 
@@ -10,7 +11,7 @@ B = TypeVar('B')
 
 
 def bind_safe(
-    error_cls: Type[ExcT],
+    error_cls: type[ExcT],
 ) -> Callable[[Callable[[A], Result[B, Exception]], str], Callable[[A], Result[B, ExcT]]]:
     """Curry a @safe-decorated function into a bind-compatible form with error mapping.
 
