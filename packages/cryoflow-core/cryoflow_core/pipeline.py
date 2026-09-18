@@ -6,7 +6,7 @@ from collections.abc import Callable
 import polars as pl
 from returns.result import Failure, Result, Success, safe
 
-from cryoflow_core.plugin import FrameData, InputPlugin, OutputPlugin, TransformPlugin
+from cryoflow_core.plugin import DEFAULT_LABEL, FrameData, InputPlugin, OutputPlugin, TransformPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +196,70 @@ def _execute_labeled_output(
     return Success(None)
 
 
+def _execute_labeled_dry_run_transform_chain(
+    schema_map: LabeledSchemaMap,
+    plugins: list[TransformPlugin],
+) -> LabeledSchemaMap:
+    """Validate transform plugins against the labeled schema matching each plugin's label.
+
+    Args:
+        schema_map: Map of label -> Result[schema, Exception].
+        plugins: List of transformation plugins to validate.
+
+    Returns:
+        Updated schema map with validated schemas.
+    """
+    result_map = dict(schema_map)
+
+    logger.info(f'Validating {len(plugins)} transformation plugin(s)...')
+
+    for i, plugin in enumerate(plugins, 1):
+        label = plugin.label
+        logger.info(f'  [{i}/{len(plugins)}] {plugin.name()} (label: {label})')
+
+        if label not in result_map:
+            result_map[label] = Failure(KeyError(f"No input schema with label '{label}'"))
+
+        result = result_map[label].map(_log_schema_size('Input')).bind(plugin.dry_run)
+        result_map[label] = result.map(_log_schema_size('Output'))
+
+        if isinstance(result, Failure):
+            logger.error(f'    Validation failed: {result.failure()}')
+
+    return result_map
+
+
+def _execute_labeled_output_dry_run(
+    schema_map: LabeledSchemaMap,
+    plugins: list[OutputPlugin],
+) -> Result[dict[str, pl.DataType], Exception]:
+    """Validate output plugins against the labeled schema matching each plugin's label.
+
+    Stops on the first failure. When no output plugin is given, the schema of the
+    'default' label is returned.
+
+    Args:
+        schema_map: Map of label -> Result[schema, Exception].
+        plugins: List of output plugins to validate.
+
+    Returns:
+        Schema of the last validated output plugin's label on success,
+        or Exception on failure.
+    """
+    result: Result[dict[str, pl.DataType], Exception] = schema_map.get(
+        DEFAULT_LABEL,
+        Failure(KeyError(f"No input schema with label '{DEFAULT_LABEL}'")),
+    )
+    for plugin in plugins:
+        label = plugin.label
+        if label not in schema_map:
+            return Failure(KeyError(f"No schema with label '{label}'"))
+        result = schema_map[label].bind(plugin.dry_run)
+        if isinstance(result, Failure):
+            return result
+    return result
+
+
 def run_pipeline(
     input_plugins: list[InputPlugin],
     transform_plugins: list[TransformPlugin],
@@ -243,7 +307,8 @@ def run_dry_run_pipeline(
     for plugin in input_plugins:
         schema_map[plugin.label] = plugin.dry_run()
 
-    # For single-label (default) case, delegate to existing chain helpers
-    default_schema = schema_map.get('default', Failure(KeyError("No input plugin with label 'default'")))
-    transformed_schema = execute_dry_run_chain(default_schema, transform_plugins)
-    return execute_output_dry_run(transformed_schema, output_plugins)
+    # Step 2: Validate TransformPlugins by label
+    schema_map = _execute_labeled_dry_run_transform_chain(schema_map, transform_plugins)
+
+    # Step 3: Validate OutputPlugins by label
+    return _execute_labeled_output_dry_run(schema_map, output_plugins)
