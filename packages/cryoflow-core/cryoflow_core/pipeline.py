@@ -217,16 +217,19 @@ def _execute_labeled_dry_run_transform_chain(
         label = plugin.label
         logger.info(f'  [{i}/{len(plugins)}] {plugin.name()} (label: {label})')
 
-        if label not in result_map:
+        missing_label = label not in result_map
+        if missing_label:
             result_map[label] = Failure(KeyError(f"No input schema with label '{label}'"))
 
         previous = result_map[label]
         result = previous.map(_log_schema_size('Input')).bind(plugin.dry_run)
         result_map[label] = result.map(_log_schema_size('Output'))
 
-        # Report only failures this plugin introduced; an already failed label
+        # Report only failures this plugin introduced, either by referencing an
+        # unknown label or by failing its own validation. An already failed label
         # keeps propagating the same exception through the remaining plugins.
-        if isinstance(result, Failure) and isinstance(previous, Success):
+        introduced = missing_label or isinstance(previous, Success)
+        if isinstance(result, Failure) and introduced:
             logger.error(f'    Validation failed: {result.failure()}')
 
     return result_map
