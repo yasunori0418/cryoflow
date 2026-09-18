@@ -173,12 +173,27 @@ class TestRunDryRunPipeline:
             def dry_run(self, schema: dict[str, pl.DataType]) -> Failure[Exception]:
                 return Failure(ValueError('sales validation error'))
 
+        class AddFlagPlugin(TransformPlugin):
+            def name(self) -> str:
+                return 'add_flag'
+
+            def execute(self, df: FrameData) -> Success[FrameData]:
+                return Success(df)
+
+            def dry_run(self, schema: dict[str, pl.DataType]) -> Success[dict[str, pl.DataType]]:
+                return Success({**schema, 'flag': pl.Boolean()})
+
         input_sales = DummyInputPlugin({}, tmp_path, label='sales')
         input_stock = StockInputPlugin({}, tmp_path, label='stock')
         failing_sales = FailingSalesTransformPlugin({}, tmp_path, label='sales')
+        add_flag_stock = AddFlagPlugin({}, tmp_path, label='stock')
         output_stock = DummyOutputPlugin({}, tmp_path, label='stock')
 
-        result = run_dry_run_pipeline([input_sales, input_stock], [failing_sales], [output_stock])
+        result = run_dry_run_pipeline(
+            [input_sales, input_stock],
+            [failing_sales, add_flag_stock],
+            [output_stock],
+        )
 
         assert isinstance(result, Success)
-        assert result.unwrap() == {'quantity': pl.Int64()}
+        assert result.unwrap() == {'quantity': pl.Int64(), 'flag': pl.Boolean()}
