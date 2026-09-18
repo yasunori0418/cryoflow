@@ -33,12 +33,13 @@ class TestCheckErrors:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch('cryoflow_core.commands.check.load_plugins') as mock_load:
+        with patch('cryoflow_core.commands.utils.load_plugins') as mock_load:
             mock_load.return_value = Failure(PluginLoadError('plugin failed to load'))
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 
         assert result.exit_code == 1
         assert 'plugin failed to load' in result.output
+        assert '[ERROR]' not in result.output
 
     def test_no_input_plugin(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.toml'
@@ -52,8 +53,8 @@ class TestCheckErrors:
             return []
 
         with (
-            patch('cryoflow_core.commands.check.load_plugins') as mock_load,
-            patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.utils.load_plugins') as mock_load,
+            patch('cryoflow_core.commands.utils.get_plugins', side_effect=mock_get_plugins),
         ):
             mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['check', '--config', str(config_file)])
@@ -73,8 +74,8 @@ class TestCheckErrors:
             return []
 
         with (
-            patch('cryoflow_core.commands.check.load_plugins') as mock_load,
-            patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.utils.load_plugins') as mock_load,
+            patch('cryoflow_core.commands.utils.get_plugins', side_effect=mock_get_plugins),
         ):
             mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['check', '--config', str(config_file)])
@@ -98,8 +99,8 @@ class TestCheckErrors:
             return []
 
         with (
-            patch('cryoflow_core.commands.check.load_plugins') as mock_load,
-            patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.utils.load_plugins') as mock_load,
+            patch('cryoflow_core.commands.utils.get_plugins', side_effect=mock_get_plugins),
             patch('cryoflow_core.commands.check.run_dry_run_pipeline') as mock_dry_run,
         ):
             mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
@@ -125,8 +126,8 @@ class TestCheckErrors:
             return []
 
         with (
-            patch('cryoflow_core.commands.check.load_plugins') as mock_load,
-            patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.utils.load_plugins') as mock_load,
+            patch('cryoflow_core.commands.utils.get_plugins', side_effect=mock_get_plugins),
             patch('cryoflow_core.commands.check.run_dry_run_pipeline') as mock_dry_run,
         ):
             mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))

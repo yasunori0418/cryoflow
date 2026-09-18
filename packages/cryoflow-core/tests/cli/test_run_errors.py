@@ -30,9 +30,10 @@ class TestRunErrors:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        with patch('cryoflow_core.commands.run.load_plugins') as mock_load:
+        with patch('cryoflow_core.commands.utils.load_plugins') as mock_load:
             mock_load.return_value = Failure(PluginLoadError('plugin failed to load'))
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         assert result.exit_code == 1
         assert 'plugin failed to load' in result.output
+        assert '[ERROR]' not in result.output

@@ -25,8 +25,8 @@ class TestRunSuccess:
             return []
 
         with (
-            patch('cryoflow_core.commands.run.load_plugins') as mock_load,
-            patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.utils.load_plugins') as mock_load,
+            patch('cryoflow_core.commands.utils.get_plugins', side_effect=mock_get_plugins),
         ):
             mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['run', '--config', str(config_file)])
@@ -49,8 +49,8 @@ class TestRunSuccess:
             return []
 
         with (
-            patch('cryoflow_core.commands.run.load_plugins') as mock_load,
-            patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.utils.load_plugins') as mock_load,
+            patch('cryoflow_core.commands.utils.get_plugins', side_effect=mock_get_plugins),
         ):
             mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['run', '--config', str(config_file)])
@@ -62,14 +62,22 @@ class TestRunSuccess:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm: Any, _plugin_type: Any) -> list[Any]:
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
+            from unittest.mock import MagicMock
+
+            from cryoflow_core.plugin import InputPlugin, OutputPlugin
+
+            if plugin_type is InputPlugin or plugin_type is OutputPlugin:
+                return [MagicMock()]
             return []
 
         with (
-            patch('cryoflow_core.commands.run.load_plugins') as mock_load,
-            patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.utils.load_plugins') as mock_load,
+            patch('cryoflow_core.commands.utils.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.run.run_pipeline') as mock_run_pipeline,
         ):
             mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
+            mock_run_pipeline.return_value = Success(None)
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         assert 'input_plugins' in result.output
@@ -78,14 +86,22 @@ class TestRunSuccess:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm: Any, _plugin_type: Any) -> list[Any]:
+        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
+            from unittest.mock import MagicMock
+
+            from cryoflow_core.plugin import InputPlugin, OutputPlugin
+
+            if plugin_type is InputPlugin or plugin_type is OutputPlugin:
+                return [MagicMock()]
             return []
 
         with (
-            patch('cryoflow_core.commands.run.load_plugins') as mock_load,
-            patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.utils.load_plugins') as mock_load,
+            patch('cryoflow_core.commands.utils.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.run.run_pipeline') as mock_run_pipeline,
         ):
             mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
+            mock_run_pipeline.return_value = Success(None)
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         # VALID_TOML has 1 input + 1 transform + 0 output = 2 enabled plugins
@@ -99,8 +115,8 @@ class TestRunSuccess:
             return []
 
         with (
-            patch('cryoflow_core.commands.run.load_plugins') as mock_load,
-            patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
+            patch('cryoflow_core.commands.utils.load_plugins') as mock_load,
+            patch('cryoflow_core.commands.utils.get_plugins', side_effect=mock_get_plugins),
         ):
             mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['run', '--config', str(config_file)])
