@@ -126,9 +126,41 @@ class TestLoadPlugins:
         pm = load_plugins(cfg, config_file, pm=existing_pm).unwrap()
         assert pm is existing_pm
 
-    def test_plugin_load_error_returned_as_failure(self, tmp_path: Path):
+    def test_plugin_load_error_returns_failure(self, tmp_path: Path):
         cfg = self._make_config(
             transform_plugins=[
+                PluginConfig(
+                    name='bad',
+                    module=str(tmp_path / 'nonexistent.py'),
+                    enabled=True,
+                )
+            ]
+        )
+        config_file = tmp_path / 'config.toml'
+        config_file.write_text('')
+        result = load_plugins(cfg, config_file)
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), PluginLoadError)
+
+    def test_input_plugin_load_error_returns_failure(self, tmp_path: Path):
+        cfg = self._make_config(
+            input_plugins=[
+                PluginConfig(
+                    name='bad',
+                    module=str(tmp_path / 'nonexistent.py'),
+                    enabled=True,
+                )
+            ]
+        )
+        config_file = tmp_path / 'config.toml'
+        config_file.write_text('')
+        result = load_plugins(cfg, config_file)
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), PluginLoadError)
+
+    def test_output_plugin_load_error_returns_failure(self, tmp_path: Path):
+        cfg = self._make_config(
+            output_plugins=[
                 PluginConfig(
                     name='bad',
                     module=str(tmp_path / 'nonexistent.py'),
