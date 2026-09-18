@@ -3,6 +3,7 @@
 from pathlib import Path
 from unittest.mock import patch
 
+from returns.result import Failure
 from typer.testing import CliRunner
 
 from cryoflow_core.cli import app
@@ -30,7 +31,7 @@ class TestRunErrors:
         config_file.write_text(VALID_TOML)
 
         with patch('cryoflow_core.commands.run.load_plugins') as mock_load:
-            mock_load.side_effect = PluginLoadError('plugin failed to load')
+            mock_load.return_value = Failure(PluginLoadError('plugin failed to load'))
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         assert result.exit_code == 1

@@ -180,7 +180,7 @@ def load_plugins(
     config: CryoflowConfig,
     config_path: Path,
     pm: pluggy.PluginManager | None = None,
-) -> pluggy.PluginManager:
+) -> Result[pluggy.PluginManager, PluginLoadError]:
     """Load all enabled plugins and register them with pluggy.
 
     Args:
@@ -189,10 +189,8 @@ def load_plugins(
         pm: Optional existing PluginManager. Created if not provided.
 
     Returns:
-        PluginManager with all plugins registered.
-
-    Raises:
-        PluginLoadError: If any enabled plugin fails to load.
+        Success containing the PluginManager with all plugins registered.
+        Failure containing PluginLoadError if any enabled plugin fails to load.
     """
     if pm is None:
         pm = pluggy.PluginManager('cryoflow')
@@ -210,7 +208,7 @@ def load_plugins(
 
         result = _load_single_plugin(plugin_cfg, config_dir)
         if isinstance(result, Failure):
-            raise result.failure()
+            return Failure(result.failure())
         for inst in result.unwrap():
             if isinstance(inst, InputPlugin):
                 all_inputs.append(inst)
@@ -221,7 +219,7 @@ def load_plugins(
 
         result = _load_single_plugin(plugin_cfg, config_dir)
         if isinstance(result, Failure):
-            raise result.failure()
+            return Failure(result.failure())
         for inst in result.unwrap():
             if isinstance(inst, TransformPlugin):
                 all_transforms.append(inst)
@@ -232,7 +230,7 @@ def load_plugins(
 
         result = _load_single_plugin(plugin_cfg, config_dir)
         if isinstance(result, Failure):
-            raise result.failure()
+            return Failure(result.failure())
         for inst in result.unwrap():
             if isinstance(inst, OutputPlugin):
                 all_outputs.append(inst)
@@ -240,7 +238,7 @@ def load_plugins(
     relay = _PluginHookRelay(all_inputs, all_transforms, all_outputs)
     pm.register(relay, name='cryoflow_plugin_relay')
 
-    return pm
+    return Success(pm)
 
 
 T = TypeVar('T', bound=BasePlugin)

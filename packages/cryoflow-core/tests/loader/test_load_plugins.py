@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pluggy
-import pytest
+from returns.result import Failure
 
 from cryoflow_core.config import CryoflowConfig, PluginConfig
 from cryoflow_core.hookspecs import CryoflowSpecs
@@ -28,7 +28,7 @@ class TestLoadPlugins:
         cfg = self._make_config()
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
-        pm = load_plugins(cfg, config_file)
+        pm = load_plugins(cfg, config_file).unwrap()
         assert isinstance(pm, pluggy.PluginManager)
 
     def test_disabled_plugin_skipped(self, tmp_path: Path, plugin_py_file: Path):
@@ -43,7 +43,7 @@ class TestLoadPlugins:
         )
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
-        pm = load_plugins(cfg, config_file)
+        pm = load_plugins(cfg, config_file).unwrap()
         transforms = get_plugins(pm, TransformPlugin)
         assert len(transforms) == 0
 
@@ -59,7 +59,7 @@ class TestLoadPlugins:
         )
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
-        pm = load_plugins(cfg, config_file)
+        pm = load_plugins(cfg, config_file).unwrap()
         inputs = get_plugins(pm, InputPlugin)
         assert len(inputs) == 1
         assert inputs[0].name() == 'my_input'
@@ -78,7 +78,7 @@ class TestLoadPlugins:
         )
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
-        pm = load_plugins(cfg, config_file)
+        pm = load_plugins(cfg, config_file).unwrap()
         inputs = get_plugins(pm, InputPlugin)
         assert len(inputs) == 1
         assert inputs[0].label == 'sales'
@@ -95,7 +95,7 @@ class TestLoadPlugins:
         )
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
-        pm = load_plugins(cfg, config_file)
+        pm = load_plugins(cfg, config_file).unwrap()
         transforms = get_plugins(pm, TransformPlugin)
         assert len(transforms) == 1
         assert transforms[0].name() == 'my_transform'
@@ -112,7 +112,7 @@ class TestLoadPlugins:
         )
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
-        pm = load_plugins(cfg, config_file)
+        pm = load_plugins(cfg, config_file).unwrap()
         outputs = get_plugins(pm, OutputPlugin)
         assert len(outputs) == 1
         assert outputs[0].name() == 'my_output'
@@ -123,10 +123,10 @@ class TestLoadPlugins:
         config_file.write_text('')
         existing_pm = pluggy.PluginManager('cryoflow')
         existing_pm.add_hookspecs(CryoflowSpecs)
-        pm = load_plugins(cfg, config_file, pm=existing_pm)
+        pm = load_plugins(cfg, config_file, pm=existing_pm).unwrap()
         assert pm is existing_pm
 
-    def test_plugin_load_error_propagates(self, tmp_path: Path):
+    def test_plugin_load_error_returned_as_failure(self, tmp_path: Path):
         cfg = self._make_config(
             transform_plugins=[
                 PluginConfig(
@@ -138,8 +138,9 @@ class TestLoadPlugins:
         )
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
-        with pytest.raises(PluginLoadError):
-            load_plugins(cfg, config_file)
+        result = load_plugins(cfg, config_file)
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), PluginLoadError)
 
     def test_dotpath_plugin_loaded(self, tmp_path: Path):
         """Test the dotpath branch of _load_single_plugin (loader.py:158)."""
@@ -154,7 +155,7 @@ class TestLoadPlugins:
         )
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
-        pm = load_plugins(cfg, config_file)
+        pm = load_plugins(cfg, config_file).unwrap()
         transforms = get_plugins(pm, TransformPlugin)
         assert len(transforms) == 1
         assert transforms[0].name() == 'dotpath_transform'
@@ -178,7 +179,7 @@ class TestLoadPlugins:
         )
         config_file = tmp_path / 'config.toml'
         config_file.write_text('')
-        pm = load_plugins(cfg, config_file)
+        pm = load_plugins(cfg, config_file).unwrap()
         transforms = get_plugins(pm, TransformPlugin)
         outputs = get_plugins(pm, OutputPlugin)
         assert len(transforms) == 1

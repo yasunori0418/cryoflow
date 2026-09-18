@@ -186,7 +186,7 @@ output_path = "data/output/result.parquet"
             assert cfg.input_plugins[0].options['input_path'] == 'data/input.parquet'
 
             # Load plugins and verify they can resolve paths
-            pm = load_plugins(cfg, config_file)
+            pm = load_plugins(cfg, config_file).unwrap()
             input_plugins = get_plugins(pm, InputPlugin)
             output_plugins = get_plugins(pm, OutputPlugin)
 

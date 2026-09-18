@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pluggy
 import polars as pl
-from returns.result import Success
+from returns.result import Failure, Success
 from typer.testing import CliRunner
 
 from cryoflow_core.cli import app
@@ -24,7 +24,7 @@ class TestCheckSuccess:
         with patch('cryoflow_core.commands.check.load_plugins') as mock_load:
             from cryoflow_core.loader import PluginLoadError
 
-            mock_load.side_effect = PluginLoadError('no real plugin')
+            mock_load.return_value = Failure(PluginLoadError('no real plugin'))
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 
         assert '[CHECK] Config loaded:' in result.output
@@ -40,7 +40,7 @@ class TestCheckSuccess:
             patch('cryoflow_core.commands.check.load_plugins') as mock_load,
             patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 
         # VALID_TOML has 1 input + 1 transform + 0 output = 2 enabled plugins
@@ -66,7 +66,7 @@ class TestCheckSuccess:
             patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
             patch('cryoflow_core.commands.check.run_dry_run_pipeline') as mock_dry_run,
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             mock_dry_run.return_value = Success({'col_a': pl.Int64, 'col_b': pl.String})
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 
@@ -93,7 +93,7 @@ class TestCheckSuccess:
             patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
             patch('cryoflow_core.commands.check.run_dry_run_pipeline') as mock_dry_run,
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             mock_dry_run.return_value = Success({'col_a': pl.Int64, 'col_b': pl.String})
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 
