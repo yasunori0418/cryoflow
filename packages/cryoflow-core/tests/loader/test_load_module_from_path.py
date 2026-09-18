@@ -24,12 +24,14 @@ class TestLoadModuleFromPath:
             _load_module_from_path('bad_plugin', bad_file)
 
     def test_spec_none_raises(self, plugin_py_file: Path):
-        with patch(
-            'cryoflow_core.loader.importlib.util.spec_from_file_location',
-            return_value=None,
+        with (
+            patch(
+                'cryoflow_core.loader.importlib.util.spec_from_file_location',
+                return_value=None,
+            ),
+            pytest.raises(PluginLoadError, match='failed to create module spec'),
         ):
-            with pytest.raises(PluginLoadError, match='failed to create module spec'):
-                _load_module_from_path('spec_none', plugin_py_file)
+            _load_module_from_path('spec_none', plugin_py_file)
 
     def test_syntax_error_cleans_sys_modules(self, tmp_path: Path):
         bad_file = tmp_path / 'bad.py'

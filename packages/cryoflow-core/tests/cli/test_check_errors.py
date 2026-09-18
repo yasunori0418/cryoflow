@@ -45,13 +45,9 @@ class TestCheckErrors:
         config_file.write_text(VALID_TOML)
 
         def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
-            from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
+            from cryoflow_core.plugin import OutputPlugin
 
-            if plugin_type is InputPlugin:
-                return []
-            elif plugin_type is TransformPlugin:
-                return []
-            elif plugin_type is OutputPlugin:
+            if plugin_type is OutputPlugin:
                 return [MagicMock()]
             return []
 
@@ -70,14 +66,10 @@ class TestCheckErrors:
         config_file.write_text(VALID_TOML)
 
         def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
-            from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
+            from cryoflow_core.plugin import InputPlugin
 
             if plugin_type is InputPlugin:
                 return [MagicMock()]
-            elif plugin_type is TransformPlugin:
-                return []
-            elif plugin_type is OutputPlugin:
-                return []
             return []
 
         with (

@@ -33,15 +33,7 @@ class TestCheckSuccess:
         config_file = tmp_path / 'config.toml'
         config_file.write_text(VALID_TOML)
 
-        def mock_get_plugins(_pm: Any, plugin_type: Any) -> list[Any]:
-            from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
-
-            if plugin_type is InputPlugin:
-                return []
-            elif plugin_type is TransformPlugin:
-                return []
-            elif plugin_type is OutputPlugin:
-                return []
+        def mock_get_plugins(_pm: Any, _plugin_type: Any) -> list[Any]:
             return []
 
         with (
