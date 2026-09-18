@@ -15,7 +15,9 @@ All workflows use Nix to standardize the build environment, installing Nix and c
 [Pull Request opened / updated]
         |
         v
-    [Test] ← Runs when packages/**/*.py or uv.lock changes
+    [Test] ← Runs when packages/**/*.py, examples/**, dev/flake.nix,
+            pyproject.toml, uv.lock or **/*.md changes
+            (lint and pytest jobs run in parallel)
 
 [Push to main branch]
         |
@@ -43,14 +45,28 @@ All workflows use Nix to standardize the build environment, installing Nix and c
 | Item | Content |
 |------|---------|
 | Trigger | PR, manual execution |
-| Target paths | `packages/**/*.py`, `uv.lock` |
+| Target paths | `packages/**/*.py`, `examples/**`, `dev/flake.nix`, `pyproject.toml`, `uv.lock`, `**/*.md` |
 | Runner | `ubuntu-latest` |
+| Jobs | `lint`, `pytest` (run in parallel) |
 
 #### Overview
 
-Runs tests when Python source files or lock files change on pull request creation or update.
+Runs static analysis and tests when any of the target paths change on pull request
+creation or update. Markdown is included because `ruff format` also formats the
+Python code blocks embedded in the documentation.
 
 #### Steps
+
+**`lint` job**
+
+1. Checkout repository
+2. Setup Nix environment (`setup-nix` composite action)
+3. Run the following three steps in the CI-dedicated Nix dev environment (`dev#ci`)
+   - `ruff check .` — detects lint rule violations
+   - `ruff format --check .` — detects formatting drift (including code blocks in Markdown)
+   - `pyright` — static type analysis (default mode)
+
+**`pytest` job**
 
 1. Checkout repository
 2. Setup Nix environment (`setup-nix` composite action)
@@ -60,7 +76,7 @@ Runs tests when Python source files or lock files change on pull request creatio
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `TERM` | `"dumb"` | Avoids terminal emulation issues when running pytest |
+| `TERM` | `"dumb"` | Avoids terminal emulation issues when running pytest and lint |
 
 ---
 
