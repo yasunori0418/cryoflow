@@ -1,8 +1,8 @@
 """Tests for _load_module_from_path function."""
 
 import sys
-from unittest.mock import patch
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 

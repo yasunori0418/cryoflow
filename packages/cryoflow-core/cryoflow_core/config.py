@@ -2,11 +2,11 @@
 
 import tomllib
 from pathlib import Path
-from typing import Any, Optional, NamedTuple
+from typing import Any, NamedTuple, Optional
 
 from pydantic import BaseModel, Field
+from returns.result import Failure, Result, Success, safe
 from xdg_base_dirs import xdg_config_home
-from returns.result import Result, Failure, safe, Success
 
 from cryoflow_core.result import bind_safe
 

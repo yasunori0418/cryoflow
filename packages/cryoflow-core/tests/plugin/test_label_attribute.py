@@ -2,8 +2,9 @@
 
 from pathlib import Path
 
-from ..conftest import DummyInputPlugin, DummyOutputPlugin, DummyTransformPlugin
 from cryoflow_core.plugin import DEFAULT_LABEL
+
+from ..conftest import DummyInputPlugin, DummyOutputPlugin, DummyTransformPlugin
 
 
 class TestLabelAttribute:

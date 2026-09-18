@@ -27,7 +27,7 @@ For Built-in Sample Plugins:
     from cryoflow_core.plugin import TransformPlugin, FrameData
 """
 
-from importlib.metadata import version, PackageNotFoundError
+from importlib.metadata import PackageNotFoundError, version
 
 from cryoflow_plugin_collections.output import ParquetWriterPlugin
 from cryoflow_plugin_collections.transform import ColumnMultiplierPlugin

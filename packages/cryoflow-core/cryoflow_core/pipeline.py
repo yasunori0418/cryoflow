@@ -3,7 +3,7 @@
 import logging
 
 import polars as pl
-from returns.result import Result, Success, Failure, safe  # noqa: F401
+from returns.result import Failure, Result, Success, safe
 
 from cryoflow_core.plugin import FrameData, InputPlugin, OutputPlugin, TransformPlugin
 

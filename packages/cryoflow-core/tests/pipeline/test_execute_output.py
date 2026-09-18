@@ -91,7 +91,8 @@ class TestExecuteOutput:
 
     def test_multiple_output_plugins_stops_on_failure(self, sample_lazyframe, tmp_path: Path) -> None:
         """Test that execution stops when a plugin fails."""
-        from returns.result import Failure as FailureResult, Success as SuccessResult
+        from returns.result import Failure as FailureResult
+        from returns.result import Success as SuccessResult
 
         executed = []
 

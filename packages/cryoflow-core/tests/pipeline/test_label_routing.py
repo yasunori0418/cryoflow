@@ -4,7 +4,12 @@ from pathlib import Path
 
 from returns.result import Failure, Success
 
-from cryoflow_core.pipeline import LabeledDataMap, _execute_labeled_output, _execute_labeled_transform_chain, run_pipeline
+from cryoflow_core.pipeline import (
+    LabeledDataMap,
+    _execute_labeled_output,
+    _execute_labeled_transform_chain,
+    run_pipeline,
+)
 
 from ..conftest import DummyInputPlugin, DummyOutputPlugin, DummyTransformPlugin
 

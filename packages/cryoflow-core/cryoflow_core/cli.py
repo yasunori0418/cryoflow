@@ -5,7 +5,9 @@ from typing import Annotated
 
 import typer
 
-from cryoflow_core.commands import utils, run as run_executor, check as check_executor
+from cryoflow_core.commands import check as check_executor
+from cryoflow_core.commands import run as run_executor
+from cryoflow_core.commands import utils
 
 app = typer.Typer(no_args_is_help=True)
 

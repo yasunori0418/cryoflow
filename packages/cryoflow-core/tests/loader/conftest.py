@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-
 INPUT_PLUGIN_SOURCE = """\
 from typing import Any
 import polars as pl

@@ -19,14 +19,20 @@ Usage:
 
 from cryoflow_core.plugin import (
     FrameData as FrameData,
+)
+from cryoflow_core.plugin import (
     InputPlugin as InputPlugin,
+)
+from cryoflow_core.plugin import (
     OutputPlugin as OutputPlugin,
+)
+from cryoflow_core.plugin import (
     TransformPlugin as TransformPlugin,
 )
 
 __all__ = [
     'FrameData',  # Type alias: LazyFrame | DataFrame
     'InputPlugin',  # Base class for input plugins
-    'TransformPlugin',  # Base class for transform plugins
     'OutputPlugin',  # Base class for output plugins
+    'TransformPlugin',  # Base class for transform plugins
 ]

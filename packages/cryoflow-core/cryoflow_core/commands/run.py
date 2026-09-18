@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from returns.result import Failure
 import typer
+from returns.result import Failure
 
 from cryoflow_core.config import get_config_path, load_config
 from cryoflow_core.loader import PluginLoadError, get_plugins, load_plugins
