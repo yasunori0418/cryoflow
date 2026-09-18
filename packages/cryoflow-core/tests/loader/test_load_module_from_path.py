@@ -25,6 +25,7 @@ class TestLoadModuleFromPath:
         error = result.failure()
         assert isinstance(error, PluginLoadError)
         assert 'failed to execute module' in str(error)
+        assert isinstance(error.__cause__, SyntaxError)
 
     def test_spec_none_returns_failure(self, plugin_py_file: Path):
         with patch(

@@ -39,3 +39,4 @@ class TestInstantiatePlugins:
         error = result.failure()
         assert isinstance(error, PluginLoadError)
         assert 'failed to instantiate' in str(error)
+        assert isinstance(error.__cause__, RuntimeError)

@@ -16,3 +16,4 @@ class TestLoadModuleFromDotpath:
         error = result.failure()
         assert isinstance(error, PluginLoadError)
         assert 'not found' in str(error)
+        assert isinstance(error.__cause__, ImportError)
