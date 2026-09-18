@@ -1,17 +1,29 @@
 """Tests for label-based data routing in pipeline."""
 
+import logging
 from pathlib import Path
 
+import polars as pl
+import pytest
 from returns.result import Failure, Success
 
 from cryoflow_core.pipeline import (
     LabeledDataMap,
+    LabeledSchemaMap,
+    _execute_labeled_dry_run_transform_chain,
     _execute_labeled_output,
+    _execute_labeled_output_dry_run,
     _execute_labeled_transform_chain,
     run_pipeline,
 )
+from cryoflow_core.plugin import FrameData, OutputPlugin, TransformPlugin
 
-from ..conftest import DummyInputPlugin, DummyOutputPlugin, DummyTransformPlugin
+from ..conftest import (
+    DummyInputPlugin,
+    DummyOutputPlugin,
+    DummyTransformPlugin,
+    FailingTransformPlugin,
+)
 
 
 class TestLabelRouting:
@@ -57,3 +69,149 @@ class TestLabelRouting:
 
         result = run_pipeline([input_a, input_b], [], [output_a, output_b])
         assert isinstance(result, Success)
+
+
+class TestDryRunLabelRouting:
+    """Tests for label-based schema routing in the dry-run pipeline."""
+
+    def test_dry_run_transform_chain_matching_label(self, tmp_path: Path) -> None:
+        """Transform plugin with matching label should validate that schema."""
+        plugin = DummyTransformPlugin({}, tmp_path, label='sales')
+        schema_map: LabeledSchemaMap = {'sales': Success({'a': pl.Int64()})}
+        result_map = _execute_labeled_dry_run_transform_chain(schema_map, [plugin])
+        assert isinstance(result_map['sales'], Success)
+        assert result_map['sales'].unwrap() == {'a': pl.Int64()}
+
+    def test_dry_run_transform_chain_missing_label(self, tmp_path: Path) -> None:
+        """Transform plugin with non-existent label should create Failure entry."""
+        plugin = DummyTransformPlugin({}, tmp_path, label='nonexistent')
+        schema_map: LabeledSchemaMap = {'default': Success({'a': pl.Int64()})}
+        result_map = _execute_labeled_dry_run_transform_chain(schema_map, [plugin])
+        assert isinstance(result_map['nonexistent'], Failure)
+        assert isinstance(result_map['nonexistent'].failure(), KeyError)
+
+    def test_dry_run_output_matching_label(self, tmp_path: Path) -> None:
+        """Output plugin with matching label should return that label's schema."""
+        plugin = DummyOutputPlugin({}, tmp_path, label='sales')
+        schema_map: LabeledSchemaMap = {
+            'default': Success({'a': pl.Int64()}),
+            'sales': Success({'b': pl.String()}),
+        }
+        result = _execute_labeled_output_dry_run(schema_map, [plugin])
+        assert isinstance(result, Success)
+        assert result.unwrap() == {'b': pl.String()}
+
+    def test_dry_run_output_missing_label(self, tmp_path: Path) -> None:
+        """Output plugin with non-existent label should fail immediately."""
+        plugin = DummyOutputPlugin({}, tmp_path, label='nonexistent')
+        schema_map: LabeledSchemaMap = {'default': Success({'a': pl.Int64()})}
+        result = _execute_labeled_output_dry_run(schema_map, [plugin])
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), KeyError)
+        assert 'nonexistent' in str(result.failure())
+
+    def test_dry_run_output_without_plugins_returns_default(self) -> None:
+        """No output plugin should fall back to the 'default' label schema."""
+        schema_map: LabeledSchemaMap = {'default': Success({'a': pl.Int64()})}
+        result = _execute_labeled_output_dry_run(schema_map, [])
+        assert isinstance(result, Success)
+        assert result.unwrap() == {'a': pl.Int64()}
+
+    def test_dry_run_output_without_plugins_and_no_default(self) -> None:
+        """No output plugin and no 'default' label should fail."""
+        schema_map: LabeledSchemaMap = {'sales': Success({'a': pl.Int64()})}
+        result = _execute_labeled_output_dry_run(schema_map, [])
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), KeyError)
+
+    def test_dry_run_transform_chain_accumulates_within_label(self, tmp_path: Path) -> None:
+        """Two transform plugins on the same label should chain their schemas."""
+
+        class AddColumnPlugin(TransformPlugin):
+            def name(self) -> str:
+                return 'add_column'
+
+            def execute(self, df: FrameData) -> Success[FrameData]:
+                return Success(df)
+
+            def dry_run(self, schema: dict[str, pl.DataType]) -> Success[dict[str, pl.DataType]]:
+                return Success({**schema, f'added_{len(schema)}': pl.Int64()})
+
+        first = AddColumnPlugin({}, tmp_path, label='sales')
+        second = AddColumnPlugin({}, tmp_path, label='sales')
+        schema_map: LabeledSchemaMap = {'sales': Success({'a': pl.Int64()})}
+        result_map = _execute_labeled_dry_run_transform_chain(schema_map, [first, second])
+        assert isinstance(result_map['sales'], Success)
+        assert result_map['sales'].unwrap() == {'a': pl.Int64(), 'added_1': pl.Int64(), 'added_2': pl.Int64()}
+
+    def test_dry_run_output_returns_last_plugin_label_schema(self, tmp_path: Path) -> None:
+        """With several output plugins the last one's label schema should be returned."""
+        sales_output = DummyOutputPlugin({}, tmp_path, label='sales')
+        stock_output = DummyOutputPlugin({}, tmp_path, label='stock')
+        schema_map: LabeledSchemaMap = {
+            'sales': Success({'amount': pl.Int64()}),
+            'stock': Success({'quantity': pl.Int64()}),
+        }
+        result = _execute_labeled_output_dry_run(schema_map, [sales_output, stock_output])
+        assert isinstance(result, Success)
+        assert result.unwrap() == {'quantity': pl.Int64()}
+
+    def test_dry_run_output_without_default_label(self, tmp_path: Path) -> None:
+        """Output plugin on a non-default label should succeed without a 'default' entry."""
+        plugin = DummyOutputPlugin({}, tmp_path, label='sales')
+        schema_map: LabeledSchemaMap = {'sales': Success({'amount': pl.Int64()})}
+        result = _execute_labeled_output_dry_run(schema_map, [plugin])
+        assert isinstance(result, Success)
+        assert result.unwrap() == {'amount': pl.Int64()}
+
+    def test_dry_run_transform_chain_logs_missing_label_once(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A missing label should be reported, and a failed label only once."""
+        missing = DummyTransformPlugin({}, tmp_path, label='typo')
+        schema_map: LabeledSchemaMap = {'default': Success({'a': pl.Int64()})}
+
+        with caplog.at_level(logging.ERROR, logger='cryoflow_core.pipeline'):
+            _execute_labeled_dry_run_transform_chain(schema_map, [missing])
+
+        errors = [record.message for record in caplog.records if record.levelno == logging.ERROR]
+        assert len(errors) == 1
+        assert 'typo' in errors[0]
+
+    def test_dry_run_transform_chain_does_not_repeat_failure_log(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A failure should be logged once, not again for each following plugin."""
+        failing = FailingTransformPlugin({}, tmp_path, label='sales')
+        following = DummyTransformPlugin({}, tmp_path, label='sales')
+        schema_map: LabeledSchemaMap = {'sales': Success({'a': pl.Int64()})}
+
+        with caplog.at_level(logging.ERROR, logger='cryoflow_core.pipeline'):
+            _execute_labeled_dry_run_transform_chain(schema_map, [failing, following, following])
+
+        errors = [record.message for record in caplog.records if record.levelno == logging.ERROR]
+        assert len(errors) == 1
+        assert 'intentional dry_run failure' in errors[0]
+
+    def test_dry_run_output_stops_at_first_failure(self, tmp_path: Path) -> None:
+        """A failing output plugin should short-circuit even when others follow."""
+
+        class FailingOutputPlugin(OutputPlugin):
+            def name(self) -> str:
+                return 'failing_output'
+
+            def execute(self, df: FrameData) -> Success[None]:
+                return Success(None)
+
+            def dry_run(self, schema: dict[str, pl.DataType]) -> Failure[Exception]:
+                return Failure(ValueError('sales output rejected'))
+
+        failing_sales = FailingOutputPlugin({}, tmp_path, label='sales')
+        stock_output = DummyOutputPlugin({}, tmp_path, label='stock')
+        schema_map: LabeledSchemaMap = {
+            'sales': Success({'amount': pl.Int64()}),
+            'stock': Success({'quantity': pl.Int64()}),
+        }
+        result = _execute_labeled_output_dry_run(schema_map, [failing_sales, stock_output])
+        assert isinstance(result, Failure)
+        assert 'sales output rejected' in str(result.failure())
