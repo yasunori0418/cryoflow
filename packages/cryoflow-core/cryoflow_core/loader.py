@@ -73,8 +73,10 @@ def _load_module_from_dotpath(name: str, module_path: str) -> Result[Any, Plugin
     """
     try:
         return Success(importlib.import_module(module_path))
-    except ImportError:
-        return Failure(PluginLoadError(f"Plugin '{name}': module '{module_path}' not found"))
+    except ImportError as e:
+        error = PluginLoadError(f"Plugin '{name}': module '{module_path}' not found")
+        error.__cause__ = e
+        return Failure(error)
 
 
 def _discover_plugin_classes(name: str, module: Any) -> Result[list[type[BasePlugin]], PluginLoadError]:
