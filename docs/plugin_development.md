@@ -110,6 +110,7 @@ from cryoflow_plugin_collections.libs.core import FrameData
 # FrameData is defined in cryoflow_plugin_collections.libs.core
 # FrameData = pl.LazyFrame | pl.DataFrame
 
+
 class BasePlugin(ABC):
     def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
         """Initialize the plugin
@@ -389,6 +390,7 @@ from cryoflow_plugin_collections.libs.polars import pl
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 from cryoflow_plugin_collections.libs.core import TransformPlugin, FrameData
 
+
 class MyTransformPlugin(TransformPlugin):
     def name(self) -> str:
         """Plugin identifier name (used in logs and error messages)"""
@@ -403,9 +405,7 @@ class MyTransformPlugin(TransformPlugin):
                 return Failure(ValueError("Option 'column_name' is required"))
 
             # Data transformation
-            transformed = df.with_columns(
-                pl.col(column).str.to_uppercase().alias(column)
-            )
+            transformed = df.with_columns(pl.col(column).str.to_uppercase().alias(column))
             return Success(transformed)
         except Exception as e:
             return Failure(e)
@@ -423,9 +423,7 @@ class MyTransformPlugin(TransformPlugin):
 
             # Type check
             if schema[column] != pl.Utf8:
-                return Failure(ValueError(
-                    f"Column '{column}' must be String type, got {schema[column]}"
-                ))
+                return Failure(ValueError(f"Column '{column}' must be String type, got {schema[column]}"))
 
             # This plugin doesn't modify schema, so return as-is
             return Success(schema)
@@ -476,9 +474,7 @@ class ColumnMultiplierPlugin(TransformPlugin):
                 return Failure(ValueError("Option 'multiplier' is required"))
 
             # Transform data (add to LazyFrame computation graph)
-            transformed = df.with_columns(
-                (pl.col(column_name) * multiplier).alias(column_name)
-            )
+            transformed = df.with_columns((pl.col(column_name) * multiplier).alias(column_name))
             return Success(transformed)
         except Exception as e:
             return Failure(e)
@@ -504,24 +500,24 @@ class ColumnMultiplierPlugin(TransformPlugin):
 
             # Check column existence
             if column_name not in schema:
-                return Failure(
-                    ValueError(f"Column '{column_name}' not found in schema")
-                )
+                return Failure(ValueError(f"Column '{column_name}' not found in schema"))
 
             # Type check (only numeric types allowed)
             dtype = schema[column_name]
             numeric_types = (
-                pl.Int8, pl.Int16, pl.Int32, pl.Int64,
-                pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64,
-                pl.Float32, pl.Float64,
+                pl.Int8,
+                pl.Int16,
+                pl.Int32,
+                pl.Int64,
+                pl.UInt8,
+                pl.UInt16,
+                pl.UInt32,
+                pl.UInt64,
+                pl.Float32,
+                pl.Float64,
             )
             if not (isinstance(dtype, numeric_types) or type(dtype) in numeric_types):
-                return Failure(
-                    ValueError(
-                        f"Column '{column_name}' has type {dtype}, "
-                        "expected numeric type"
-                    )
-                )
+                return Failure(ValueError(f"Column '{column_name}' has type {dtype}, expected numeric type"))
 
             # This plugin doesn't modify schema
             return Success(schema)
@@ -542,7 +538,7 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         # return Success(filtered.lazy())
 
         # ✅ Recommended: build computation graph with LazyFrame method chains
-        filtered = df.filter(pl.col("value") > 100)
+        filtered = df.filter(pl.col('value') > 100)
         return Success(filtered)
     except Exception as e:
         return Failure(e)
@@ -567,6 +563,7 @@ from pathlib import Path
 from cryoflow_plugin_collections.libs.polars import pl
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 from cryoflow_plugin_collections.libs.core import OutputPlugin, FrameData
+
 
 class MyOutputPlugin(OutputPlugin):
     def name(self) -> str:
@@ -601,9 +598,7 @@ class MyOutputPlugin(OutputPlugin):
             try:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
             except Exception as e:
-                return Failure(
-                    ValueError(f"Cannot create directory {output_path.parent}: {e}")
-                )
+                return Failure(ValueError(f'Cannot create directory {output_path.parent}: {e}'))
 
             # OutputPlugin doesn't modify schema
             return Success(schema)
@@ -685,11 +680,7 @@ class ParquetWriterPlugin(OutputPlugin):
             try:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
             except Exception as e:
-                return Failure(
-                    ValueError(
-                        f"Cannot create parent directory for {output_path}: {e}"
-                    )
-                )
+                return Failure(ValueError(f'Cannot create parent directory for {output_path}: {e}'))
 
             return Success(schema)
         except Exception as e:
@@ -718,6 +709,7 @@ This allows detecting problems before actual execution (`cryoflow check` command
 ```python
 from cryoflow_plugin_collections.libs.polars import DataType
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
+
 
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """Processing that doesn't change schema, such as filtering"""
@@ -748,6 +740,7 @@ def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Ex
 from cryoflow_plugin_collections.libs.polars import pl, DataType
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 
+
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """Processing that adds new columns"""
     try:
@@ -771,6 +764,7 @@ def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Ex
 ```python
 from cryoflow_plugin_collections.libs.polars import DataType
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
+
 
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """Processing that removes columns"""
@@ -805,7 +799,7 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 return Success(transformed_df)
 
 # On failure
-return Failure(ValueError("Invalid configuration"))
+return Failure(ValueError('Invalid configuration'))
 ```
 
 **Benefits**:
@@ -819,35 +813,28 @@ return Failure(ValueError("Invalid configuration"))
 
 ```python
 # Include specific information
-return Failure(ValueError(
-    f"Column '{column_name}' not found in schema. "
-    f"Available columns: {', '.join(schema.keys())}"
-))
+return Failure(ValueError(f"Column '{column_name}' not found in schema. Available columns: {', '.join(schema.keys())}"))
 
 # Show expected and actual values
-return Failure(ValueError(
-    f"Column '{column_name}' has type {actual_type}, "
-    f"expected {expected_type}"
-))
+return Failure(ValueError(f"Column '{column_name}' has type {actual_type}, expected {expected_type}"))
 
 # Suggest solutions
-return Failure(ValueError(
-    f"Option 'output_path' is required. "
-    f"Add 'output_path = \"path/to/file.parquet\"' to plugin options."
-))
+return Failure(
+    ValueError(f"Option 'output_path' is required. Add 'output_path = \"path/to/file.parquet\"' to plugin options.")
+)
 ```
 
 #### ❌ Error Messages to Avoid
 
 ```python
 # Insufficient information
-return Failure(ValueError("Column not found"))
+return Failure(ValueError('Column not found'))
 
 # Unclear what the problem is
-return Failure(ValueError("Invalid input"))
+return Failure(ValueError('Invalid input'))
 
 # Too technical (users can't understand)
-return Failure(ValueError("Schema validation failed at line 42"))
+return Failure(ValueError('Schema validation failed at line 42'))
 ```
 
 ### 8.3 Common Error Patterns
@@ -864,23 +851,17 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         try:
             result = df.select(pl.col(required_opt))
         except pl.exceptions.ColumnNotFoundError as e:
-            return Failure(ValueError(
-                f"Column '{required_opt}' not found. Available: {df.columns}"
-            ))
+            return Failure(ValueError(f"Column '{required_opt}' not found. Available: {df.columns}"))
 
         # 3. Type check
         dtype = df.schema[required_opt]
         if not dtype.is_numeric():
-            return Failure(ValueError(
-                f"Column '{required_opt}' must be numeric, got {dtype}"
-            ))
+            return Failure(ValueError(f"Column '{required_opt}' must be numeric, got {dtype}"))
 
         # 4. Range check
         threshold = self.options.get('threshold', 0)
         if threshold < 0:
-            return Failure(ValueError(
-                f"Option 'threshold' must be non-negative, got {threshold}"
-            ))
+            return Failure(ValueError(f"Option 'threshold' must be non-negative, got {threshold}"))
 
         # Execute processing
         transformed = df.filter(pl.col(required_opt) > threshold)
@@ -914,18 +895,12 @@ class TestMyTransformPlugin:
     @pytest.fixture
     def plugin(self):
         """Create plugin instance"""
-        return MyTransformPlugin(options={
-            'column_name': 'test_column',
-            'multiplier': 2
-        })
+        return MyTransformPlugin(options={'column_name': 'test_column', 'multiplier': 2})
 
     @pytest.fixture
     def sample_df(self):
         """Create test data frame"""
-        return pl.DataFrame({
-            'test_column': [1, 2, 3],
-            'other_column': ['a', 'b', 'c']
-        })
+        return pl.DataFrame({'test_column': [1, 2, 3], 'other_column': ['a', 'b', 'c']})
 
     def test_name(self, plugin):
         """Plugin name should be correct"""
@@ -947,7 +922,7 @@ class TestMyTransformPlugin:
         result = plugin.execute(df)
 
         assert isinstance(result, Failure)
-        assert "required" in str(result.failure()).lower()
+        assert 'required' in str(result.failure()).lower()
 
     def test_dry_run_success(self, plugin):
         """Schema validation should succeed"""
@@ -965,20 +940,17 @@ class TestMyTransformPlugin:
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Failure)
-        assert "not found" in str(result.failure()).lower()
+        assert 'not found' in str(result.failure()).lower()
 
     def test_dry_run_invalid_type(self):
         """Should return error when specifying column with invalid type"""
-        plugin = MyTransformPlugin(options={
-            'column_name': 'string_column',
-            'multiplier': 2
-        })
+        plugin = MyTransformPlugin(options={'column_name': 'string_column', 'multiplier': 2})
         schema = {'string_column': pl.Utf8}
 
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Failure)
-        assert "numeric" in str(result.failure()).lower()
+        assert 'numeric' in str(result.failure()).lower()
 ```
 
 ### 9.2 Implementation Example
@@ -996,17 +968,11 @@ from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlu
 class TestColumnMultiplierPlugin:
     @pytest.fixture
     def plugin(self):
-        return ColumnMultiplierPlugin(options={
-            'column_name': 'value',
-            'multiplier': 3
-        })
+        return ColumnMultiplierPlugin(options={'column_name': 'value', 'multiplier': 3})
 
     @pytest.fixture
     def sample_lazy_df(self):
-        return pl.DataFrame({
-            'value': [1, 2, 3, 4, 5],
-            'name': ['a', 'b', 'c', 'd', 'e']
-        }).lazy()
+        return pl.DataFrame({'value': [1, 2, 3, 4, 5], 'name': ['a', 'b', 'c', 'd', 'e']}).lazy()
 
     def test_name(self, plugin):
         assert plugin.name() == 'column_multiplier'
@@ -1047,18 +1013,15 @@ class TestColumnMultiplierPlugin:
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Failure)
-        assert "not found in schema" in str(result.failure())
+        assert 'not found in schema' in str(result.failure())
 
     def test_dry_run_invalid_type(self):
-        plugin = ColumnMultiplierPlugin(options={
-            'column_name': 'name',
-            'multiplier': 2
-        })
+        plugin = ColumnMultiplierPlugin(options={'column_name': 'name', 'multiplier': 2})
         schema = {'name': pl.Utf8, 'value': pl.Int64}
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Failure)
-        assert "expected numeric type" in str(result.failure())
+        assert 'expected numeric type' in str(result.failure())
 ```
 
 ---
@@ -1348,6 +1311,7 @@ from typing import Any
 from cryoflow_plugin_collections.libs.polars import DataType
 from cryoflow_plugin_collections.libs.returns import Result
 
+
 class BasePlugin(ABC):
     def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
         """Initialize the plugin
@@ -1409,6 +1373,7 @@ from cryoflow_plugin_collections.libs.core import InputPlugin, FrameData
 from cryoflow_plugin_collections.libs.returns import Result
 import polars as pl
 
+
 class InputPlugin(BasePlugin):
     @abstractmethod
     def execute(self) -> Result[FrameData, Exception]:
@@ -1443,6 +1408,7 @@ class InputPlugin(BasePlugin):
 from cryoflow_plugin_collections.libs.core import TransformPlugin, FrameData
 from cryoflow_plugin_collections.libs.returns import Result
 
+
 class TransformPlugin(BasePlugin):
     @abstractmethod
     def execute(self, df: FrameData) -> Result[FrameData, Exception]:
@@ -1466,6 +1432,7 @@ class TransformPlugin(BasePlugin):
 ```python
 from cryoflow_plugin_collections.libs.core import OutputPlugin, FrameData
 from cryoflow_plugin_collections.libs.returns import Result
+
 
 class OutputPlugin(BasePlugin):
     @abstractmethod
@@ -1504,32 +1471,32 @@ Commonly used Polars methods in plugin development:
 from cryoflow_plugin_collections.libs.polars import pl
 
 # Column selection
-df.select(pl.col("column_name"))
-df.select(pl.col("col1"), pl.col("col2"))
+df.select(pl.col('column_name'))
+df.select(pl.col('col1'), pl.col('col2'))
 
 # Filtering
-df.filter(pl.col("value") > 100)
-df.filter((pl.col("a") > 10) & (pl.col("b") < 20))
+df.filter(pl.col('value') > 100)
+df.filter((pl.col('a') > 10) & (pl.col('b') < 20))
 
 # Add/modify columns
-df.with_columns(pl.col("value") * 2)
-df.with_columns((pl.col("a") + pl.col("b")).alias("sum"))
+df.with_columns(pl.col('value') * 2)
+df.with_columns((pl.col('a') + pl.col('b')).alias('sum'))
 
 # Drop columns
-df.drop("column_name")
+df.drop('column_name')
 
 # Aggregation
-df.group_by("category").agg(pl.col("value").sum())
+df.group_by('category').agg(pl.col('value').sum())
 
 # Join
-df.join(other_df, on="key")
+df.join(other_df, on='key')
 
 # Sort
-df.sort("column_name", descending=True)
+df.sort('column_name', descending=True)
 
 # Execute (only use in OutputPlugin)
 df.collect()  # Convert to DataFrame
-df.sink_parquet("output.parquet")  # Streaming write
+df.sink_parquet('output.parquet')  # Streaming write
 ```
 
 #### DataFrame Methods
@@ -1539,36 +1506,36 @@ df.sink_parquet("output.parquet")  # Streaming write
 df.lazy()
 
 # File output
-df.write_parquet("output.parquet")
-df.write_csv("output.csv")
-df.write_ipc("output.arrow")
+df.write_parquet('output.parquet')
+df.write_csv('output.csv')
+df.write_ipc('output.arrow')
 ```
 
 #### Expression Construction
 
 ```python
 # Column reference
-pl.col("column_name")
+pl.col('column_name')
 
 # Arithmetic operations
-pl.col("a") + pl.col("b")
-pl.col("value") * 2
+pl.col('a') + pl.col('b')
+pl.col('value') * 2
 
 # String operations
-pl.col("name").str.to_uppercase()
-pl.col("text").str.contains("pattern")
+pl.col('name').str.to_uppercase()
+pl.col('text').str.contains('pattern')
 
 # Conditional branching
-pl.when(pl.col("value") > 100).then(pl.lit("high")).otherwise(pl.lit("low"))
+pl.when(pl.col('value') > 100).then(pl.lit('high')).otherwise(pl.lit('low'))
 
 # Aggregation functions
-pl.col("value").sum()
-pl.col("value").mean()
-pl.col("value").max()
-pl.col("value").count()
+pl.col('value').sum()
+pl.col('value').mean()
+pl.col('value').max()
+pl.col('value').count()
 
 # Alias (rename column)
-pl.col("old_name").alias("new_name")
+pl.col('old_name').alias('new_name')
 ```
 
 ---

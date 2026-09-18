@@ -110,6 +110,7 @@ from cryoflow_plugin_collections.libs.core import FrameData
 # FrameData は cryoflow_plugin_collections.libs.core で定義されている
 # FrameData = pl.LazyFrame | pl.DataFrame
 
+
 class BasePlugin(ABC):
     def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
         """プラグインの初期化
@@ -388,6 +389,7 @@ from cryoflow_plugin_collections.libs.polars import pl
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 from cryoflow_plugin_collections.libs.core import TransformPlugin, FrameData
 
+
 class MyTransformPlugin(TransformPlugin):
     def name(self) -> str:
         """プラグイン識別名（ログやエラーメッセージに使用される）"""
@@ -402,9 +404,7 @@ class MyTransformPlugin(TransformPlugin):
                 return Failure(ValueError("Option 'column_name' is required"))
 
             # データ変換処理
-            transformed = df.with_columns(
-                pl.col(column).str.to_uppercase().alias(column)
-            )
+            transformed = df.with_columns(pl.col(column).str.to_uppercase().alias(column))
             return Success(transformed)
         except Exception as e:
             return Failure(e)
@@ -422,9 +422,7 @@ class MyTransformPlugin(TransformPlugin):
 
             # 型チェック
             if schema[column] != pl.Utf8:
-                return Failure(ValueError(
-                    f"Column '{column}' must be String type, got {schema[column]}"
-                ))
+                return Failure(ValueError(f"Column '{column}' must be String type, got {schema[column]}"))
 
             # このプラグインはスキーマを変更しないのでそのまま返す
             return Success(schema)
@@ -475,9 +473,7 @@ class ColumnMultiplierPlugin(TransformPlugin):
                 return Failure(ValueError("Option 'multiplier' is required"))
 
             # データ変換（LazyFrame の計算グラフに追加）
-            transformed = df.with_columns(
-                (pl.col(column_name) * multiplier).alias(column_name)
-            )
+            transformed = df.with_columns((pl.col(column_name) * multiplier).alias(column_name))
             return Success(transformed)
         except Exception as e:
             return Failure(e)
@@ -503,24 +499,24 @@ class ColumnMultiplierPlugin(TransformPlugin):
 
             # カラム存在チェック
             if column_name not in schema:
-                return Failure(
-                    ValueError(f"Column '{column_name}' not found in schema")
-                )
+                return Failure(ValueError(f"Column '{column_name}' not found in schema"))
 
             # 型チェック（数値型のみ許可）
             dtype = schema[column_name]
             numeric_types = (
-                pl.Int8, pl.Int16, pl.Int32, pl.Int64,
-                pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64,
-                pl.Float32, pl.Float64,
+                pl.Int8,
+                pl.Int16,
+                pl.Int32,
+                pl.Int64,
+                pl.UInt8,
+                pl.UInt16,
+                pl.UInt32,
+                pl.UInt64,
+                pl.Float32,
+                pl.Float64,
             )
             if not (isinstance(dtype, numeric_types) or type(dtype) in numeric_types):
-                return Failure(
-                    ValueError(
-                        f"Column '{column_name}' has type {dtype}, "
-                        "expected numeric type"
-                    )
-                )
+                return Failure(ValueError(f"Column '{column_name}' has type {dtype}, expected numeric type"))
 
             # このプラグインはスキーマを変更しない
             return Success(schema)
@@ -541,7 +537,7 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         # return Success(filtered.lazy())
 
         # ✅ 推奨: LazyFrame のメソッドチェーンで計算グラフを構築
-        filtered = df.filter(pl.col("value") > 100)
+        filtered = df.filter(pl.col('value') > 100)
         return Success(filtered)
     except Exception as e:
         return Failure(e)
@@ -566,6 +562,7 @@ from pathlib import Path
 from cryoflow_plugin_collections.libs.polars import pl
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 from cryoflow_plugin_collections.libs.core import OutputPlugin, FrameData
+
 
 class MyOutputPlugin(OutputPlugin):
     def name(self) -> str:
@@ -600,9 +597,7 @@ class MyOutputPlugin(OutputPlugin):
             try:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
             except Exception as e:
-                return Failure(
-                    ValueError(f"Cannot create directory {output_path.parent}: {e}")
-                )
+                return Failure(ValueError(f'Cannot create directory {output_path.parent}: {e}'))
 
             # OutputPlugin はスキーマを変更しない
             return Success(schema)
@@ -684,11 +679,7 @@ class ParquetWriterPlugin(OutputPlugin):
             try:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
             except Exception as e:
-                return Failure(
-                    ValueError(
-                        f"Cannot create parent directory for {output_path}: {e}"
-                    )
-                )
+                return Failure(ValueError(f'Cannot create parent directory for {output_path}: {e}'))
 
             return Success(schema)
         except Exception as e:
@@ -717,6 +708,7 @@ class ParquetWriterPlugin(OutputPlugin):
 ```python
 from cryoflow_plugin_collections.libs.polars import DataType
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
+
 
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """フィルタリングなど、スキーマを変えない処理"""
@@ -747,6 +739,7 @@ def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Ex
 from cryoflow_plugin_collections.libs.polars import pl, DataType
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 
+
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """新しいカラムを追加する処理"""
     try:
@@ -770,6 +763,7 @@ def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Ex
 ```python
 from cryoflow_plugin_collections.libs.polars import DataType
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
+
 
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """カラムを削除する処理"""
@@ -804,7 +798,7 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 return Success(transformed_df)
 
 # 失敗時
-return Failure(ValueError("Invalid configuration"))
+return Failure(ValueError('Invalid configuration'))
 ```
 
 **利点**:
@@ -818,35 +812,28 @@ return Failure(ValueError("Invalid configuration"))
 
 ```python
 # 具体的な情報を含む
-return Failure(ValueError(
-    f"Column '{column_name}' not found in schema. "
-    f"Available columns: {', '.join(schema.keys())}"
-))
+return Failure(ValueError(f"Column '{column_name}' not found in schema. Available columns: {', '.join(schema.keys())}"))
 
 # 期待値と実際の値を示す
-return Failure(ValueError(
-    f"Column '{column_name}' has type {actual_type}, "
-    f"expected {expected_type}"
-))
+return Failure(ValueError(f"Column '{column_name}' has type {actual_type}, expected {expected_type}"))
 
 # 解決方法を提示
-return Failure(ValueError(
-    f"Option 'output_path' is required. "
-    f"Add 'output_path = \"path/to/file.parquet\"' to plugin options."
-))
+return Failure(
+    ValueError(f"Option 'output_path' is required. Add 'output_path = \"path/to/file.parquet\"' to plugin options.")
+)
 ```
 
 #### ❌ 避けるべきエラーメッセージ
 
 ```python
 # 情報が不足している
-return Failure(ValueError("Column not found"))
+return Failure(ValueError('Column not found'))
 
 # 何が問題かわからない
-return Failure(ValueError("Invalid input"))
+return Failure(ValueError('Invalid input'))
 
 # 技術的すぎる（ユーザーが理解できない）
-return Failure(ValueError("Schema validation failed at line 42"))
+return Failure(ValueError('Schema validation failed at line 42'))
 ```
 
 ### 8.3 よくあるエラーパターン
@@ -863,23 +850,17 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         try:
             result = df.select(pl.col(required_opt))
         except pl.exceptions.ColumnNotFoundError as e:
-            return Failure(ValueError(
-                f"Column '{required_opt}' not found. Available: {df.columns}"
-            ))
+            return Failure(ValueError(f"Column '{required_opt}' not found. Available: {df.columns}"))
 
         # 3. 型チェック
         dtype = df.schema[required_opt]
         if not dtype.is_numeric():
-            return Failure(ValueError(
-                f"Column '{required_opt}' must be numeric, got {dtype}"
-            ))
+            return Failure(ValueError(f"Column '{required_opt}' must be numeric, got {dtype}"))
 
         # 4. 値の範囲チェック
         threshold = self.options.get('threshold', 0)
         if threshold < 0:
-            return Failure(ValueError(
-                f"Option 'threshold' must be non-negative, got {threshold}"
-            ))
+            return Failure(ValueError(f"Option 'threshold' must be non-negative, got {threshold}"))
 
         # 処理の実行
         transformed = df.filter(pl.col(required_opt) > threshold)
@@ -913,18 +894,12 @@ class TestMyTransformPlugin:
     @pytest.fixture
     def plugin(self):
         """プラグインインスタンスを作成"""
-        return MyTransformPlugin(options={
-            'column_name': 'test_column',
-            'multiplier': 2
-        })
+        return MyTransformPlugin(options={'column_name': 'test_column', 'multiplier': 2})
 
     @pytest.fixture
     def sample_df(self):
         """テスト用データフレームを作成"""
-        return pl.DataFrame({
-            'test_column': [1, 2, 3],
-            'other_column': ['a', 'b', 'c']
-        })
+        return pl.DataFrame({'test_column': [1, 2, 3], 'other_column': ['a', 'b', 'c']})
 
     def test_name(self, plugin):
         """プラグイン名が正しいこと"""
@@ -946,7 +921,7 @@ class TestMyTransformPlugin:
         result = plugin.execute(df)
 
         assert isinstance(result, Failure)
-        assert "required" in str(result.failure()).lower()
+        assert 'required' in str(result.failure()).lower()
 
     def test_dry_run_success(self, plugin):
         """スキーマ検証が成功すること"""
@@ -964,20 +939,17 @@ class TestMyTransformPlugin:
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Failure)
-        assert "not found" in str(result.failure()).lower()
+        assert 'not found' in str(result.failure()).lower()
 
     def test_dry_run_invalid_type(self):
         """無効な型のカラムを指定した場合にエラーを返すこと"""
-        plugin = MyTransformPlugin(options={
-            'column_name': 'string_column',
-            'multiplier': 2
-        })
+        plugin = MyTransformPlugin(options={'column_name': 'string_column', 'multiplier': 2})
         schema = {'string_column': pl.Utf8}
 
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Failure)
-        assert "numeric" in str(result.failure()).lower()
+        assert 'numeric' in str(result.failure()).lower()
 ```
 
 ### 9.2 実装例
@@ -995,17 +967,11 @@ from cryoflow_plugin_collections.transform.multiplier import ColumnMultiplierPlu
 class TestColumnMultiplierPlugin:
     @pytest.fixture
     def plugin(self):
-        return ColumnMultiplierPlugin(options={
-            'column_name': 'value',
-            'multiplier': 3
-        })
+        return ColumnMultiplierPlugin(options={'column_name': 'value', 'multiplier': 3})
 
     @pytest.fixture
     def sample_lazy_df(self):
-        return pl.DataFrame({
-            'value': [1, 2, 3, 4, 5],
-            'name': ['a', 'b', 'c', 'd', 'e']
-        }).lazy()
+        return pl.DataFrame({'value': [1, 2, 3, 4, 5], 'name': ['a', 'b', 'c', 'd', 'e']}).lazy()
 
     def test_name(self, plugin):
         assert plugin.name() == 'column_multiplier'
@@ -1046,18 +1012,15 @@ class TestColumnMultiplierPlugin:
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Failure)
-        assert "not found in schema" in str(result.failure())
+        assert 'not found in schema' in str(result.failure())
 
     def test_dry_run_invalid_type(self):
-        plugin = ColumnMultiplierPlugin(options={
-            'column_name': 'name',
-            'multiplier': 2
-        })
+        plugin = ColumnMultiplierPlugin(options={'column_name': 'name', 'multiplier': 2})
         schema = {'name': pl.Utf8, 'value': pl.Int64}
         result = plugin.dry_run(schema)
 
         assert isinstance(result, Failure)
-        assert "expected numeric type" in str(result.failure())
+        assert 'expected numeric type' in str(result.failure())
 ```
 
 ---
@@ -1347,6 +1310,7 @@ from typing import Any
 from cryoflow_plugin_collections.libs.polars import DataType
 from cryoflow_plugin_collections.libs.returns import Result
 
+
 class BasePlugin(ABC):
     def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
         """プラグインの初期化
@@ -1407,6 +1371,7 @@ from cryoflow_plugin_collections.libs.core import InputPlugin, FrameData
 from cryoflow_plugin_collections.libs.returns import Result
 import polars as pl
 
+
 class InputPlugin(BasePlugin):
     @abstractmethod
     def execute(self) -> Result[FrameData, Exception]:
@@ -1441,6 +1406,7 @@ class InputPlugin(BasePlugin):
 from cryoflow_plugin_collections.libs.core import TransformPlugin, FrameData
 from cryoflow_plugin_collections.libs.returns import Result
 
+
 class TransformPlugin(BasePlugin):
     @abstractmethod
     def execute(self, df: FrameData) -> Result[FrameData, Exception]:
@@ -1464,6 +1430,7 @@ class TransformPlugin(BasePlugin):
 ```python
 from cryoflow_plugin_collections.libs.core import OutputPlugin, FrameData
 from cryoflow_plugin_collections.libs.returns import Result
+
 
 class OutputPlugin(BasePlugin):
     @abstractmethod
@@ -1502,32 +1469,32 @@ class OutputPlugin(BasePlugin):
 from cryoflow_plugin_collections.libs.polars import pl
 
 # カラム選択
-df.select(pl.col("column_name"))
-df.select(pl.col("col1"), pl.col("col2"))
+df.select(pl.col('column_name'))
+df.select(pl.col('col1'), pl.col('col2'))
 
 # フィルタリング
-df.filter(pl.col("value") > 100)
-df.filter((pl.col("a") > 10) & (pl.col("b") < 20))
+df.filter(pl.col('value') > 100)
+df.filter((pl.col('a') > 10) & (pl.col('b') < 20))
 
 # カラム追加・変更
-df.with_columns(pl.col("value") * 2)
-df.with_columns((pl.col("a") + pl.col("b")).alias("sum"))
+df.with_columns(pl.col('value') * 2)
+df.with_columns((pl.col('a') + pl.col('b')).alias('sum'))
 
 # カラム削除
-df.drop("column_name")
+df.drop('column_name')
 
 # 集計
-df.group_by("category").agg(pl.col("value").sum())
+df.group_by('category').agg(pl.col('value').sum())
 
 # 結合
-df.join(other_df, on="key")
+df.join(other_df, on='key')
 
 # ソート
-df.sort("column_name", descending=True)
+df.sort('column_name', descending=True)
 
 # 実行（OutputPlugin でのみ使用）
 df.collect()  # DataFrame に変換
-df.sink_parquet("output.parquet")  # ストリーミング書き込み
+df.sink_parquet('output.parquet')  # ストリーミング書き込み
 ```
 
 #### DataFrame メソッド
@@ -1537,36 +1504,36 @@ df.sink_parquet("output.parquet")  # ストリーミング書き込み
 df.lazy()
 
 # ファイル出力
-df.write_parquet("output.parquet")
-df.write_csv("output.csv")
-df.write_ipc("output.arrow")
+df.write_parquet('output.parquet')
+df.write_csv('output.csv')
+df.write_ipc('output.arrow')
 ```
 
 #### 式 (Expression) の構築
 
 ```python
 # カラム参照
-pl.col("column_name")
+pl.col('column_name')
 
 # 算術演算
-pl.col("a") + pl.col("b")
-pl.col("value") * 2
+pl.col('a') + pl.col('b')
+pl.col('value') * 2
 
 # 文字列操作
-pl.col("name").str.to_uppercase()
-pl.col("text").str.contains("pattern")
+pl.col('name').str.to_uppercase()
+pl.col('text').str.contains('pattern')
 
 # 条件分岐
-pl.when(pl.col("value") > 100).then(pl.lit("high")).otherwise(pl.lit("low"))
+pl.when(pl.col('value') > 100).then(pl.lit('high')).otherwise(pl.lit('low'))
 
 # 集約関数
-pl.col("value").sum()
-pl.col("value").mean()
-pl.col("value").max()
-pl.col("value").count()
+pl.col('value').sum()
+pl.col('value').mean()
+pl.col('value').max()
+pl.col('value').count()
 
 # エイリアス（カラム名の変更）
-pl.col("old_name").alias("new_name")
+pl.col('old_name').alias('new_name')
 ```
 
 ---

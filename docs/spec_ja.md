@@ -43,12 +43,14 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+
 class PluginConfig(BaseModel):
     name: str
     module: str  # importlibで読み込むパス
     enabled: bool = True
     label: str = 'default'  # マルチストリームルーティング用ラベル
-    options: dict[str, Any] = Field(default_factory=dict) # プラグイン固有設定
+    options: dict[str, Any] = Field(default_factory=dict)  # プラグイン固有設定
+
 
 class CryoflowConfig(BaseModel):
     input_plugins: list[PluginConfig]
@@ -78,6 +80,7 @@ from returns.result import Result
 FrameData = pl.LazyFrame | pl.DataFrame
 
 DEFAULT_LABEL = 'default'
+
 
 class BasePlugin(ABC):
     """全てのプラグインの基底クラス"""
@@ -134,7 +137,8 @@ class OutputPlugin(BasePlugin):
 ```python
 import pluggy
 
-hookspec = pluggy.HookspecMarker("cryoflow")
+hookspec = pluggy.HookspecMarker('cryoflow')
+
 
 class CryoflowSpecs:
     @hookspec
@@ -229,17 +233,11 @@ class ParquetWriterPlugin(OutputPlugin):
 
 ```python
 # イメージ
-result = (
-    load_data(path)
-    .bind(plugin_a.execute)
-    .bind(plugin_b.execute)
-    .bind(output_plugin.execute)
-)
+result = load_data(path).bind(plugin_a.execute).bind(plugin_b.execute).bind(output_plugin.execute)
 
 if isinstance(result, Failure):
-    console.print(f"[red]Error:[/red] {result.failure()}")
+    console.print(f'[red]Error:[/red] {result.failure()}')
     raise typer.Exit(code=1)
-
 ```
 
 ---
@@ -254,6 +252,7 @@ if isinstance(result, Failure):
 
 ```python
 from returns.result import Failure, Success
+
 
 def execute(self, df: FrameData) -> Result[FrameData, Exception]:
     try:
@@ -270,6 +269,7 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
 
 ```python
 from returns.result import safe
+
 
 @safe
 def execute(self, df: FrameData) -> FrameData:
@@ -306,9 +306,7 @@ def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataTyp
     # 型チェック
     dtype = schema[column_name]
     if not dtype.is_numeric():
-        return Failure(ValueError(
-            f"Column '{column_name}' has type {dtype}, expected numeric type"
-        ))
+        return Failure(ValueError(f"Column '{column_name}' has type {dtype}, expected numeric type"))
 
     # スキーマは変更されないため、そのまま返す
     return Success(schema)

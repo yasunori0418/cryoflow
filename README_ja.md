@@ -284,7 +284,7 @@ class MyTransformPlugin(TransformPlugin):
 class MyOutputPlugin(OutputPlugin):
     def execute(self, df: FrameData) -> Result[None, Exception]:
         # 出力ロジックの実装
-        df.sink_parquet("output.parquet")
+        df.sink_parquet('output.parquet')
         return Success(None)
 
     def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:
