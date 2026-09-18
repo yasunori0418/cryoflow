@@ -60,7 +60,9 @@ def _load_module_from_path(name: str, path: Path) -> Result[Any, PluginLoadError
         spec.loader.exec_module(module)
     except Exception as e:
         del sys.modules[module_name]
-        return Failure(PluginLoadError(f"Plugin '{name}': failed to execute module: {e}"))
+        error = PluginLoadError(f"Plugin '{name}': failed to execute module: {e}")
+        error.__cause__ = e
+        return Failure(error)
     return Success(module)
 
 
@@ -125,7 +127,9 @@ def _instantiate_plugins(
         try:
             instances.append(cls(options, config_dir, label))
         except Exception as e:
-            return Failure(PluginLoadError(f"Plugin '{name}': failed to instantiate {cls.__name__}: {e}"))
+            error = PluginLoadError(f"Plugin '{name}': failed to instantiate {cls.__name__}: {e}")
+            error.__cause__ = e
+            return Failure(error)
     return Success(instances)
 
 
