@@ -18,16 +18,16 @@ Usage:
 """
 
 from cryoflow_core.plugin import (
-    FrameData as FrameData,
+    FrameData,
 )
 from cryoflow_core.plugin import (
-    InputPlugin as InputPlugin,
+    InputPlugin,
 )
 from cryoflow_core.plugin import (
-    OutputPlugin as OutputPlugin,
+    OutputPlugin,
 )
 from cryoflow_core.plugin import (
-    TransformPlugin as TransformPlugin,
+    TransformPlugin,
 )
 
 __all__ = [

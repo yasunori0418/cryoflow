@@ -1,17 +1,17 @@
 from returns.result import (
-    Failure as Failure,
+    Failure,
 )
 from returns.result import (
-    Result as Result,
+    Result,
 )
 from returns.result import (
-    ResultE as ResultE,
+    ResultE,
 )
 from returns.result import (
-    Success as Success,
+    Success,
 )
 from returns.result import (
-    safe as safe,
+    safe,
 )
 
 __all__ = [

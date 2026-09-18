@@ -1,14 +1,14 @@
 from returns.maybe import (
-    Maybe as Maybe,
+    Maybe,
 )
 from returns.maybe import (
-    Nothing as Nothing,
+    Nothing,
 )
 from returns.maybe import (
-    Some as Some,
+    Some,
 )
 from returns.maybe import (
-    maybe as maybe,
+    maybe,
 )
 
 __all__ = [
