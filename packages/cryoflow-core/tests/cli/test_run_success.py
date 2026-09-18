@@ -5,6 +5,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pluggy
+from returns.result import Success
 from typer.testing import CliRunner
 
 from cryoflow_core.cli import app
@@ -27,7 +28,7 @@ class TestRunSuccess:
             patch('cryoflow_core.commands.run.load_plugins') as mock_load,
             patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         assert result.exit_code == 1
@@ -51,7 +52,7 @@ class TestRunSuccess:
             patch('cryoflow_core.commands.run.load_plugins') as mock_load,
             patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         assert result.exit_code == 1
@@ -68,7 +69,7 @@ class TestRunSuccess:
             patch('cryoflow_core.commands.run.load_plugins') as mock_load,
             patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         assert 'input_plugins' in result.output
@@ -84,7 +85,7 @@ class TestRunSuccess:
             patch('cryoflow_core.commands.run.load_plugins') as mock_load,
             patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         # VALID_TOML has 1 input + 1 transform + 0 output = 2 enabled plugins
@@ -101,7 +102,7 @@ class TestRunSuccess:
             patch('cryoflow_core.commands.run.load_plugins') as mock_load,
             patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['run', '--config', str(config_file)])
 
         assert result.exit_code == 1

@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
+from returns.result import Failure
 
 from cryoflow_core.loader import PluginLoadError, _load_module_from_path
 
@@ -13,31 +13,33 @@ from .conftest import SYNTAX_ERROR_SOURCE
 
 class TestLoadModuleFromPath:
     def test_loads_module(self, plugin_py_file: Path):
-        module = _load_module_from_path('test_plugin', plugin_py_file)
-        assert hasattr(module, 'MyTransformPlugin')
+        result = _load_module_from_path('test_plugin', plugin_py_file)
+        assert hasattr(result.unwrap(), 'MyTransformPlugin')
         assert 'cryoflow_plugin_test_plugin' in sys.modules
 
-    def test_syntax_error_raises(self, tmp_path: Path):
+    def test_syntax_error_returns_failure(self, tmp_path: Path):
         bad_file = tmp_path / 'bad.py'
         bad_file.write_text(SYNTAX_ERROR_SOURCE)
-        with pytest.raises(PluginLoadError, match='failed to execute module'):
-            _load_module_from_path('bad_plugin', bad_file)
+        result = _load_module_from_path('bad_plugin', bad_file)
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert isinstance(error, PluginLoadError)
+        assert 'failed to execute module' in str(error)
+        assert isinstance(error.__cause__, SyntaxError)
 
-    def test_spec_none_raises(self, plugin_py_file: Path):
-        with (
-            patch(
-                'cryoflow_core.loader.importlib.util.spec_from_file_location',
-                return_value=None,
-            ),
-            pytest.raises(PluginLoadError, match='failed to create module spec'),
+    def test_spec_none_returns_failure(self, plugin_py_file: Path):
+        with patch(
+            'cryoflow_core.loader.importlib.util.spec_from_file_location',
+            return_value=None,
         ):
-            _load_module_from_path('spec_none', plugin_py_file)
+            result = _load_module_from_path('spec_none', plugin_py_file)
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert isinstance(error, PluginLoadError)
+        assert 'failed to create module spec' in str(error)
 
     def test_syntax_error_cleans_sys_modules(self, tmp_path: Path):
         bad_file = tmp_path / 'bad.py'
         bad_file.write_text(SYNTAX_ERROR_SOURCE)
-        try:
-            _load_module_from_path('bad_cleanup', bad_file)
-        except PluginLoadError:
-            pass
+        _load_module_from_path('bad_cleanup', bad_file)
         assert 'cryoflow_plugin_bad_cleanup' not in sys.modules

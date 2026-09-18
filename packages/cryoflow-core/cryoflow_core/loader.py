@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 import pluggy
+from returns.result import Failure, Result, Success
 
 from cryoflow_core.config import CryoflowConfig, PluginConfig
 from cryoflow_core.hookspecs import CryoflowSpecs, hookimpl
@@ -23,61 +24,69 @@ def _is_filesystem_path(module_str: str) -> bool:
     return '/' in module_str or '\\' in module_str or module_str.endswith('.py') or module_str.startswith('.')
 
 
-def _resolve_module_path(module_str: str, config_dir: Path) -> Path:
+def _resolve_module_path(module_str: str, config_dir: Path) -> Result[Path, PluginLoadError]:
     """Resolve a module string to an absolute filesystem path.
 
     Absolute paths are normalized with resolve().
     Relative paths are resolved relative to config_dir.
 
-    Raises:
-        PluginLoadError: If the resolved path does not exist.
+    Returns:
+        Success containing the resolved path.
+        Failure containing PluginLoadError if the resolved path does not exist.
     """
     path = Path(module_str)
     if not path.is_absolute():
         path = config_dir / path
     resolved = path.resolve()
     if not resolved.exists():
-        raise PluginLoadError(f'Plugin file does not exist: {resolved}')
-    return resolved
+        return Failure(PluginLoadError(f'Plugin file does not exist: {resolved}'))
+    return Success(resolved)
 
 
-def _load_module_from_path(name: str, path: Path) -> Any:
+def _load_module_from_path(name: str, path: Path) -> Result[Any, PluginLoadError]:
     """Load a Python module from a filesystem path.
 
-    Raises:
-        PluginLoadError: If the module cannot be loaded.
+    Returns:
+        Success containing the loaded module.
+        Failure containing PluginLoadError if the module cannot be loaded.
     """
     module_name = f'cryoflow_plugin_{name}'
     spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
-        raise PluginLoadError(f"Plugin '{name}': failed to create module spec from {path}")
+        return Failure(PluginLoadError(f"Plugin '{name}': failed to create module spec from {path}"))
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
     try:
         spec.loader.exec_module(module)
     except Exception as e:
         del sys.modules[module_name]
-        raise PluginLoadError(f"Plugin '{name}': failed to execute module: {e}") from e
-    return module
+        error = PluginLoadError(f"Plugin '{name}': failed to execute module: {e}")
+        error.__cause__ = e
+        return Failure(error)
+    return Success(module)
 
 
-def _load_module_from_dotpath(name: str, module_path: str) -> Any:
+def _load_module_from_dotpath(name: str, module_path: str) -> Result[Any, PluginLoadError]:
     """Load a Python module from a dotted module path.
 
-    Raises:
-        PluginLoadError: If the module cannot be imported.
+    Returns:
+        Success containing the imported module.
+        Failure containing PluginLoadError if the module cannot be imported.
     """
     try:
-        return importlib.import_module(module_path)
+        return Success(importlib.import_module(module_path))
     except ImportError as e:
-        raise PluginLoadError(f"Plugin '{name}': module '{module_path}' not found") from e
+        error = PluginLoadError(f"Plugin '{name}': module '{module_path}' not found")
+        error.__cause__ = e
+        return Failure(error)
 
 
-def _discover_plugin_classes(name: str, module: Any) -> list[type[BasePlugin]]:
+def _discover_plugin_classes(name: str, module: Any) -> Result[list[type[BasePlugin]], PluginLoadError]:
     """Discover BasePlugin subclasses in a loaded module.
 
-    Raises:
-        PluginLoadError: If no subclasses are found.
+    Returns:
+        Success containing the discovered plugin classes.
+        Failure containing PluginLoadError if no subclasses are found.
     """
     classes: list[type[BasePlugin]] = []
     for obj in vars(module).values():
@@ -89,8 +98,8 @@ def _discover_plugin_classes(name: str, module: Any) -> list[type[BasePlugin]]:
         ):
             classes.append(obj)
     if not classes:
-        raise PluginLoadError(f"Plugin '{name}': no BasePlugin subclasses found in module")
-    return classes
+        return Failure(PluginLoadError(f"Plugin '{name}': no BasePlugin subclasses found in module"))
+    return Success(classes)
 
 
 def _instantiate_plugins(
@@ -99,7 +108,7 @@ def _instantiate_plugins(
     options: dict[str, Any],
     config_dir: Path,
     label: str = 'default',
-) -> list[BasePlugin]:
+) -> Result[list[BasePlugin], PluginLoadError]:
     """Instantiate discovered plugin classes with options.
 
     Args:
@@ -109,16 +118,19 @@ def _instantiate_plugins(
         config_dir: Directory containing the config file (for path resolution).
         label: Data stream identifier to pass to plugin instances.
 
-    Raises:
-        PluginLoadError: If instantiation fails.
+    Returns:
+        Success containing the instantiated plugins.
+        Failure containing PluginLoadError if instantiation fails.
     """
     instances: list[BasePlugin] = []
     for cls in classes:
         try:
             instances.append(cls(options, config_dir, label))
         except Exception as e:
-            raise PluginLoadError(f"Plugin '{name}': failed to instantiate {cls.__name__}: {e}") from e
-    return instances
+            error = PluginLoadError(f"Plugin '{name}': failed to instantiate {cls.__name__}: {e}")
+            error.__cause__ = e
+            return Failure(error)
+    return Success(instances)
 
 
 class _PluginHookRelay:
@@ -147,7 +159,7 @@ class _PluginHookRelay:
         return self._outputs
 
 
-def _load_single_plugin(plugin_cfg: PluginConfig, config_dir: Path) -> list[BasePlugin]:
+def _load_single_plugin(plugin_cfg: PluginConfig, config_dir: Path) -> Result[list[BasePlugin], PluginLoadError]:
     """Load a single plugin from its config entry.
 
     Args:
@@ -155,26 +167,26 @@ def _load_single_plugin(plugin_cfg: PluginConfig, config_dir: Path) -> list[Base
         config_dir: Directory containing the config file (for path resolution).
 
     Returns:
-        List of instantiated plugin instances.
-
-    Raises:
-        PluginLoadError: If plugin loading fails.
+        Success containing the instantiated plugin instances.
+        Failure containing PluginLoadError if plugin loading fails.
     """
     if _is_filesystem_path(plugin_cfg.module):
-        path = _resolve_module_path(plugin_cfg.module, config_dir)
-        module = _load_module_from_path(plugin_cfg.name, path)
+        module_result = _resolve_module_path(plugin_cfg.module, config_dir).bind(
+            lambda path: _load_module_from_path(plugin_cfg.name, path)
+        )
     else:
-        module = _load_module_from_dotpath(plugin_cfg.name, plugin_cfg.module)
+        module_result = _load_module_from_dotpath(plugin_cfg.name, plugin_cfg.module)
 
-    classes = _discover_plugin_classes(plugin_cfg.name, module)
-    return _instantiate_plugins(plugin_cfg.name, classes, plugin_cfg.options, config_dir, plugin_cfg.label)
+    return module_result.bind(lambda module: _discover_plugin_classes(plugin_cfg.name, module)).bind(
+        lambda classes: _instantiate_plugins(plugin_cfg.name, classes, plugin_cfg.options, config_dir, plugin_cfg.label)
+    )
 
 
 def load_plugins(
     config: CryoflowConfig,
     config_path: Path,
     pm: pluggy.PluginManager | None = None,
-) -> pluggy.PluginManager:
+) -> Result[pluggy.PluginManager, PluginLoadError]:
     """Load all enabled plugins and register them with pluggy.
 
     Args:
@@ -183,10 +195,8 @@ def load_plugins(
         pm: Optional existing PluginManager. Created if not provided.
 
     Returns:
-        PluginManager with all plugins registered.
-
-    Raises:
-        PluginLoadError: If any enabled plugin fails to load.
+        Success containing the PluginManager with all plugins registered.
+        Failure containing PluginLoadError if any enabled plugin fails to load.
     """
     if pm is None:
         pm = pluggy.PluginManager('cryoflow')
@@ -202,8 +212,10 @@ def load_plugins(
         if not plugin_cfg.enabled:
             continue
 
-        instances = _load_single_plugin(plugin_cfg, config_dir)
-        for inst in instances:
+        result = _load_single_plugin(plugin_cfg, config_dir)
+        if isinstance(result, Failure):
+            return Failure(result.failure())
+        for inst in result.unwrap():
             if isinstance(inst, InputPlugin):
                 all_inputs.append(inst)
 
@@ -211,8 +223,10 @@ def load_plugins(
         if not plugin_cfg.enabled:
             continue
 
-        instances = _load_single_plugin(plugin_cfg, config_dir)
-        for inst in instances:
+        result = _load_single_plugin(plugin_cfg, config_dir)
+        if isinstance(result, Failure):
+            return Failure(result.failure())
+        for inst in result.unwrap():
             if isinstance(inst, TransformPlugin):
                 all_transforms.append(inst)
 
@@ -220,15 +234,17 @@ def load_plugins(
         if not plugin_cfg.enabled:
             continue
 
-        instances = _load_single_plugin(plugin_cfg, config_dir)
-        for inst in instances:
+        result = _load_single_plugin(plugin_cfg, config_dir)
+        if isinstance(result, Failure):
+            return Failure(result.failure())
+        for inst in result.unwrap():
             if isinstance(inst, OutputPlugin):
                 all_outputs.append(inst)
 
     relay = _PluginHookRelay(all_inputs, all_transforms, all_outputs)
     pm.register(relay, name='cryoflow_plugin_relay')
 
-    return pm
+    return Success(pm)
 
 
 T = TypeVar('T', bound=BasePlugin)

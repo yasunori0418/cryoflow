@@ -6,7 +6,7 @@ import typer
 from returns.result import Failure
 
 from cryoflow_core.config import get_config_path, load_config
-from cryoflow_core.loader import PluginLoadError, get_plugins, load_plugins
+from cryoflow_core.loader import get_plugins, load_plugins
 from cryoflow_core.pipeline import run_pipeline
 from cryoflow_core.plugin import InputPlugin, OutputPlugin, TransformPlugin
 
@@ -34,11 +34,11 @@ def execute(config: Path | None):
         status = 'enabled' if plugin.enabled else 'disabled'
         typer.echo(f'    - {plugin.name} ({plugin.module}) [{status}]')
 
-    try:
-        pm = load_plugins(cfg, config_path)
-    except PluginLoadError as e:
-        typer.echo(str(e), err=True)
+    pm_result = load_plugins(cfg, config_path)
+    if isinstance(pm_result, Failure):
+        typer.echo(str(pm_result.failure()), err=True)
         raise typer.Exit(code=1)
+    pm = pm_result.unwrap()
 
     enabled_count = sum(1 for p in cfg.input_plugins + cfg.transform_plugins + cfg.output_plugins if p.enabled)
     typer.echo(f'Loaded {enabled_count} plugin(s) successfully.')

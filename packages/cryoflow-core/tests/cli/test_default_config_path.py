@@ -32,7 +32,7 @@ class TestDefaultConfigPath:
             patch('cryoflow_core.commands.run.load_plugins') as mock_load,
             patch('cryoflow_core.commands.run.get_plugins', side_effect=mock_get_plugins),
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             with patch('cryoflow_core.commands.run.load_config') as mock_load_config:
                 mock_load_config.return_value = Success(
                     CryoflowConfig(

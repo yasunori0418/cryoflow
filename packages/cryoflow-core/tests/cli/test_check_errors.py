@@ -34,7 +34,7 @@ class TestCheckErrors:
         config_file.write_text(VALID_TOML)
 
         with patch('cryoflow_core.commands.check.load_plugins') as mock_load:
-            mock_load.side_effect = PluginLoadError('plugin failed to load')
+            mock_load.return_value = Failure(PluginLoadError('plugin failed to load'))
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 
         assert result.exit_code == 1
@@ -55,7 +55,7 @@ class TestCheckErrors:
             patch('cryoflow_core.commands.check.load_plugins') as mock_load,
             patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 
         assert result.exit_code == 1
@@ -76,7 +76,7 @@ class TestCheckErrors:
             patch('cryoflow_core.commands.check.load_plugins') as mock_load,
             patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 
         assert result.exit_code == 1
@@ -102,7 +102,7 @@ class TestCheckErrors:
             patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
             patch('cryoflow_core.commands.check.run_dry_run_pipeline') as mock_dry_run,
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             mock_dry_run.return_value = Success({'col_a': pl.Int64})
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 
@@ -129,7 +129,7 @@ class TestCheckErrors:
             patch('cryoflow_core.commands.check.get_plugins', side_effect=mock_get_plugins),
             patch('cryoflow_core.commands.check.run_dry_run_pipeline') as mock_dry_run,
         ):
-            mock_load.return_value = pluggy.PluginManager('cryoflow')
+            mock_load.return_value = Success(pluggy.PluginManager('cryoflow'))
             mock_dry_run.return_value = Failure(ValueError('schema mismatch'))
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 
