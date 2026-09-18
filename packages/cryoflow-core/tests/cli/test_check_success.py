@@ -23,6 +23,7 @@ class TestCheckSuccess:
 
         with patch('cryoflow_core.commands.check.load_plugins') as mock_load:
             from cryoflow_core.loader import PluginLoadError
+
             mock_load.side_effect = PluginLoadError('no real plugin')
             result = runner.invoke(app, ['check', '--config', str(config_file)])
 

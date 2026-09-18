@@ -1,6 +1,5 @@
 """A plugin module loadable via dotpath for testing."""
 
-
 import polars as pl
 from returns.result import Result, Success
 

@@ -1,6 +1,5 @@
 """Sample output plugin for cryoflow."""
 
-
 import polars as pl
 from returns.result import Failure, Result, Success
 
