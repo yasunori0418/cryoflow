@@ -164,3 +164,81 @@ output_path = "{tmpdir}/output.parquet"
             assert result.exit_code == 1
             assert '[ERROR]' in result.stdout or '[ERROR]' in result.stderr
             assert 'Validation failed' in result.stdout or 'Validation failed' in result.stderr
+
+    def test_check_command_multi_label_config(self) -> None:
+        """Test dry-run check with a two-label config."""
+        with TemporaryDirectory() as tmpdir:
+            # Create input files for two labeled streams
+            sales_file = Path(tmpdir) / 'sales.parquet'
+            pl.DataFrame({'amount': [100, 200], 'item': ['a', 'b']}).write_parquet(sales_file)
+            stock_file = Path(tmpdir) / 'stock.parquet'
+            pl.DataFrame({'quantity': [1, 2], 'item': ['a', 'b']}).write_parquet(stock_file)
+
+            # Create config file routing plugins by label
+            config_file = Path(tmpdir) / 'config.toml'
+            config_content = f"""\
+[[input_plugins]]
+name = "sales_scan"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+label = "sales"
+
+[input_plugins.options]
+input_path = "{sales_file}"
+
+[[input_plugins]]
+name = "stock_scan"
+module = "cryoflow_plugin_collections.input.parquet_scan"
+enabled = true
+label = "stock"
+
+[input_plugins.options]
+input_path = "{stock_file}"
+
+[[transform_plugins]]
+name = "sales_multiplier"
+module = "cryoflow_plugin_collections.transform.multiplier"
+enabled = true
+label = "sales"
+
+[transform_plugins.options]
+column_name = "amount"
+multiplier = 2
+
+[[transform_plugins]]
+name = "stock_multiplier"
+module = "cryoflow_plugin_collections.transform.multiplier"
+enabled = true
+label = "stock"
+
+[transform_plugins.options]
+column_name = "quantity"
+multiplier = 3
+
+[[output_plugins]]
+name = "sales_writer"
+module = "cryoflow_plugin_collections.output.parquet_writer"
+enabled = true
+label = "sales"
+
+[output_plugins.options]
+output_path = "{tmpdir}/sales_out.parquet"
+
+[[output_plugins]]
+name = "stock_writer"
+module = "cryoflow_plugin_collections.output.parquet_writer"
+enabled = true
+label = "stock"
+
+[output_plugins.options]
+output_path = "{tmpdir}/stock_out.parquet"
+"""
+            config_file.write_text(config_content)
+
+            # Run check command
+            runner = CliRunner()
+            result = runner.invoke(app, ['check', '-c', str(config_file)])
+
+            # Verify success
+            assert result.exit_code == 0
+            assert '[SUCCESS] Validation completed successfully' in result.stdout
