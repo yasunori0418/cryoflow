@@ -8,7 +8,7 @@ Usage:
     uv run python examples/generate_sensor_data.py
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -70,10 +70,10 @@ def main() -> None:
     facility_ids = RNG.choice(FACILITY_IDS, size=NUM_ROWS)
 
     # タイムスタンプ: 2025-01-01 ~ 2025-06-30 の範囲でランダム (順不同)
-    start_ts = datetime(2025, 1, 1).timestamp()
-    end_ts = datetime(2025, 6, 30, 23, 59, 59).timestamp()
+    start_ts = datetime(2025, 1, 1, tzinfo=UTC).timestamp()
+    end_ts = datetime(2025, 6, 30, 23, 59, 59, tzinfo=UTC).timestamp()
     timestamps = RNG.uniform(start_ts, end_ts, size=NUM_ROWS)
-    timestamps_dt = [datetime.fromtimestamp(t) for t in timestamps]
+    timestamps_dt = [datetime.fromtimestamp(t, tz=UTC) for t in timestamps]
 
     # センサー種別ごとの計測値を一括生成してからマッピング
     type_counts = {st: int((sensor_types == st).sum()) for st in SENSOR_TYPES}

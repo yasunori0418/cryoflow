@@ -54,9 +54,7 @@ class TestParquetScanPlugin:
 
     def test_execute_file_not_found(self, tmp_path: Path) -> None:
         """Test error when input file does not exist."""
-        plugin = ParquetScanPlugin(
-            {'input_path': str(tmp_path / 'nonexistent.parquet')}, tmp_path
-        )
+        plugin = ParquetScanPlugin({'input_path': str(tmp_path / 'nonexistent.parquet')}, tmp_path)
 
         result = plugin.execute()
 
@@ -106,9 +104,7 @@ class TestParquetScanPlugin:
 
     def test_dry_run_file_not_found(self, tmp_path: Path) -> None:
         """Test dry_run error when input file does not exist."""
-        plugin = ParquetScanPlugin(
-            {'input_path': str(tmp_path / 'nonexistent.parquet')}, tmp_path
-        )
+        plugin = ParquetScanPlugin({'input_path': str(tmp_path / 'nonexistent.parquet')}, tmp_path)
 
         result = plugin.dry_run()
 

@@ -7,9 +7,9 @@ Usage:
     uv run python examples/generate_sample_data.py
 """
 
+import random
 from datetime import date, timedelta
 from pathlib import Path
-import random
 
 import polars as pl
 

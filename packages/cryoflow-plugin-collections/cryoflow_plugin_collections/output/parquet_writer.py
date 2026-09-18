@@ -1,7 +1,5 @@
 """Sample output plugin for cryoflow."""
 
-from pathlib import Path
-
 import polars as pl
 from returns.result import Failure, Result, Success
 

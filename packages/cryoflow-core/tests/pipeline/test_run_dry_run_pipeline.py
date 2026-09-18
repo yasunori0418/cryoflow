@@ -74,7 +74,8 @@ class TestRunDryRunPipeline:
 
     def test_dry_run_pipeline_output_validation_fails(self, tmp_path: Path) -> None:
         """Test dry-run when output validation fails."""
-        from returns.result import Failure as FailureResult, Success as SuccessResult
+        from returns.result import Failure as FailureResult
+        from returns.result import Success as SuccessResult
 
         class FailingOutputPlugin(OutputPlugin):
             def name(self) -> str:

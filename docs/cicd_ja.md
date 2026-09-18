@@ -15,7 +15,8 @@ cryoflow プロジェクトでは GitHub Actions を使用してCI/CDパイプ�
 [プルリクエストの作成・更新]
         |
         v
-    [Test] ← packages/**/*.py または uv.lock の変更時に実行
+    [Test] ← packages/**/*.py、examples/**、dev/flake.nix、pyproject.toml、uv.lock、**/*.md の変更時に実行
+            (lint ジョブと pytest ジョブを並列実行)
 
 [main ブランチへのプッシュ]
         |
@@ -43,14 +44,27 @@ cryoflow プロジェクトでは GitHub Actions を使用してCI/CDパイプ�
 | 項目 | 内容 |
 |------|------|
 | トリガー | PR、手動実行 |
-| 対象パス | `packages/**/*.py`、`uv.lock` |
+| 対象パス | `packages/**/*.py`、`examples/**`、`dev/flake.nix`、`pyproject.toml`、`uv.lock`、`**/*.md` |
 | 実行環境 | `ubuntu-latest` |
+| ジョブ | `lint`、`pytest`（並列実行） |
 
 #### 概要
 
-プルリクエストの作成・更新時に、Pythonソースコードまたはロックファイルが変更された場合にテストを実行します。
+プルリクエストの作成・更新時に、対象パスのファイルが変更された場合に静的解析とテストを実行します。
+Markdown を対象パスに含めているのは、`ruff format` がドキュメント内の Python コードブロックも整形対象とするためです。
 
 #### 実行内容
+
+**`lint` ジョブ**
+
+1. リポジトリをチェックアウト
+2. Nix 環境をセットアップ (`setup-nix` composite action)
+3. CI専用の Nix 開発環境 (`dev#ci`) で以下の3ステップを実行
+   - `ruff check .` — リントルール違反の検出
+   - `ruff format --check .` — フォーマット差分の検出（Markdown 内のコードブロックを含む）
+   - `pyright` — 静的型解析（デフォルトモード）
+
+**`pytest` ジョブ**
 
 1. リポジトリをチェックアウト
 2. Nix 環境をセットアップ (`setup-nix` composite action)
@@ -60,7 +74,7 @@ cryoflow プロジェクトでは GitHub Actions を使用してCI/CDパイプ�
 
 | 変数名 | 値 | 目的 |
 |--------|-----|------|
-| `TERM` | `"dumb"` | pytest 実行時の端末エミュレーション問題を回避 |
+| `TERM` | `"dumb"` | pytest・lint 実行時の端末エミュレーション問題を回避 |
 
 ---
 

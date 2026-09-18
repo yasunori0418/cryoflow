@@ -284,7 +284,7 @@ Outputs data to storage. Receives the final DataFrame/LazyFrame and handles outp
 class MyOutputPlugin(OutputPlugin):
     def execute(self, df: FrameData) -> Result[None, Exception]:
         # Your output logic
-        df.sink_parquet("output.parquet")
+        df.sink_parquet('output.parquet')
         return Success(None)
 
     def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataType], Exception]:

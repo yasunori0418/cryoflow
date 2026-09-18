@@ -41,12 +41,14 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+
 class PluginConfig(BaseModel):
     name: str
     module: str  # Path to load with importlib
     enabled: bool = True
     label: str = 'default'  # Label for multi-stream routing
     options: dict[str, Any] = Field(default_factory=dict)  # Plugin-specific configuration
+
 
 class CryoflowConfig(BaseModel):
     input_plugins: list[PluginConfig]
@@ -76,6 +78,7 @@ from returns.result import Result
 FrameData = pl.LazyFrame | pl.DataFrame
 
 DEFAULT_LABEL = 'default'
+
 
 class BasePlugin(ABC):
     """Base class for all plugins"""
@@ -132,7 +135,8 @@ class OutputPlugin(BasePlugin):
 ```python
 import pluggy
 
-hookspec = pluggy.HookspecMarker("cryoflow")
+hookspec = pluggy.HookspecMarker('cryoflow')
+
 
 class CryoflowSpecs:
     @hookspec
@@ -227,17 +231,11 @@ class ParquetWriterPlugin(OutputPlugin):
 
 ```python
 # Conceptual example
-result = (
-    load_data(path)
-    .bind(plugin_a.execute)
-    .bind(plugin_b.execute)
-    .bind(output_plugin.execute)
-)
+result = load_data(path).bind(plugin_a.execute).bind(plugin_b.execute).bind(output_plugin.execute)
 
 if isinstance(result, Failure):
-    console.print(f"[red]Error:[/red] {result.failure()}")
+    console.print(f'[red]Error:[/red] {result.failure()}')
     raise typer.Exit(code=1)
-
 ```
 
 ---
@@ -252,6 +250,7 @@ The following patterns are recommended for `execute()` and `dry_run()` methods i
 
 ```python
 from returns.result import Failure, Success
+
 
 def execute(self, df: FrameData) -> Result[FrameData, Exception]:
     try:
@@ -268,6 +267,7 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
 
 ```python
 from returns.result import safe
+
 
 @safe
 def execute(self, df: FrameData) -> FrameData:
@@ -304,9 +304,7 @@ def dry_run(self, schema: dict[str, pl.DataType]) -> Result[dict[str, pl.DataTyp
     # Check type
     dtype = schema[column_name]
     if not dtype.is_numeric():
-        return Failure(ValueError(
-            f"Column '{column_name}' has type {dtype}, expected numeric type"
-        ))
+        return Failure(ValueError(f"Column '{column_name}' has type {dtype}, expected numeric type"))
 
     # Schema remains unchanged, return as is
     return Success(schema)

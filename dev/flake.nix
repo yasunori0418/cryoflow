@@ -96,6 +96,8 @@
                 with pkgs;
                 [
                   uv
+                  ruff
+                  pyright
                 ]
                 ++ [ virtualenv ];
               env = {

@@ -5,9 +5,38 @@ on:
   pull_request:
     paths:
       - 'packages/**/*.py'
+      - 'examples/**'
+      - 'dev/flake.nix'
+      - 'pyproject.toml'
       - 'uv.lock'
+      - '**/*.md'
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Nix
+        uses: ./.github/actions/setup-nix
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Run ruff check
+        run: nix develop '.?dir=dev#ci' -c ruff check .
+        env:
+          TERM: "dumb"
+
+      - name: Run ruff format check
+        run: nix develop '.?dir=dev#ci' -c ruff format --check .
+        env:
+          TERM: "dumb"
+
+      - name: Run pyright
+        run: nix develop '.?dir=dev#ci' -c pyright
+        env:
+          TERM: "dumb"
+
   pytest:
     runs-on: ubuntu-latest
     steps:

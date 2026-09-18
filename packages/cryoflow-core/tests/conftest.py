@@ -15,7 +15,6 @@ from cryoflow_core.plugin import (
     TransformPlugin,
 )
 
-
 # ---------------------------------------------------------------------------
 # Concrete plugin classes for testing (ABC cannot be instantiated directly)
 # ---------------------------------------------------------------------------

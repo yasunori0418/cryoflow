@@ -61,8 +61,15 @@ cryoflow-plugin-collections = { workspace = true }
 testpaths = ["packages/cryoflow-core/tests", "packages/cryoflow-plugin-collections/tests"]
 
 [tool.ruff]
-target-version = "py314"
+# requires-python (>=3.11) と揃える。py314 にすると PEP 758 など 3.11 で解釈できない構文が生成される
+target-version = "py311"
 line-length = 120
+# ワークスペース配下の両パッケージを first-party として判定させるため
+src = ["packages/cryoflow-core", "packages/cryoflow-plugin-collections"]
+
+[tool.ruff.lint]
+# BLE001: returns 流儀で `except Exception` を `Failure` に変換するのがプロジェクト方針のため除外
+ignore = ["BLE001"]
 
 [tool.ruff.format]
 quote-style = "single"

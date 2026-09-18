@@ -1,9 +1,9 @@
 from returns.result import (
-    Failure as Failure,
-    Result as Result,
-    ResultE as ResultE,
-    Success as Success,
-    safe as safe,
+    Failure,
+    Result,
+    ResultE,
+    Success,
+    safe,
 )
 
 __all__ = [

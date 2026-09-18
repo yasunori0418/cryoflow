@@ -1,13 +1,13 @@
 from returns.maybe import (
-    Maybe as Maybe,
-    Nothing as Nothing,
-    Some as Some,
-    maybe as maybe,
+    Maybe,
+    Nothing,
+    Some,
+    maybe,
 )
 
 __all__ = [
-    'maybe',
     'Maybe',
     'Nothing',
     'Some',
+    'maybe',
 ]
