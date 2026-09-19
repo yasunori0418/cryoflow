@@ -69,10 +69,9 @@ While `pluggy` can handle function-based hooks, we use class-based plugins to en
 ```python
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
 
 import polars as pl
-from returns.result import Result
+from returns.result import Failure, Result, Success
 
 # Type alias for data
 FrameData = pl.LazyFrame | pl.DataFrame
@@ -83,7 +82,7 @@ DEFAULT_LABEL = 'default'
 class BasePlugin(ABC):
     """Base class for all plugins"""
 
-    def __init__(self, options: dict[str, Any], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
+    def __init__(self, options: dict[str, object], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
         self.options = options
         self._config_dir = config_dir
         self.label = label  # Label for multi-stream routing
@@ -193,7 +192,7 @@ Plugins receive a `config_dir` parameter in their constructor, which is automati
 
 ```python
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
+    def __init__(self, options: dict[str, object], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
         self.options = options
         self._config_dir = config_dir
         self.label = label
@@ -204,16 +203,41 @@ class BasePlugin(ABC):
         if not path.is_absolute():
             path = self._config_dir / path
         return path.resolve()
+
+    def require_option(self, key: str) -> Result[object, Exception]:
+        """Look up a required option as a Result
+
+        Args:
+            key: The option key to look up
+
+        Returns:
+            Success containing the value, or Failure(ValueError("Option '<key>' is required")) when missing
+        """
+        value = self.options.get(key)
+        if value is None:
+            return Failure(ValueError(f"Option '{key}' is required"))
+        return Success(value)
 ```
 
 Usage in plugin:
 ```python
 class ParquetWriterPlugin(OutputPlugin):
+    def _resolve_output_path(self) -> Result[Path, Exception]:
+        def to_path(value: object) -> Result[Path, Exception]:
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'output_path' must be str"))
+            # Resolve relative path against config directory
+            return Success(self.resolve_path(value))
+
+        # require_option() retrieves the required option as a Result
+        return self.require_option('output_path').bind(to_path)
+
     def execute(self, df: FrameData) -> Result[None, Exception]:
-        output_path_opt = self.options.get('output_path')
-        # Resolve relative path against config directory
-        output_path = self.resolve_path(output_path_opt)
-        # ... write to output_path
+        def write(output_path: Path) -> Result[None, Exception]:
+            # ... write to output_path
+            return Success(None)
+
+        return self._resolve_output_path().bind(write)
 ```
 
 #### Benefits

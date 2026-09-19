@@ -101,10 +101,9 @@ All plugins implement the following common interface.
 
 ```python
 from abc import ABC, abstractmethod
-from typing import Any
 
 from cryoflow_plugin_collections.libs.polars import pl, DataType
-from cryoflow_plugin_collections.libs.returns import Result
+from cryoflow_plugin_collections.libs.returns import Failure, Result, Success
 from cryoflow_plugin_collections.libs.core import FrameData
 
 # FrameData is defined in cryoflow_plugin_collections.libs.core
@@ -112,7 +111,7 @@ from cryoflow_plugin_collections.libs.core import FrameData
 
 
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
+    def __init__(self, options: dict[str, object], config_dir: Path) -> None:
         """Initialize the plugin
 
         Args:
@@ -138,6 +137,20 @@ class BasePlugin(ABC):
         if not path.is_absolute():
             path = self._config_dir / path
         return path.resolve()
+
+    def require_option(self, key: str) -> Result[object, Exception]:
+        """Look up a required option as a Result
+
+        Args:
+            key: The option key to look up
+
+        Returns:
+            Success containing the value, or Failure(ValueError("Option '<key>' is required")) when missing
+        """
+        value = self.options.get(key)
+        if value is None:
+            return Failure(ValueError(f"Option '{key}' is required"))
+        return Success(value)
 
     @property
     @abstractmethod
@@ -253,6 +266,8 @@ For a single data stream, omit `label` or use `'default'`.
 ### 4.2 Basic Implementation
 
 ```python
+from pathlib import Path
+
 from cryoflow_plugin_collections.libs.polars import pl
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 from cryoflow_plugin_collections.libs.core import InputPlugin, FrameData
@@ -264,37 +279,36 @@ class MyInputPlugin(InputPlugin):
         """Plugin identifier name (used in logs and error messages)."""
         return 'my_input'
 
+    def _resolve_input_path(self) -> Result[Path, Exception]:
+        """Resolve and validate the input_path option (shared by execute / dry_run)."""
+
+        def to_path(value: object) -> Result[Path, Exception]:
+            # require_option() returns object, so narrow it with isinstance
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'input_path' must be str"))
+
+            # Use self.resolve_path() to resolve relative paths against the config dir
+            input_path = self.resolve_path(value)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+            return Success(input_path)
+
+        # require_option() retrieves the required option as a Result to chain on
+        return self.require_option('input_path').bind(to_path)
+
     def execute(self) -> Result[FrameData, Exception]:
         """Load data (no arguments)."""
         try:
-            # Retrieve options from self.options
-            input_path_opt = self.options.get('input_path')
-            if input_path_opt is None:
-                return Failure(ValueError("Option 'input_path' is required"))
-
-            # Use self.resolve_path() to resolve relative paths against the config dir
-            input_path = self.resolve_path(input_path_opt)
-            if not input_path.exists():
-                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
-
             # Return a LazyFrame (do not call collect())
-            return Success(pl.scan_parquet(input_path))
+            return self._resolve_input_path().map(lambda path: pl.scan_parquet(path))
         except Exception as e:
             return Failure(e)
 
     def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
         """Return schema without loading actual data."""
         try:
-            input_path_opt = self.options.get('input_path')
-            if input_path_opt is None:
-                return Failure(ValueError("Option 'input_path' is required"))
-
-            input_path = self.resolve_path(input_path_opt)
-            if not input_path.exists():
-                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
-
             # Retrieve schema only (no actual data loaded)
-            return Success(dict(pl.scan_parquet(input_path).collect_schema()))
+            return self._resolve_input_path().map(lambda path: dict(pl.scan_parquet(path).collect_schema()))
         except Exception as e:
             return Failure(e)
 ```
@@ -305,6 +319,8 @@ A complete example of an InputPlugin that reads CSV files.
 
 ```python
 """CSV file input plugin."""
+
+from pathlib import Path
 
 from cryoflow_plugin_collections.libs.polars import pl
 from cryoflow_plugin_collections.libs.returns import Failure, Result, Success
@@ -324,23 +340,35 @@ class CsvScanPlugin(InputPlugin):
     def name(self) -> str:
         return 'csv_scan'
 
+    def _resolve_input_path(self) -> Result[Path, Exception]:
+        """Resolve and validate the input_path option (shared by execute / dry_run)."""
+
+        def to_path(value: object) -> Result[Path, Exception]:
+            # require_option() returns object, so narrow it with isinstance
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'input_path' must be str"))
+
+            input_path = self.resolve_path(value)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+            return Success(input_path)
+
+        return self.require_option('input_path').bind(to_path)
+
     def execute(self) -> Result[FrameData, Exception]:
         """Load data from a CSV file.
 
         Returns:
             Result containing LazyFrame on success or Exception on failure.
         """
-        try:
-            input_path_opt = self.options.get('input_path')
-            if input_path_opt is None:
-                return Failure(ValueError("Option 'input_path' is required"))
 
-            input_path = self.resolve_path(input_path_opt)
-            if not input_path.exists():
-                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
-
-            separator = self.options.get('separator', ',')
-            has_header = self.options.get('has_header', True)
+        def scan(input_path: Path) -> Result[FrameData, Exception]:
+            # Optional options also come back as object, so narrow them with
+            # isinstance and fall back to the default on a type mismatch
+            separator_opt = self.options.get('separator', ',')
+            separator = separator_opt if isinstance(separator_opt, str) else ','
+            has_header_opt = self.options.get('has_header', True)
+            has_header = has_header_opt if isinstance(has_header_opt, bool) else True
 
             return Success(
                 pl.scan_csv(
@@ -349,6 +377,9 @@ class CsvScanPlugin(InputPlugin):
                     has_header=has_header,
                 )
             )
+
+        try:
+            return self._resolve_input_path().bind(scan)
         except Exception as e:
             return Failure(e)
 
@@ -358,17 +389,12 @@ class CsvScanPlugin(InputPlugin):
         Returns:
             Result containing schema dict on success or Exception on failure.
         """
-        try:
-            input_path_opt = self.options.get('input_path')
-            if input_path_opt is None:
-                return Failure(ValueError("Option 'input_path' is required"))
 
-            input_path = self.resolve_path(input_path_opt)
-            if not input_path.exists():
-                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
-
-            separator = self.options.get('separator', ',')
-            has_header = self.options.get('has_header', True)
+        def collect_schema(input_path: Path) -> Result[dict[str, pl.DataType], Exception]:
+            separator_opt = self.options.get('separator', ',')
+            separator = separator_opt if isinstance(separator_opt, str) else ','
+            has_header_opt = self.options.get('has_header', True)
+            has_header = has_header_opt if isinstance(has_header_opt, bool) else True
 
             schema = pl.scan_csv(
                 input_path,
@@ -376,6 +402,9 @@ class CsvScanPlugin(InputPlugin):
                 has_header=has_header,
             ).collect_schema()
             return Success(dict(schema))
+
+        try:
+            return self._resolve_input_path().bind(collect_schema)
         except Exception as e:
             return Failure(e)
 ```
@@ -400,27 +429,32 @@ class MyTransformPlugin(TransformPlugin):
         """Plugin identifier name (used in logs and error messages)"""
         return 'my_transform'
 
+    def _resolve_column_name(self) -> Result[str, Exception]:
+        """Validate the column_name option (shared by execute / dry_run)"""
+
+        def to_column_name(value: object) -> Result[str, Exception]:
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'column_name' must be str"))
+            return Success(value)
+
+        return self.require_option('column_name').bind(to_column_name)
+
     def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         """Core data transformation logic"""
-        try:
-            # Get configuration from self.options
-            column = self.options.get('column_name')
-            if column is None:
-                return Failure(ValueError("Option 'column_name' is required"))
 
+        def transform(column: str) -> Result[FrameData, Exception]:
             # Data transformation
-            transformed = df.with_columns(pl.col(column).str.to_uppercase().alias(column))
-            return Success(transformed)
+            return Success(df.with_columns(pl.col(column).str.to_uppercase().alias(column)))
+
+        try:
+            return self._resolve_column_name().bind(transform)
         except Exception as e:
             return Failure(e)
 
     def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
         """Schema validation (pre-check without touching actual data)"""
-        try:
-            column = self.options.get('column_name')
-            if column is None:
-                return Failure(ValueError("Option 'column_name' is required"))
 
+        def validate(column: str) -> Result[dict[str, DataType], Exception]:
             # Check column existence
             if column not in schema:
                 return Failure(ValueError(f"Column '{column}' not found in schema"))
@@ -431,6 +465,9 @@ class MyTransformPlugin(TransformPlugin):
 
             # This plugin doesn't modify schema, so return as-is
             return Success(schema)
+
+        try:
+            return self._resolve_column_name().bind(validate)
         except Exception as e:
             return Failure(e)
 ```
@@ -459,6 +496,32 @@ class ColumnMultiplierPlugin(TransformPlugin):
     def name(self) -> str:
         return 'column_multiplier'
 
+    def _resolve_options(self) -> Result[tuple[str, int | float], Exception]:
+        """Validate the column_name and multiplier options (shared by execute / dry_run)"""
+
+        def to_column_name(value: object) -> Result[str, Exception]:
+            # require_option() returns object, so narrow it with isinstance
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'column_name' must be str"))
+            return Success(value)
+
+        def to_multiplier(value: object) -> Result[int | float, Exception]:
+            if not isinstance(value, (int, float)):
+                return Failure(TypeError("Option 'multiplier' must be int | float"))
+            return Success(value)
+
+        return (
+            self.require_option('column_name')
+            .bind(to_column_name)
+            .bind(
+                lambda column_name: (
+                    self.require_option('multiplier')
+                    .bind(to_multiplier)
+                    .map(lambda multiplier: (column_name, multiplier))
+                )
+            )
+        )
+
     def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         """Transform the data frame
 
@@ -468,19 +531,14 @@ class ColumnMultiplierPlugin(TransformPlugin):
         Returns:
             Result containing transformed data, or Exception on failure
         """
-        try:
-            column_name = self.options.get('column_name')
-            multiplier = self.options.get('multiplier')
 
-            # Validate options
-            if column_name is None:
-                return Failure(ValueError("Option 'column_name' is required"))
-            if multiplier is None:
-                return Failure(ValueError("Option 'multiplier' is required"))
-
+        def multiply(options: tuple[str, int | float]) -> Result[FrameData, Exception]:
+            column_name, multiplier = options
             # Transform data (add to LazyFrame computation graph)
-            transformed = df.with_columns((pl.col(column_name) * multiplier).alias(column_name))
-            return Success(transformed)
+            return Success(df.with_columns((pl.col(column_name) * multiplier).alias(column_name)))
+
+        try:
+            return self._resolve_options().bind(multiply)
         except Exception as e:
             return Failure(e)
 
@@ -493,15 +551,9 @@ class ColumnMultiplierPlugin(TransformPlugin):
         Returns:
             Result containing output schema, or Exception on failure
         """
-        try:
-            column_name = self.options.get('column_name')
-            multiplier = self.options.get('multiplier')
 
-            # Validate options
-            if column_name is None:
-                return Failure(ValueError("Option 'column_name' is required"))
-            if multiplier is None:
-                return Failure(ValueError("Option 'multiplier' is required"))
+        def validate_schema(options: tuple[str, int | float]) -> Result[dict[str, DataType], Exception]:
+            column_name, _ = options
 
             # Check column existence
             if column_name not in schema:
@@ -526,6 +578,9 @@ class ColumnMultiplierPlugin(TransformPlugin):
 
             # This plugin doesn't modify schema
             return Success(schema)
+
+        try:
+            return self._resolve_options().bind(validate_schema)
         except Exception as e:
             return Failure(e)
 ```
@@ -575,12 +630,22 @@ class MyOutputPlugin(OutputPlugin):
     def name(self) -> str:
         return 'my_output'
 
+    def _resolve_output_path(self) -> Result[Path, Exception]:
+        """Resolve and validate the output_path option (shared by execute / dry_run)"""
+
+        def to_path(value: object) -> Result[Path, Exception]:
+            # require_option() returns object, so narrow it with isinstance
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'output_path' must be str"))
+            # Use resolve_path() to resolve relative paths against the config file directory
+            return Success(self.resolve_path(value))
+
+        return self.require_option('output_path').bind(to_path)
+
     def execute(self, df: FrameData) -> Result[None, Exception]:
         """Output data (collect/sink is called here for the first time)"""
-        try:
-            # resolve_path()を使用して、相対パスを設定ファイル基準で解決
-            output_path = self.resolve_path(self.options.get('output_path'))
 
+        def write(output_path: Path) -> Result[None, Exception]:
             # Create directory
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -591,15 +656,16 @@ class MyOutputPlugin(OutputPlugin):
                 df.write_parquet(output_path)
 
             return Success(None)
+
+        try:
+            return self._resolve_output_path().bind(write)
         except Exception as e:
             return Failure(e)
 
     def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
         """Validate writability of output destination"""
-        try:
-            # resolve_path()を使用して、相対パスを設定ファイル基準で解決
-            output_path = self.resolve_path(self.options.get('output_path'))
 
+        def check_parent(output_path: Path) -> Result[dict[str, DataType], Exception]:
             # Check if parent directory can be created
             try:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -608,6 +674,9 @@ class MyOutputPlugin(OutputPlugin):
 
             # OutputPlugin doesn't modify schema
             return Success(schema)
+
+        try:
+            return self._resolve_output_path().bind(check_parent)
         except Exception as e:
             return Failure(e)
 ```
@@ -628,12 +697,24 @@ class ParquetWriterPlugin(OutputPlugin):
     """Write data frame to Parquet file
 
     Options:
-        output_path (str | Path): Path to output Parquet file
+        output_path (str): Path to output Parquet file
     """
 
     @property
     def name(self) -> str:
         return 'parquet_writer'
+
+    def _resolve_output_path(self) -> Result[Path, Exception]:
+        """Resolve and validate the output_path option (shared by execute / dry_run)"""
+
+        def to_path(value: object) -> Result[Path, Exception]:
+            # require_option() returns object, so narrow it with isinstance
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'output_path' must be str"))
+            # resolve_path() to resolve relative paths relative to config file
+            return Success(self.resolve_path(value))
+
+        return self.require_option('output_path').bind(to_path)
 
     def execute(self, df: FrameData) -> Result[None, Exception]:
         """Write data frame to Parquet file
@@ -644,14 +725,8 @@ class ParquetWriterPlugin(OutputPlugin):
         Returns:
             Result containing None on success, or Exception on failure
         """
-        try:
-            output_path_opt = self.options.get('output_path')
-            if output_path_opt is None:
-                return Failure(ValueError("Option 'output_path' is required"))
 
-            # resolve_path() to resolve relative paths relative to config file
-            output_path = self.resolve_path(output_path_opt)
-
+        def write(output_path: Path) -> Result[None, Exception]:
             # Create parent directory
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -663,6 +738,9 @@ class ParquetWriterPlugin(OutputPlugin):
                 df.write_parquet(output_path)
 
             return Success(None)
+
+        try:
+            return self._resolve_output_path().bind(write)
         except Exception as e:
             return Failure(e)
 
@@ -675,14 +753,8 @@ class ParquetWriterPlugin(OutputPlugin):
         Returns:
             Result containing input schema unchanged, or Exception on failure
         """
-        try:
-            output_path_opt = self.options.get('output_path')
-            if output_path_opt is None:
-                return Failure(ValueError("Option 'output_path' is required"))
 
-            # resolve_path() to resolve relative paths relative to config file
-            output_path = self.resolve_path(output_path_opt)
-
+        def check_parent(output_path: Path) -> Result[dict[str, DataType], Exception]:
             # Check if parent directory can be created
             try:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -690,6 +762,9 @@ class ParquetWriterPlugin(OutputPlugin):
                 return Failure(ValueError(f'Cannot create parent directory for {output_path}: {e}'))
 
             return Success(schema)
+
+        try:
+            return self._resolve_output_path().bind(check_parent)
         except Exception as e:
             return Failure(e)
 ```
@@ -720,14 +795,15 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """Processing that doesn't change schema, such as filtering"""
-    try:
-        # Validate options
-        threshold = self.options.get('threshold')
-        if threshold is None:
-            return Failure(ValueError("Option 'threshold' is required"))
 
+    def to_column_name(value: object) -> Result[str, Exception]:
+        # require_option() returns object, so narrow it with isinstance
+        if not isinstance(value, str):
+            return Failure(TypeError("Option 'column_name' must be str"))
+        return Success(value)
+
+    def validate(column: str) -> Result[dict[str, DataType], Exception]:
         # Check column existence
-        column = self.options.get('column_name')
         if column not in schema:
             return Failure(ValueError(f"Column '{column}' not found"))
 
@@ -737,6 +813,15 @@ def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Ex
 
         # Schema is unchanged
         return Success(schema)
+
+    try:
+        # Validate options (require_option() returns the required option as a Result)
+        return (
+            self.require_option('threshold')
+            .bind(lambda _: self.require_option('column_name'))
+            .bind(to_column_name)
+            .bind(validate)
+        )
     except Exception as e:
         return Failure(e)
 ```
@@ -751,7 +836,8 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """Processing that adds new columns"""
     try:
-        new_column = self.options.get('new_column_name', 'computed_value')
+        new_column_opt = self.options.get('new_column_name', 'computed_value')
+        new_column = new_column_opt if isinstance(new_column_opt, str) else 'computed_value'
 
         # Check for duplicates
         if new_column in schema:
@@ -776,7 +862,8 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """Processing that removes columns"""
     try:
-        drop_columns = self.options.get('drop_columns', [])
+        drop_columns_opt = self.options.get('drop_columns', [])
+        drop_columns = drop_columns_opt if isinstance(drop_columns_opt, list) else []
 
         # Check existence
         for col in drop_columns:
@@ -847,12 +934,20 @@ return Failure(ValueError('Schema validation failed at line 42'))
 ### 8.3 Common Error Patterns
 
 ```python
+def to_required_opt(value: object) -> Result[str, Exception]:
+    # require_option() returns object, so narrow it with isinstance
+    if not isinstance(value, str):
+        return Failure(TypeError("Option 'required_option' must be str"))
+    return Success(value)
+
+
 def execute(self, df: FrameData) -> Result[FrameData, Exception]:
     try:
-        # 1. Validate options
-        required_opt = self.options.get('required_option')
-        if required_opt is None:
-            return Failure(ValueError("Option 'required_option' is required"))
+        # 1. Validate options (require_option() returns the required option as a Result)
+        required_opt_result = self.require_option('required_option').bind(to_required_opt)
+        if isinstance(required_opt_result, Failure):
+            return required_opt_result
+        required_opt = required_opt_result.unwrap()
 
         # 2. Check column existence (Polars throws exception)
         try:
@@ -866,7 +961,8 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
             return Failure(ValueError(f"Column '{required_opt}' must be numeric, got {dtype}"))
 
         # 4. Range check
-        threshold = self.options.get('threshold', 0)
+        threshold_opt = self.options.get('threshold', 0)
+        threshold = threshold_opt if isinstance(threshold_opt, (int, float)) else 0
         if threshold < 0:
             return Failure(ValueError(f"Option 'threshold' must be non-negative, got {threshold}"))
 
@@ -1290,8 +1386,6 @@ enabled = true
 
 ```python
 # Types re-exported from cryoflow_plugin_collections.libs
-from typing import Any
-
 from cryoflow_plugin_collections.libs.polars import pl, DataType
 from cryoflow_plugin_collections.libs.returns import Result
 from cryoflow_plugin_collections.libs.core import FrameData
@@ -1303,7 +1397,7 @@ from cryoflow_plugin_collections.libs.core import FrameData
 Schema = dict[str, DataType]
 
 # Plugin options type
-PluginOptions = dict[str, Any]
+PluginOptions = dict[str, object]
 ```
 
 ### 12.2 Base Class API
@@ -1313,14 +1407,13 @@ PluginOptions = dict[str, Any]
 ```python
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
 
 from cryoflow_plugin_collections.libs.polars import DataType
-from cryoflow_plugin_collections.libs.returns import Result
+from cryoflow_plugin_collections.libs.returns import Failure, Result, Success
 
 
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
+    def __init__(self, options: dict[str, object], config_dir: Path) -> None:
         """Initialize the plugin
 
         Args:
@@ -1351,6 +1444,27 @@ class BasePlugin(ABC):
         if not path.is_absolute():
             path = self._config_dir / path
         return path.resolve()
+
+    def require_option(self, key: str) -> Result[object, Exception]:
+        """Look up a required option as a Result
+
+        Returns Failure when the value is absent (key missing, or value is None).
+        The value comes back as object, so callers narrow it with isinstance.
+
+        Args:
+            key: The option key to look up
+
+        Returns:
+            Success containing the value, or Failure(ValueError("Option '<key>' is required")) when missing
+
+        Example:
+            >>> self.require_option("input_path")
+            <Success: data/input.csv>
+        """
+        value = self.options.get(key)
+        if value is None:
+            return Failure(ValueError(f"Option '{key}' is required"))
+        return Success(value)
 
     @property
     @abstractmethod

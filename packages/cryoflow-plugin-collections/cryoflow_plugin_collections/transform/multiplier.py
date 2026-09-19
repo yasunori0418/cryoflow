@@ -11,13 +11,42 @@ class ColumnMultiplierPlugin(TransformPlugin):
 
     Options:
         column_name (str): Name of the column to multiply.
-        multiplier (float | int): Coefficient to multiply by.
+        multiplier (int | float): Coefficient to multiply by.
     """
 
     @property
     def name(self) -> str:
         """Return the plugin identifier name."""
         return 'column_multiplier'
+
+    def _resolve_options(self) -> Result[tuple[str, int | float], Exception]:
+        """Resolve and validate the column_name and multiplier options.
+
+        Returns:
+            Result containing the validated options on success or Exception on failure.
+        """
+
+        def to_column_name(value: object) -> Result[str, Exception]:
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'column_name' must be str"))
+            return Success(value)
+
+        def to_multiplier(value: object) -> Result[int | float, Exception]:
+            if not isinstance(value, (int, float)):
+                return Failure(TypeError("Option 'multiplier' must be int | float"))
+            return Success(value)
+
+        return (
+            self.require_option('column_name')
+            .bind(to_column_name)
+            .bind(
+                lambda column_name: (
+                    self.require_option('multiplier')
+                    .bind(to_multiplier)
+                    .map(lambda multiplier: (column_name, multiplier))
+                )
+            )
+        )
 
     def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         """Transform the data frame by multiplying a column.
@@ -28,17 +57,13 @@ class ColumnMultiplierPlugin(TransformPlugin):
         Returns:
             Result containing transformed data or Exception on failure.
         """
+
+        def multiply(options: tuple[str, int | float]) -> Result[FrameData, Exception]:
+            column_name, multiplier = options
+            return Success(df.with_columns((pl.col(column_name) * multiplier).alias(column_name)))
+
         try:
-            column_name = self.options.get('column_name')
-            multiplier = self.options.get('multiplier')
-
-            if column_name is None:
-                return Failure(ValueError("Option 'column_name' is required"))
-            if multiplier is None:
-                return Failure(ValueError("Option 'multiplier' is required"))
-
-            transformed = df.with_columns((pl.col(column_name) * multiplier).alias(column_name))
-            return Success(transformed)
+            return self._resolve_options().bind(multiply)
         except Exception as e:
             return Failure(e)
 
@@ -51,14 +76,9 @@ class ColumnMultiplierPlugin(TransformPlugin):
         Returns:
             Result containing output schema or Exception on failure.
         """
-        try:
-            column_name = self.options.get('column_name')
-            multiplier = self.options.get('multiplier')
 
-            if column_name is None:
-                return Failure(ValueError("Option 'column_name' is required"))
-            if multiplier is None:
-                return Failure(ValueError("Option 'multiplier' is required"))
+        def validate_schema(options: tuple[str, int | float]) -> Result[dict[str, pl.DataType], Exception]:
+            column_name, _ = options
 
             if column_name not in schema:
                 return Failure(ValueError(f"Column '{column_name}' not found in schema"))
@@ -82,5 +102,8 @@ class ColumnMultiplierPlugin(TransformPlugin):
                 return Failure(ValueError(f"Column '{column_name}' has type {dtype}, expected numeric type"))
 
             return Success(schema)
+
+        try:
+            return self._resolve_options().bind(validate_schema)
         except Exception as e:
             return Failure(e)

@@ -132,3 +132,23 @@ class TestParquetScanPlugin:
         plugin = ParquetScanPlugin({}, tmp_path)
 
         assert plugin.name == 'parquet_scan'
+
+    def test_execute_input_path_not_str(self, tmp_path: Path) -> None:
+        """Test error when input_path option is not a str."""
+        plugin = ParquetScanPlugin({'input_path': 123}, tmp_path)
+
+        result = plugin.execute()
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'input_path' must be str"
+
+    def test_dry_run_input_path_not_str(self, tmp_path: Path) -> None:
+        """Test dry_run error when input_path option is not a str."""
+        plugin = ParquetScanPlugin({'input_path': 123}, tmp_path)
+
+        result = plugin.dry_run()
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'input_path' must be str"

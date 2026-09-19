@@ -7,17 +7,17 @@ from ..conftest import DummyInputPlugin, DummyOutputPlugin, DummyTransformPlugin
 
 class TestOptionsStorage:
     def test_input_plugin_stores_options(self, tmp_path: Path):
-        opts = {'input_path': 'data.parquet'}
+        opts: dict[str, object] = {'input_path': 'data.parquet'}
         p = DummyInputPlugin(opts, tmp_path)
         assert p.options is opts
 
     def test_transform_plugin_stores_options(self, tmp_path: Path):
-        opts = {'threshold': 10}
+        opts: dict[str, object] = {'threshold': 10}
         p = DummyTransformPlugin(opts, tmp_path)
         assert p.options is opts
 
     def test_output_plugin_stores_options(self, tmp_path: Path):
-        opts = {'format': 'csv'}
+        opts: dict[str, object] = {'format': 'csv'}
         p = DummyOutputPlugin(opts, tmp_path)
         assert p.options is opts
 

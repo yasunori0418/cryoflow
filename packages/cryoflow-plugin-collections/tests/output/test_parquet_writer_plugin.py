@@ -169,3 +169,51 @@ class TestParquetWriterPlugin:
             # Parent directory should exist relative to config_dir
             expected_parent = config_dir / 'data'
             assert expected_parent.exists()
+
+    def test_execute_output_path_not_str(self, tmp_path: Path) -> None:
+        """Test error when output_path option is not a str."""
+        df = pl.LazyFrame({'value': [1, 2, 3]})
+        plugin = ParquetWriterPlugin({'output_path': 123}, tmp_path)
+
+        result = plugin.execute(df)
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'output_path' must be str"
+
+    def test_dry_run_output_path_not_str(self, tmp_path: Path) -> None:
+        """Test dry_run error when output_path option is not a str."""
+        schema: dict[str, pl.DataType] = {'value': pl.Int64()}
+        plugin = ParquetWriterPlugin({'output_path': 123}, tmp_path)
+
+        result = plugin.dry_run(schema)
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'output_path' must be str"
+
+    def test_execute_converts_unexpected_exception_to_failure(self, tmp_path: Path) -> None:
+        """Test that an unexpected exception during writing is converted to Failure."""
+        blocker = tmp_path / 'blocker'
+        blocker.write_text('not a directory')
+        df = pl.LazyFrame({'value': [1, 2, 3]})
+        plugin = ParquetWriterPlugin({'output_path': str(blocker / 'out.parquet')}, tmp_path)
+
+        result = plugin.execute(df)
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), OSError)
+
+    def test_dry_run_reports_parent_not_a_directory(self, tmp_path: Path) -> None:
+        """Test that dry_run reports a parent path that is a regular file as a ValueError."""
+        blocker = tmp_path / 'blocker'
+        blocker.write_text('not a directory')
+        schema: dict[str, pl.DataType] = {'value': pl.Int64()}
+        plugin = ParquetWriterPlugin({'output_path': str(blocker / 'out.parquet')}, tmp_path)
+
+        result = plugin.dry_run(schema)
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert isinstance(error, ValueError)
+        assert 'Cannot create parent directory' in str(error)
