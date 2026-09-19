@@ -205,3 +205,27 @@ class TestColumnMultiplierPlugin:
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), TypeError)
         assert str(result.failure()) == "Option 'multiplier' must be int | float"
+
+    @pytest.mark.parametrize('multiplier', [True, False])
+    def test_execute_multiplier_bool(self, multiplier: bool, tmp_path: Path) -> None:
+        """Test error when multiplier option is a bool."""
+        df = pl.LazyFrame({'value': [1, 2, 3]})
+        plugin = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': multiplier}, tmp_path)
+
+        result = plugin.execute(df)
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'multiplier' must be int | float"
+
+    @pytest.mark.parametrize('multiplier', [True, False])
+    def test_dry_run_multiplier_bool(self, multiplier: bool, tmp_path: Path) -> None:
+        """Test dry_run error when multiplier option is a bool."""
+        schema: dict[str, pl.DataType] = {'value': pl.Int64()}
+        plugin = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': multiplier}, tmp_path)
+
+        result = plugin.dry_run(schema)
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'multiplier' must be int | float"
