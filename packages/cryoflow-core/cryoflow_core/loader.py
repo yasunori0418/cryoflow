@@ -5,6 +5,7 @@ import importlib.util
 import inspect
 import sys
 from pathlib import Path
+from types import ModuleType
 from typing import Any, TypeVar
 
 import pluggy
@@ -43,7 +44,7 @@ def _resolve_module_path(module_str: str, config_dir: Path) -> Result[Path, Plug
     return Success(resolved)
 
 
-def _load_module_from_path(name: str, path: Path) -> Result[Any, PluginLoadError]:
+def _load_module_from_path(name: str, path: Path) -> Result[ModuleType, PluginLoadError]:
     """Load a Python module from a filesystem path.
 
     Returns:
@@ -66,7 +67,7 @@ def _load_module_from_path(name: str, path: Path) -> Result[Any, PluginLoadError
     return Success(module)
 
 
-def _load_module_from_dotpath(name: str, module_path: str) -> Result[Any, PluginLoadError]:
+def _load_module_from_dotpath(name: str, module_path: str) -> Result[ModuleType, PluginLoadError]:
     """Load a Python module from a dotted module path.
 
     Returns:
@@ -81,7 +82,7 @@ def _load_module_from_dotpath(name: str, module_path: str) -> Result[Any, Plugin
         return Failure(error)
 
 
-def _discover_plugin_classes(name: str, module: Any) -> Result[list[type[BasePlugin]], PluginLoadError]:
+def _discover_plugin_classes(name: str, module: ModuleType) -> Result[list[type[BasePlugin]], PluginLoadError]:
     """Discover BasePlugin subclasses in a loaded module.
 
     Returns:
@@ -89,7 +90,8 @@ def _discover_plugin_classes(name: str, module: Any) -> Result[list[type[BasePlu
         Failure containing PluginLoadError if no subclasses are found.
     """
     classes: list[type[BasePlugin]] = []
-    for obj in vars(module).values():
+    module_attrs: dict[str, object] = vars(module)
+    for obj in module_attrs.values():
         if (
             inspect.isclass(obj)
             and issubclass(obj, BasePlugin)
