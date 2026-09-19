@@ -103,7 +103,7 @@ Cryoflow には3種類のプラグインがあります。
 from abc import ABC, abstractmethod
 
 from cryoflow_plugin_collections.libs.polars import pl, DataType
-from cryoflow_plugin_collections.libs.returns import Result
+from cryoflow_plugin_collections.libs.returns import Failure, Result, Success
 from cryoflow_plugin_collections.libs.core import FrameData
 
 # FrameData は cryoflow_plugin_collections.libs.core で定義されている

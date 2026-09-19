@@ -204,8 +204,8 @@ class TestParquetWriterPlugin:
         assert isinstance(result, Failure)
         assert isinstance(result.failure(), OSError)
 
-    def test_dry_run_reports_unwritable_parent(self, tmp_path: Path) -> None:
-        """Test that dry_run reports an unwritable parent directory as a ValueError."""
+    def test_dry_run_reports_parent_not_a_directory(self, tmp_path: Path) -> None:
+        """Test that dry_run reports a parent path that is a regular file as a ValueError."""
         blocker = tmp_path / 'blocker'
         blocker.write_text('not a directory')
         schema: dict[str, pl.DataType] = {'value': pl.Int64()}
