@@ -71,7 +71,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 import polars as pl
-from returns.result import Result
+from returns.result import Failure, Result, Success
 
 # Type alias for data
 FrameData = pl.LazyFrame | pl.DataFrame
