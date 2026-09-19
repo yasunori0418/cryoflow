@@ -1,5 +1,7 @@
 """IPC (Arrow) input plugin for cryoflow."""
 
+from pathlib import Path
+
 import polars as pl
 from returns.result import Failure, Result, Success
 
@@ -18,6 +20,23 @@ class IpcScanPlugin(InputPlugin):
         """Return the plugin identifier name."""
         return 'ipc_scan'
 
+    def _resolve_input_path(self) -> Result[Path, Exception]:
+        """Resolve and validate the input_path option.
+
+        Returns:
+            Result containing the resolved path on success or Exception on failure.
+        """
+
+        def to_path(value: object) -> Result[Path, Exception]:
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'input_path' must be str"))
+            input_path = self.resolve_path(value)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+            return Success(input_path)
+
+        return self.require_option('input_path').bind(to_path)
+
     def execute(self) -> Result[FrameData, Exception]:
         """Load data from an IPC file.
 
@@ -25,15 +44,7 @@ class IpcScanPlugin(InputPlugin):
             Result containing LazyFrame on success or Exception on failure.
         """
         try:
-            input_path_opt = self.options.get('input_path')
-            if input_path_opt is None:
-                return Failure(ValueError("Option 'input_path' is required"))
-            if not isinstance(input_path_opt, str):
-                return Failure(TypeError("Option 'input_path' must be str"))
-            input_path = self.resolve_path(input_path_opt)
-            if not input_path.exists():
-                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
-            return Success(pl.scan_ipc(input_path))
+            return self._resolve_input_path().map(lambda path: pl.scan_ipc(path))
         except Exception as e:
             return Failure(e)
 
@@ -44,14 +55,6 @@ class IpcScanPlugin(InputPlugin):
             Result containing schema dict on success or Exception on failure.
         """
         try:
-            input_path_opt = self.options.get('input_path')
-            if input_path_opt is None:
-                return Failure(ValueError("Option 'input_path' is required"))
-            if not isinstance(input_path_opt, str):
-                return Failure(TypeError("Option 'input_path' must be str"))
-            input_path = self.resolve_path(input_path_opt)
-            if not input_path.exists():
-                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
-            return Success(dict(pl.scan_ipc(input_path).collect_schema()))
+            return self._resolve_input_path().map(lambda path: dict(pl.scan_ipc(path).collect_schema()))
         except Exception as e:
             return Failure(e)
