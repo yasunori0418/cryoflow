@@ -10,7 +10,7 @@ class ParquetScanPlugin(InputPlugin):
     """Load data from a Parquet file using lazy evaluation.
 
     Options:
-        input_path (str | Path): Path to the input Parquet file.
+        input_path (str): Path to the input Parquet file.
     """
 
     @property
@@ -28,6 +28,8 @@ class ParquetScanPlugin(InputPlugin):
             input_path_opt = self.options.get('input_path')
             if input_path_opt is None:
                 return Failure(ValueError("Option 'input_path' is required"))
+            if not isinstance(input_path_opt, str):
+                return Failure(TypeError("Option 'input_path' must be str"))
             input_path = self.resolve_path(input_path_opt)
             if not input_path.exists():
                 return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
@@ -45,6 +47,8 @@ class ParquetScanPlugin(InputPlugin):
             input_path_opt = self.options.get('input_path')
             if input_path_opt is None:
                 return Failure(ValueError("Option 'input_path' is required"))
+            if not isinstance(input_path_opt, str):
+                return Failure(TypeError("Option 'input_path' must be str"))
             input_path = self.resolve_path(input_path_opt)
             if not input_path.exists():
                 return Failure(FileNotFoundError(f'Input file not found: {input_path}'))

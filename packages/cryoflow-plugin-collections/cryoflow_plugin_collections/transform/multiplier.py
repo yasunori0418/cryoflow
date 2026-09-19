@@ -11,7 +11,7 @@ class ColumnMultiplierPlugin(TransformPlugin):
 
     Options:
         column_name (str): Name of the column to multiply.
-        multiplier (float | int): Coefficient to multiply by.
+        multiplier (int | float): Coefficient to multiply by.
     """
 
     @property
@@ -34,8 +34,12 @@ class ColumnMultiplierPlugin(TransformPlugin):
 
             if column_name is None:
                 return Failure(ValueError("Option 'column_name' is required"))
+            if not isinstance(column_name, str):
+                return Failure(TypeError("Option 'column_name' must be str"))
             if multiplier is None:
                 return Failure(ValueError("Option 'multiplier' is required"))
+            if not isinstance(multiplier, (int, float)):
+                return Failure(TypeError("Option 'multiplier' must be int | float"))
 
             transformed = df.with_columns((pl.col(column_name) * multiplier).alias(column_name))
             return Success(transformed)
@@ -57,8 +61,12 @@ class ColumnMultiplierPlugin(TransformPlugin):
 
             if column_name is None:
                 return Failure(ValueError("Option 'column_name' is required"))
+            if not isinstance(column_name, str):
+                return Failure(TypeError("Option 'column_name' must be str"))
             if multiplier is None:
                 return Failure(ValueError("Option 'multiplier' is required"))
+            if not isinstance(multiplier, (int, float)):
+                return Failure(TypeError("Option 'multiplier' must be int | float"))
 
             if column_name not in schema:
                 return Failure(ValueError(f"Column '{column_name}' not found in schema"))

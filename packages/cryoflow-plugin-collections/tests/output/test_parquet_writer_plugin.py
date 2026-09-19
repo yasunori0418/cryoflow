@@ -169,3 +169,25 @@ class TestParquetWriterPlugin:
             # Parent directory should exist relative to config_dir
             expected_parent = config_dir / 'data'
             assert expected_parent.exists()
+
+    def test_execute_output_path_not_str(self, tmp_path: Path) -> None:
+        """Test error when output_path option is not a str."""
+        df = pl.LazyFrame({'value': [1, 2, 3]})
+        plugin = ParquetWriterPlugin({'output_path': 123}, tmp_path)
+
+        result = plugin.execute(df)
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'output_path' must be str"
+
+    def test_dry_run_output_path_not_str(self, tmp_path: Path) -> None:
+        """Test dry_run error when output_path option is not a str."""
+        schema: dict[str, pl.DataType] = {'value': pl.Int64()}
+        plugin = ParquetWriterPlugin({'output_path': 123}, tmp_path)
+
+        result = plugin.dry_run(schema)
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'output_path' must be str"

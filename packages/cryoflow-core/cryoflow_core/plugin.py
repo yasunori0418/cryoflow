@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
 
 import polars as pl
 from returns.result import Result
@@ -15,7 +14,7 @@ DEFAULT_LABEL = 'default'
 class BasePlugin(ABC):
     """Base class for all cryoflow plugins."""
 
-    def __init__(self, options: dict[str, Any], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
+    def __init__(self, options: dict[str, object], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
         """Initialize the plugin.
 
         Args:

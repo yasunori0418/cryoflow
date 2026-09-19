@@ -161,3 +161,47 @@ class TestColumnMultiplierPlugin:
         """Test plugin name."""
         plugin = ColumnMultiplierPlugin({}, tmp_path)
         assert plugin.name == 'column_multiplier'
+
+    def test_execute_column_name_not_str(self, tmp_path: Path) -> None:
+        """Test error when column_name option is not a str."""
+        df = pl.LazyFrame({'value': [1, 2, 3]})
+        plugin = ColumnMultiplierPlugin({'column_name': 123, 'multiplier': 2}, tmp_path)
+
+        result = plugin.execute(df)
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'column_name' must be str"
+
+    def test_execute_multiplier_not_numeric(self, tmp_path: Path) -> None:
+        """Test error when multiplier option is not numeric."""
+        df = pl.LazyFrame({'value': [1, 2, 3]})
+        plugin = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': 'two'}, tmp_path)
+
+        result = plugin.execute(df)
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'multiplier' must be int | float"
+
+    def test_dry_run_column_name_not_str(self, tmp_path: Path) -> None:
+        """Test dry_run error when column_name option is not a str."""
+        schema: dict[str, pl.DataType] = {'value': pl.Int64()}
+        plugin = ColumnMultiplierPlugin({'column_name': 123, 'multiplier': 2}, tmp_path)
+
+        result = plugin.dry_run(schema)
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'column_name' must be str"
+
+    def test_dry_run_multiplier_not_numeric(self, tmp_path: Path) -> None:
+        """Test dry_run error when multiplier option is not numeric."""
+        schema: dict[str, pl.DataType] = {'value': pl.Int64()}
+        plugin = ColumnMultiplierPlugin({'column_name': 'value', 'multiplier': 'two'}, tmp_path)
+
+        result = plugin.dry_run(schema)
+
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), TypeError)
+        assert str(result.failure()) == "Option 'multiplier' must be int | float"

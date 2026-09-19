@@ -10,7 +10,7 @@ class ParquetWriterPlugin(OutputPlugin):
     """Write data frame to Parquet file.
 
     Options:
-        output_path (str | Path): Path to the output Parquet file.
+        output_path (str): Path to the output Parquet file.
     """
 
     @property
@@ -31,6 +31,8 @@ class ParquetWriterPlugin(OutputPlugin):
             output_path_opt = self.options.get('output_path')
             if output_path_opt is None:
                 return Failure(ValueError("Option 'output_path' is required"))
+            if not isinstance(output_path_opt, str):
+                return Failure(TypeError("Option 'output_path' must be str"))
 
             output_path = self.resolve_path(output_path_opt)
 
@@ -60,6 +62,8 @@ class ParquetWriterPlugin(OutputPlugin):
             output_path_opt = self.options.get('output_path')
             if output_path_opt is None:
                 return Failure(ValueError("Option 'output_path' is required"))
+            if not isinstance(output_path_opt, str):
+                return Failure(TypeError("Option 'output_path' must be str"))
 
             output_path = self.resolve_path(output_path_opt)
 
