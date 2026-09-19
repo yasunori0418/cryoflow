@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 import polars as pl
-from returns.result import Result
+from returns.result import Failure, Result, Success
 
 FrameData = pl.LazyFrame | pl.DataFrame
 
@@ -47,6 +47,25 @@ class BasePlugin(ABC):
         if not path.is_absolute():
             path = self._config_dir / path
         return path.resolve()
+
+    def require_option(self, key: str) -> Result[object, Exception]:
+        """Look up a required option.
+
+        Args:
+            key: The option key to look up.
+
+        Returns:
+            Success containing the option value, or Failure with a ValueError
+            when the option is missing.
+
+        Example:
+            >>> plugin.require_option("input_path")
+            <Success: 'data/input.csv'>
+        """
+        value = self.options.get(key)
+        if value is None:
+            return Failure(ValueError(f"Option '{key}' is required"))
+        return Success(value)
 
     @property
     @abstractmethod
