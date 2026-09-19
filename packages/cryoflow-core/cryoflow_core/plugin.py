@@ -60,7 +60,7 @@ class BasePlugin(ABC):
 
         Example:
             >>> plugin.require_option("input_path")
-            <Success: 'data/input.csv'>
+            <Success: data/input.csv>
         """
         value = self.options.get(key)
         if value is None:

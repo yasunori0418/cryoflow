@@ -202,3 +202,18 @@ class TestParquetWriterPlugin:
         result = plugin.execute(df)
 
         assert isinstance(result, Failure)
+        assert isinstance(result.failure(), OSError)
+
+    def test_dry_run_reports_unwritable_parent(self, tmp_path: Path) -> None:
+        """Test that dry_run reports an unwritable parent directory as a ValueError."""
+        blocker = tmp_path / 'blocker'
+        blocker.write_text('not a directory')
+        schema: dict[str, pl.DataType] = {'value': pl.Int64()}
+        plugin = ParquetWriterPlugin({'output_path': str(blocker / 'out.parquet')}, tmp_path)
+
+        result = plugin.dry_run(schema)
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert isinstance(error, ValueError)
+        assert 'Cannot create parent directory' in str(error)
