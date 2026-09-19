@@ -30,10 +30,30 @@ jobs:
         with:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(nix shell 'nixpkgs#uv' -c uv version | awk '{print $2}')
+          echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check published version
+        id: pypi_check
+        env:
+          VERSION: ${{ steps.version.outputs.tag }}
+        run: |
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "https://pypi.org/pypi/cryoflow/$VERSION/json")
+          if [ "$STATUS" = "200" ]; then
+            echo "on_pypi=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "on_pypi=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build all packages
+        if: steps.pypi_check.outputs.on_pypi == 'false'
         run: nix shell nixpkgs#uv -c uv build --all-packages
 
       - name: Publish to PyPI
+        if: steps.pypi_check.outputs.on_pypi == 'false'
         run: nix shell nixpkgs#uv -c uv publish
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}

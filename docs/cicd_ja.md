@@ -90,13 +90,15 @@ Markdown を対象パスに含めているのは、`ruff format` がドキュメ
 #### 概要
 
 `main` ブランチの `packages/` 以下に変更がマージされた際、現在のバージョンを取得して GitHub Release を自動作成します。
+同一バージョンのタグが既にあれば Release 作成をスキップするため、バージョンを更新せずに `packages/` を変更した push では Release を再作成しません。
 
 #### 実行内容
 
 1. リポジトリをチェックアウト（全履歴: `fetch-depth: 0`）
 2. Nix 環境をセットアップ
 3. `uv version` でプロジェクトのバージョンを取得
-4. `softprops/action-gh-release` で GitHub Release を作成（リリースノートは自動生成）
+4. `git tag -l "$VERSION"` で同一バージョンのタグの有無を判定
+5. タグが無い場合のみ `softprops/action-gh-release` で GitHub Release を作成（リリースノートは自動生成）
 
 #### バージョン取得の仕組み
 
@@ -119,7 +121,8 @@ VERSION=$(nix shell 'nixpkgs#uv' -c uv version | awk '{print $2}')
 #### 概要
 
 Release ワークフローが成功した後に自動でトリガーされ、全パッケージを PyPI へ公開します。
-手動実行時はタグ名を指定することで特定バージョンを公開できます。
+公開対象は手動実行時も checkout 先の `pyproject.toml` のバージョンで、`tag_name` 入力は公開バージョンの指定には使われません。
+同一バージョンが既に PyPI にあればビルドと公開をスキップして成功するため、Release ワークフローが再実行されてもワークフローは失敗しません（公開済みのバージョンを手動実行しても何も公開せずに成功します）。
 
 #### トリガー条件
 
@@ -132,8 +135,12 @@ Release ワークフローが成功した後に自動でトリガーされ、全
    - `workflow_run` 時: Release ワークフローの HEAD コミットを使用
    - `workflow_dispatch` 時: 現在の SHA を使用
 2. Nix 環境をセットアップ
-3. 全パッケージをビルド: `uv build --all-packages`
-4. PyPI へ公開: `uv publish`
+3. `uv version` でプロジェクトのバージョンを取得
+4. `https://pypi.org/pypi/cryoflow/$VERSION/json` の HTTP ステータスで公開済みかを判定（`200` なら公開済み）
+5. 未公開の場合のみ全パッケージをビルド: `uv build --all-packages`
+6. 未公開の場合のみ PyPI へ公開: `uv publish`
+
+`uv publish --check-url` は同一ハッシュのファイルしかスキップしないため、再ビルドした wheel では効きません。そのため公開済み判定は PyPI の JSON API で行っています。
 
 #### 必要なシークレット
 
