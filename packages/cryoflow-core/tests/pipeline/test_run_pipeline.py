@@ -44,6 +44,7 @@ class TestRunPipeline:
         from returns.result import Failure as FailureResult
 
         class FailingInputPlugin(InputPlugin):
+            @property
             def name(self) -> str:
                 return 'failing_input'
 
@@ -65,6 +66,7 @@ class TestRunPipeline:
         from returns.result import Failure as FailureResult
 
         class FailingTransformPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'failing_transform'
 

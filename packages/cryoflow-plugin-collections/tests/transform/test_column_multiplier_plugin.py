@@ -160,4 +160,4 @@ class TestColumnMultiplierPlugin:
     def test_name(self, tmp_path: Path) -> None:
         """Test plugin name."""
         plugin = ColumnMultiplierPlugin({}, tmp_path)
-        assert plugin.name() == 'column_multiplier'
+        assert plugin.name == 'column_multiplier'

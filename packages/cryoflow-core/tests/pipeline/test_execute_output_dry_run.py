@@ -17,6 +17,7 @@ class TestExecuteOutputDryRun:
         from returns.result import Success as SuccessResult
 
         class DummyOutputPlugin(OutputPlugin):
+            @property
             def name(self) -> str:
                 return 'dummy_output'
 
@@ -38,6 +39,7 @@ class TestExecuteOutputDryRun:
         from returns.result import Failure as FailureResult
 
         class FailingOutputPlugin(OutputPlugin):
+            @property
             def name(self) -> str:
                 return 'failing_output'
 
@@ -59,6 +61,7 @@ class TestExecuteOutputDryRun:
         from returns.result import Success as SuccessResult
 
         class DummyOutputPlugin(OutputPlugin):
+            @property
             def name(self) -> str:
                 return 'dummy_output'
 

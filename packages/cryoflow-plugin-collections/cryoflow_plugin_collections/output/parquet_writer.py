@@ -13,6 +13,7 @@ class ParquetWriterPlugin(OutputPlugin):
         output_path (str | Path): Path to the output Parquet file.
     """
 
+    @property
     def name(self) -> str:
         """Return the plugin identifier name."""
         return 'parquet_writer'

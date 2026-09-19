@@ -62,7 +62,7 @@ class TestLoadPlugins:
         pm = load_plugins(cfg, config_file).unwrap()
         inputs = get_plugins(pm, InputPlugin)
         assert len(inputs) == 1
-        assert inputs[0].name() == 'my_input'
+        assert inputs[0].name == 'my_input'
 
     def test_input_plugin_label_propagated(self, tmp_path: Path, input_plugin_py_file: Path):
         """Test that label from PluginConfig is passed to the plugin instance."""
@@ -98,7 +98,7 @@ class TestLoadPlugins:
         pm = load_plugins(cfg, config_file).unwrap()
         transforms = get_plugins(pm, TransformPlugin)
         assert len(transforms) == 1
-        assert transforms[0].name() == 'my_transform'
+        assert transforms[0].name == 'my_transform'
 
     def test_output_plugin_loaded(self, tmp_path: Path, output_plugin_py_file: Path):
         cfg = self._make_config(
@@ -115,7 +115,7 @@ class TestLoadPlugins:
         pm = load_plugins(cfg, config_file).unwrap()
         outputs = get_plugins(pm, OutputPlugin)
         assert len(outputs) == 1
-        assert outputs[0].name() == 'my_output'
+        assert outputs[0].name == 'my_output'
 
     def test_existing_pm_accepted(self, tmp_path: Path):
         cfg = self._make_config()
@@ -190,7 +190,7 @@ class TestLoadPlugins:
         pm = load_plugins(cfg, config_file).unwrap()
         transforms = get_plugins(pm, TransformPlugin)
         assert len(transforms) == 1
-        assert transforms[0].name() == 'dotpath_transform'
+        assert transforms[0].name == 'dotpath_transform'
 
     def test_both_plugin_types(self, tmp_path: Path, plugin_py_file: Path, output_plugin_py_file: Path):
         cfg = self._make_config(

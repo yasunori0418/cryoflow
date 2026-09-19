@@ -26,6 +26,7 @@ class TestExecuteDryRunChain:
         from returns.result import Success as SuccessResult
 
         class DummyTransformPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'dummy_transform'
 
@@ -47,6 +48,7 @@ class TestExecuteDryRunChain:
         from returns.result import Failure as FailureResult
 
         class FailingValidationPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'failing_validation'
 
@@ -68,6 +70,7 @@ class TestExecuteDryRunChain:
         from returns.result import Success as SuccessResult
 
         class DummyPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'dummy'
 

@@ -128,6 +128,7 @@ class TestDryRunLabelRouting:
         """Two transform plugins on the same label should chain their schemas."""
 
         class AddColumnPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'add_column'
 
@@ -197,6 +198,7 @@ class TestDryRunLabelRouting:
         """A failing output plugin should short-circuit even when others follow."""
 
         class FailingOutputPlugin(OutputPlugin):
+            @property
             def name(self) -> str:
                 return 'failing_output'
 

@@ -131,4 +131,4 @@ class TestCsvScanPlugin:
         """Test plugin name."""
         plugin = CsvScanPlugin({}, tmp_path)
 
-        assert plugin.name() == 'csv_scan'
+        assert plugin.name == 'csv_scan'

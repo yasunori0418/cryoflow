@@ -131,4 +131,4 @@ class TestParquetScanPlugin:
         """Test plugin name."""
         plugin = ParquetScanPlugin({}, tmp_path)
 
-        assert plugin.name() == 'parquet_scan'
+        assert plugin.name == 'parquet_scan'

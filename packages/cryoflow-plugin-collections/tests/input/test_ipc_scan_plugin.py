@@ -131,4 +131,4 @@ class TestIpcScanPlugin:
         """Test plugin name."""
         plugin = IpcScanPlugin({}, tmp_path)
 
-        assert plugin.name() == 'ipc_scan'
+        assert plugin.name == 'ipc_scan'

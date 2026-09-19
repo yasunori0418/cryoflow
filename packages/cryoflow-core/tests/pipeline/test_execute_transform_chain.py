@@ -24,6 +24,7 @@ class TestExecuteTransformChain:
         from returns.result import Success as SuccessResult
 
         class DummyTransformPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'dummy_transform'
 
@@ -44,6 +45,7 @@ class TestExecuteTransformChain:
         from returns.result import Success as SuccessResult
 
         class DummyTransformPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'dummy_transform'
 
@@ -64,6 +66,7 @@ class TestExecuteTransformChain:
         from returns.result import Success as SuccessResult
 
         class DummyTransformPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'dummy_transform'
 
@@ -74,6 +77,7 @@ class TestExecuteTransformChain:
                 return SuccessResult(schema)
 
         class FailingTransformPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'failing_transform'
 
@@ -98,6 +102,7 @@ class TestExecuteTransformChain:
         from returns.result import Success as SuccessResult
 
         class DummyTransformPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'dummy_transform'
 
