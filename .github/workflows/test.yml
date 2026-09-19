@@ -10,6 +10,16 @@ on:
       - 'pyproject.toml'
       - 'uv.lock'
       - '**/*.md'
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/**/*.py'
+      - 'examples/**'
+      - 'dev/flake.nix'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '**/*.md'
 
 jobs:
   lint:
