@@ -13,6 +13,7 @@ class ParquetScanPlugin(InputPlugin):
         input_path (str | Path): Path to the input Parquet file.
     """
 
+    @property
     def name(self) -> str:
         """Return the plugin identifier name."""
         return 'parquet_scan'

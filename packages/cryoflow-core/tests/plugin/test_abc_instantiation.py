@@ -25,9 +25,10 @@ class TestABCInstantiation:
             OutputPlugin({})  # type: ignore[abstract]
 
     def test_partial_implementation_raises(self, tmp_path: Path):
-        """Only implementing name() should still raise TypeError."""
+        """Only implementing name should still raise TypeError."""
 
         class PartialPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'partial'
 

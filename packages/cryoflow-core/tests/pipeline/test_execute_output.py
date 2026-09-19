@@ -18,6 +18,7 @@ class TestExecuteOutput:
         from returns.result import Success as SuccessResult
 
         class DummyOutputPlugin(OutputPlugin):
+            @property
             def name(self) -> str:
                 return 'dummy_output'
 
@@ -37,6 +38,7 @@ class TestExecuteOutput:
         from returns.result import Success as SuccessResult
 
         class DummyOutputPlugin(OutputPlugin):
+            @property
             def name(self) -> str:
                 return 'dummy_output'
 
@@ -70,6 +72,7 @@ class TestExecuteOutput:
                 super().__init__(options, config_dir)
                 self._track_id = track_id
 
+            @property
             def name(self) -> str:
                 return f'tracking_{self._track_id}'
 
@@ -97,6 +100,7 @@ class TestExecuteOutput:
         executed = []
 
         class FailingOutputPlugin(OutputPlugin):
+            @property
             def name(self) -> str:
                 return 'failing_output'
 
@@ -108,6 +112,7 @@ class TestExecuteOutput:
                 return SuccessResult(schema)
 
         class AfterOutputPlugin(OutputPlugin):
+            @property
             def name(self) -> str:
                 return 'after_output'
 

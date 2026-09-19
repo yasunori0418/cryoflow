@@ -90,6 +90,7 @@ class BasePlugin(ABC):
         self._config_dir = config_dir
         self.label = label  # マルチストリームルーティング用ラベル
 
+    @property
     @abstractmethod
     def name(self) -> str:
         """プラグイン識別名"""

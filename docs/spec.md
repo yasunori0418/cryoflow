@@ -88,6 +88,7 @@ class BasePlugin(ABC):
         self._config_dir = config_dir
         self.label = label  # Label for multi-stream routing
 
+    @property
     @abstractmethod
     def name(self) -> str:
         """Plugin identification name"""

@@ -133,7 +133,7 @@ class TestParquetWriterPlugin:
         with TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
             plugin = ParquetWriterPlugin({'output_path': '/tmp/test.parquet'}, tmpdir_path)
-            assert plugin.name() == 'parquet_writer'
+            assert plugin.name == 'parquet_writer'
 
     def test_execute_with_relative_path(self) -> None:
         """Test that relative paths are resolved relative to config_dir."""

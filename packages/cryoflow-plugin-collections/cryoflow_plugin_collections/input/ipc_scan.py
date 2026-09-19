@@ -13,6 +13,7 @@ class IpcScanPlugin(InputPlugin):
         input_path (str | Path): Path to the input IPC file.
     """
 
+    @property
     def name(self) -> str:
         """Return the plugin identifier name."""
         return 'ipc_scan'

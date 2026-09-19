@@ -49,6 +49,7 @@ class BasePlugin(ABC):
             path = self._config_dir / path
         return path.resolve()
 
+    @property
     @abstractmethod
     def name(self) -> str:
         """Return the plugin identifier name."""

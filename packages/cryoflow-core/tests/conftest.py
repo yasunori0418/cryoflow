@@ -23,6 +23,7 @@ from cryoflow_core.plugin import (
 class DummyInputPlugin(InputPlugin):
     """Input plugin that returns a fixed LazyFrame."""
 
+    @property
     def name(self) -> str:
         return 'dummy_input'
 
@@ -36,6 +37,7 @@ class DummyInputPlugin(InputPlugin):
 class DummyTransformPlugin(TransformPlugin):
     """Identity transform plugin that returns input unchanged."""
 
+    @property
     def name(self) -> str:
         return 'dummy_transform'
 
@@ -49,6 +51,7 @@ class DummyTransformPlugin(TransformPlugin):
 class DummyOutputPlugin(OutputPlugin):
     """No-op output plugin."""
 
+    @property
     def name(self) -> str:
         return 'dummy_output'
 
@@ -62,6 +65,7 @@ class DummyOutputPlugin(OutputPlugin):
 class FailingTransformPlugin(TransformPlugin):
     """Transform plugin that always fails."""
 
+    @property
     def name(self) -> str:
         return 'failing_transform'
 
@@ -78,6 +82,7 @@ class BrokenInitPlugin(TransformPlugin):
     def __init__(self, options: dict[str, Any], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
         raise RuntimeError('broken init')
 
+    @property
     def name(self) -> str:
         return 'broken_init'
 

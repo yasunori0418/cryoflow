@@ -32,6 +32,7 @@ class TestRunDryRunPipeline:
         from returns.result import Failure as FailureResult
 
         class FailingInputPlugin(InputPlugin):
+            @property
             def name(self) -> str:
                 return 'failing_input'
 
@@ -54,6 +55,7 @@ class TestRunDryRunPipeline:
         from returns.result import Failure as FailureResult
 
         class FailingTransformPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'failing_transform'
 
@@ -78,6 +80,7 @@ class TestRunDryRunPipeline:
         from returns.result import Success as SuccessResult
 
         class FailingOutputPlugin(OutputPlugin):
+            @property
             def name(self) -> str:
                 return 'failing_output'
 
@@ -99,6 +102,7 @@ class TestRunDryRunPipeline:
         """Two labeled inputs with plugins on one label should return that label's schema."""
 
         class SalesInputPlugin(InputPlugin):
+            @property
             def name(self) -> str:
                 return 'sales_input'
 
@@ -154,6 +158,7 @@ class TestRunDryRunPipeline:
         """A failing transform on one label should not block another label's validation."""
 
         class StockInputPlugin(InputPlugin):
+            @property
             def name(self) -> str:
                 return 'stock_input'
 
@@ -164,6 +169,7 @@ class TestRunDryRunPipeline:
                 return Success({'quantity': pl.Int64()})
 
         class FailingSalesTransformPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'failing_sales_transform'
 
@@ -174,6 +180,7 @@ class TestRunDryRunPipeline:
                 return Failure(ValueError('sales validation error'))
 
         class AddFlagPlugin(TransformPlugin):
+            @property
             def name(self) -> str:
                 return 'add_flag'
 

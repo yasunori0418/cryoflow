@@ -14,6 +14,7 @@ class ColumnMultiplierPlugin(TransformPlugin):
         multiplier (float | int): Coefficient to multiply by.
     """
 
+    @property
     def name(self) -> str:
         """Return the plugin identifier name."""
         return 'column_multiplier'

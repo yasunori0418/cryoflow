@@ -9,6 +9,7 @@ from cryoflow_core.plugin import FrameData, TransformPlugin
 class DotpathTransformPlugin(TransformPlugin):
     """Simple transform plugin for dotpath loading tests."""
 
+    @property
     def name(self) -> str:
         return 'dotpath_transform'
 

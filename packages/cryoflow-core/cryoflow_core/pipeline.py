@@ -49,7 +49,7 @@ def execute_transform_chain(
     logger.info(f'Executing {len(plugins)} transformation plugin(s)...')
 
     for i, plugin in enumerate(plugins, 1):
-        logger.info(f'  [{i}/{len(plugins)}] {plugin.name()}')
+        logger.info(f'  [{i}/{len(plugins)}] {plugin.name}')
         result = result.bind(plugin.execute)
 
         if isinstance(result, Failure):
@@ -94,7 +94,7 @@ def execute_dry_run_chain(
     logger.info(f'Validating {len(plugins)} transformation plugin(s)...')
 
     for i, plugin in enumerate(plugins, 1):
-        logger.info(f'  [{i}/{len(plugins)}] {plugin.name()}')
+        logger.info(f'  [{i}/{len(plugins)}] {plugin.name}')
 
         result = result.map(_log_schema_size('Input')).bind(plugin.dry_run).map(_log_schema_size('Output'))
 
@@ -215,7 +215,7 @@ def _execute_labeled_dry_run_transform_chain(
 
     for i, plugin in enumerate(plugins, 1):
         label = plugin.label
-        logger.info(f'  [{i}/{len(plugins)}] {plugin.name()} (label: {label})')
+        logger.info(f'  [{i}/{len(plugins)}] {plugin.name} (label: {label})')
 
         missing_label = label not in result_map
         if missing_label:

@@ -13,6 +13,7 @@ from cryoflow_core.plugin import InputPlugin, FrameData
 
 
 class MyInputPlugin(InputPlugin):
+    @property
     def name(self) -> str:
         return "my_input"
 
@@ -31,6 +32,7 @@ from cryoflow_core.plugin import TransformPlugin, FrameData
 
 
 class MyTransformPlugin(TransformPlugin):
+    @property
     def name(self) -> str:
         return "my_transform"
 
@@ -51,6 +53,7 @@ from cryoflow_core.plugin import OutputPlugin, FrameData
 
 
 class MyOutputPlugin(OutputPlugin):
+    @property
     def name(self) -> str:
         return "my_output"
 
