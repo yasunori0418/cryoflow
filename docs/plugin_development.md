@@ -139,6 +139,7 @@ class BasePlugin(ABC):
             path = self._config_dir / path
         return path.resolve()
 
+    @property
     @abstractmethod
     def name(self) -> str:
         """Return the plugin identifier name"""
@@ -258,6 +259,7 @@ from cryoflow_plugin_collections.libs.core import InputPlugin, FrameData
 
 
 class MyInputPlugin(InputPlugin):
+    @property
     def name(self) -> str:
         """Plugin identifier name (used in logs and error messages)."""
         return 'my_input'
@@ -318,6 +320,7 @@ class CsvScanPlugin(InputPlugin):
         has_header (bool): Whether the file has a header row (default: True).
     """
 
+    @property
     def name(self) -> str:
         return 'csv_scan'
 
@@ -383,7 +386,7 @@ class CsvScanPlugin(InputPlugin):
 
 ### 5.1 Basic Implementation
 
-TransformPlugin requires implementation of the following three methods.
+TransformPlugin requires implementation of the following `name` property and two methods.
 
 ```python
 from cryoflow_plugin_collections.libs.polars import pl
@@ -392,6 +395,7 @@ from cryoflow_plugin_collections.libs.core import TransformPlugin, FrameData
 
 
 class MyTransformPlugin(TransformPlugin):
+    @property
     def name(self) -> str:
         """Plugin identifier name (used in logs and error messages)"""
         return 'my_transform'
@@ -451,6 +455,7 @@ class ColumnMultiplierPlugin(TransformPlugin):
         multiplier (float | int): Multiplication coefficient
     """
 
+    @property
     def name(self) -> str:
         return 'column_multiplier'
 
@@ -566,6 +571,7 @@ from cryoflow_plugin_collections.libs.core import OutputPlugin, FrameData
 
 
 class MyOutputPlugin(OutputPlugin):
+    @property
     def name(self) -> str:
         return 'my_output'
 
@@ -625,6 +631,7 @@ class ParquetWriterPlugin(OutputPlugin):
         output_path (str | Path): Path to output Parquet file
     """
 
+    @property
     def name(self) -> str:
         return 'parquet_writer'
 
@@ -904,7 +911,7 @@ class TestMyTransformPlugin:
 
     def test_name(self, plugin):
         """Plugin name should be correct"""
-        assert plugin.name() == 'my_transform'
+        assert plugin.name == 'my_transform'
 
     def test_execute_success(self, plugin, sample_df):
         """Normal transformation should succeed"""
@@ -975,7 +982,7 @@ class TestColumnMultiplierPlugin:
         return pl.DataFrame({'value': [1, 2, 3, 4, 5], 'name': ['a', 'b', 'c', 'd', 'e']}).lazy()
 
     def test_name(self, plugin):
-        assert plugin.name() == 'column_multiplier'
+        assert plugin.name == 'column_multiplier'
 
     def test_execute_with_lazyframe(self, plugin, sample_lazy_df):
         result = plugin.execute(sample_lazy_df)
@@ -1345,6 +1352,7 @@ class BasePlugin(ABC):
             path = self._config_dir / path
         return path.resolve()
 
+    @property
     @abstractmethod
     def name(self) -> str:
         """Return plugin identifier name
