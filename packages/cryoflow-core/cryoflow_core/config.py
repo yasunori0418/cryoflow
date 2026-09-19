@@ -80,7 +80,7 @@ def _read_file(path: Path) -> bytes:
 
 
 @safe
-def _parse_toml(raw: bytes) -> dict:
+def _parse_toml(raw: bytes) -> dict[str, Any]:
     """Parse TOML bytes to a dictionary.
 
     Raises:
@@ -90,7 +90,7 @@ def _parse_toml(raw: bytes) -> dict:
 
 
 @safe
-def _validate_config(data: dict) -> CryoflowConfig:
+def _validate_config(data: dict[str, Any]) -> CryoflowConfig:
     """Validate raw config dict against CryoflowConfig schema.
 
     Raises:
