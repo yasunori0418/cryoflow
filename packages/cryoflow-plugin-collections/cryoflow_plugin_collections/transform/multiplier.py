@@ -32,7 +32,7 @@ class ColumnMultiplierPlugin(TransformPlugin):
             return Success(value)
 
         def to_multiplier(value: object) -> Result[int | float, Exception]:
-            if not isinstance(value, (int, float)):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
                 return Failure(TypeError("Option 'multiplier' must be int | float"))
             return Success(value)
 
