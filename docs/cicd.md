@@ -92,13 +92,15 @@ Python code blocks embedded in the documentation.
 #### Overview
 
 Automatically creates a GitHub Release when changes under `packages/` are merged to the `main` branch, using the current version as the release tag.
+Release creation is skipped when a tag for the same version already exists, so a push that changes `packages/` without bumping the version does not recreate the release.
 
 #### Steps
 
 1. Checkout repository (full history: `fetch-depth: 0`)
 2. Setup Nix environment
 3. Get project version via `uv version`
-4. Create GitHub Release with `softprops/action-gh-release` (release notes auto-generated)
+4. Check whether a tag for that version exists via `git tag -l "$VERSION"`
+5. Create GitHub Release with `softprops/action-gh-release` only when the tag is absent (release notes auto-generated)
 
 #### Version Resolution
 
@@ -122,6 +124,7 @@ The version from the root `pyproject.toml` is used as both the tag name and rele
 
 Automatically triggered after the Release workflow succeeds, publishing all packages to PyPI.
 When run manually, a specific version can be published by specifying a tag name.
+When the same version is already on PyPI, the build and publish steps are skipped and the workflow succeeds, so a rerun of the Release workflow does not fail this one.
 
 #### Trigger Conditions
 
@@ -134,8 +137,12 @@ When run manually, a specific version can be published by specifying a tag name.
    - Via `workflow_run`: Uses the HEAD commit of the Release workflow
    - Via `workflow_dispatch`: Uses the current SHA
 2. Setup Nix environment
-3. Build all packages: `uv build --all-packages`
-4. Publish to PyPI: `uv publish`
+3. Get project version via `uv version`
+4. Check whether the version is already published via the HTTP status of `https://pypi.org/pypi/cryoflow/$VERSION/json` (`200` means published)
+5. Build all packages only when it is unpublished: `uv build --all-packages`
+6. Publish to PyPI only when it is unpublished: `uv publish`
+
+`uv publish --check-url` only skips files with an identical hash, which does not hold for a rebuilt wheel, so the published check uses the PyPI JSON API instead.
 
 #### Required Secrets
 
