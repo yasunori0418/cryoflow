@@ -40,3 +40,12 @@ class TestRequireOption:
         error = result.failure()
         assert isinstance(error, ValueError)
         assert str(error) == "Option 'threshold' is required"
+
+    def test_returns_success_for_falsy_option(self, tmp_path: Path) -> None:
+        """Test that a present but falsy option is not treated as missing."""
+        plugin = DummyTransformPlugin({'threshold': 0}, tmp_path)
+
+        result = plugin.require_option('threshold')
+
+        assert isinstance(result, Success)
+        assert result.unwrap() == 0
