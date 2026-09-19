@@ -137,6 +137,20 @@ class BasePlugin(ABC):
             path = self._config_dir / path
         return path.resolve()
 
+    def require_option(self, key: str) -> Result[object, Exception]:
+        """必須オプションを Result として取得
+
+        Args:
+            key: 取得するオプションのキー
+
+        Returns:
+            値を含む Success、欠落時は Failure(ValueError("Option '<key>' is required"))
+        """
+        value = self.options.get(key)
+        if value is None:
+            return Failure(ValueError(f"Option '{key}' is required"))
+        return Success(value)
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -348,9 +362,12 @@ class CsvScanPlugin(InputPlugin):
         """
 
         def scan(input_path: Path) -> Result[FrameData, Exception]:
-            # 任意オプションはデフォルト値つきで取得する
-            separator = self.options.get('separator', ',')
-            has_header = self.options.get('has_header', True)
+            # 任意オプションも object で返るので isinstance で絞り込み、
+            # 型が合わなければデフォルト値へフォールバックする
+            separator_opt = self.options.get('separator', ',')
+            separator = separator_opt if isinstance(separator_opt, str) else ','
+            has_header_opt = self.options.get('has_header', True)
+            has_header = has_header_opt if isinstance(has_header_opt, bool) else True
 
             return Success(
                 pl.scan_csv(
@@ -373,8 +390,10 @@ class CsvScanPlugin(InputPlugin):
         """
 
         def collect_schema(input_path: Path) -> Result[dict[str, pl.DataType], Exception]:
-            separator = self.options.get('separator', ',')
-            has_header = self.options.get('has_header', True)
+            separator_opt = self.options.get('separator', ',')
+            separator = separator_opt if isinstance(separator_opt, str) else ','
+            has_header_opt = self.options.get('has_header', True)
+            has_header = has_header_opt if isinstance(has_header_opt, bool) else True
 
             schema = pl.scan_csv(
                 input_path,
@@ -775,18 +794,15 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """フィルタリングなど、スキーマを変えない処理"""
-    try:
-        # オプション検証（require_option() は必須オプションを Result で返す）
-        threshold_result = self.require_option('threshold')
-        if isinstance(threshold_result, Failure):
-            return threshold_result
-        threshold = threshold_result.unwrap()
 
+    def to_column_name(value: object) -> Result[str, Exception]:
+        # require_option() が返すのは object なので isinstance で絞り込む
+        if not isinstance(value, str):
+            return Failure(TypeError("Option 'column_name' must be str"))
+        return Success(value)
+
+    def validate(column: str) -> Result[dict[str, DataType], Exception]:
         # カラム存在チェック
-        column_result = self.require_option('column_name')
-        if isinstance(column_result, Failure):
-            return column_result
-        column = column_result.unwrap()
         if column not in schema:
             return Failure(ValueError(f"Column '{column}' not found"))
 
@@ -796,6 +812,15 @@ def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Ex
 
         # スキーマは変更されない
         return Success(schema)
+
+    try:
+        # オプション検証（require_option() は必須オプションを Result で返す）
+        return (
+            self.require_option('threshold')
+            .bind(lambda _: self.require_option('column_name'))
+            .bind(to_column_name)
+            .bind(validate)
+        )
     except Exception as e:
         return Failure(e)
 ```
@@ -906,14 +931,17 @@ return Failure(ValueError('Schema validation failed at line 42'))
 ### 8.3 よくあるエラーパターン
 
 ```python
+def to_required_opt(value: object) -> Result[str, Exception]:
+    # require_option() が返すのは object なので isinstance で絞り込む
+    if not isinstance(value, str):
+        return Failure(TypeError("Option 'required_option' must be str"))
+    return Success(value)
+
+
 def execute(self, df: FrameData) -> Result[FrameData, Exception]:
     try:
         # 1. オプションの検証（require_option() は必須オプションを Result で返す）
-        required_opt_result = self.require_option('required_option').bind(
-            lambda value: Success(value)
-            if isinstance(value, str)
-            else Failure(TypeError("Option 'required_option' must be str"))
-        )
+        required_opt_result = self.require_option('required_option').bind(to_required_opt)
         if isinstance(required_opt_result, Failure):
             return required_opt_result
         required_opt = required_opt_result.unwrap()
@@ -1411,6 +1439,27 @@ class BasePlugin(ABC):
         if not path.is_absolute():
             path = self._config_dir / path
         return path.resolve()
+
+    def require_option(self, key: str) -> Result[object, Exception]:
+        """必須オプションを Result として取得
+
+        値が存在しない場合（キーが無い、または値が None）は Failure を返します。
+        戻り値は object なので、呼び出し側で isinstance による絞り込みを行います。
+
+        Args:
+            key: 取得するオプションのキー
+
+        Returns:
+            値を含む Success、欠落時は Failure(ValueError("Option '<key>' is required"))
+
+        Example:
+            >>> self.require_option("input_path")
+            <Success: data/input.csv>
+        """
+        value = self.options.get(key)
+        if value is None:
+            return Failure(ValueError(f"Option '{key}' is required"))
+        return Success(value)
 
     @property
     @abstractmethod

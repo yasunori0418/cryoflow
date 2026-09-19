@@ -203,6 +203,20 @@ class BasePlugin(ABC):
         if not path.is_absolute():
             path = self._config_dir / path
         return path.resolve()
+
+    def require_option(self, key: str) -> Result[object, Exception]:
+        """Look up a required option as a Result
+
+        Args:
+            key: The option key to look up
+
+        Returns:
+            Success containing the value, or Failure(ValueError("Option '<key>' is required")) when missing
+        """
+        value = self.options.get(key)
+        if value is None:
+            return Failure(ValueError(f"Option '{key}' is required"))
+        return Success(value)
 ```
 
 Usage in plugin:
@@ -219,8 +233,11 @@ class ParquetWriterPlugin(OutputPlugin):
         return self.require_option('output_path').bind(to_path)
 
     def execute(self, df: FrameData) -> Result[None, Exception]:
+        def write(output_path: Path) -> Result[None, Exception]:
+            # ... write to output_path
+            return Success(None)
+
         return self._resolve_output_path().bind(write)
-        # ... write to output_path
 ```
 
 #### Benefits

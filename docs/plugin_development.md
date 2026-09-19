@@ -138,6 +138,20 @@ class BasePlugin(ABC):
             path = self._config_dir / path
         return path.resolve()
 
+    def require_option(self, key: str) -> Result[object, Exception]:
+        """Look up a required option as a Result
+
+        Args:
+            key: The option key to look up
+
+        Returns:
+            Success containing the value, or Failure(ValueError("Option '<key>' is required")) when missing
+        """
+        value = self.options.get(key)
+        if value is None:
+            return Failure(ValueError(f"Option '{key}' is required"))
+        return Success(value)
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -349,9 +363,12 @@ class CsvScanPlugin(InputPlugin):
         """
 
         def scan(input_path: Path) -> Result[FrameData, Exception]:
-            # Optional options are retrieved with a default value
-            separator = self.options.get('separator', ',')
-            has_header = self.options.get('has_header', True)
+            # Optional options also come back as object, so narrow them with
+            # isinstance and fall back to the default on a type mismatch
+            separator_opt = self.options.get('separator', ',')
+            separator = separator_opt if isinstance(separator_opt, str) else ','
+            has_header_opt = self.options.get('has_header', True)
+            has_header = has_header_opt if isinstance(has_header_opt, bool) else True
 
             return Success(
                 pl.scan_csv(
@@ -374,8 +391,10 @@ class CsvScanPlugin(InputPlugin):
         """
 
         def collect_schema(input_path: Path) -> Result[dict[str, pl.DataType], Exception]:
-            separator = self.options.get('separator', ',')
-            has_header = self.options.get('has_header', True)
+            separator_opt = self.options.get('separator', ',')
+            separator = separator_opt if isinstance(separator_opt, str) else ','
+            has_header_opt = self.options.get('has_header', True)
+            has_header = has_header_opt if isinstance(has_header_opt, bool) else True
 
             schema = pl.scan_csv(
                 input_path,
@@ -776,18 +795,15 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """Processing that doesn't change schema, such as filtering"""
-    try:
-        # Validate options (require_option() returns the required option as a Result)
-        threshold_result = self.require_option('threshold')
-        if isinstance(threshold_result, Failure):
-            return threshold_result
-        threshold = threshold_result.unwrap()
 
+    def to_column_name(value: object) -> Result[str, Exception]:
+        # require_option() returns object, so narrow it with isinstance
+        if not isinstance(value, str):
+            return Failure(TypeError("Option 'column_name' must be str"))
+        return Success(value)
+
+    def validate(column: str) -> Result[dict[str, DataType], Exception]:
         # Check column existence
-        column_result = self.require_option('column_name')
-        if isinstance(column_result, Failure):
-            return column_result
-        column = column_result.unwrap()
         if column not in schema:
             return Failure(ValueError(f"Column '{column}' not found"))
 
@@ -797,6 +813,15 @@ def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Ex
 
         # Schema is unchanged
         return Success(schema)
+
+    try:
+        # Validate options (require_option() returns the required option as a Result)
+        return (
+            self.require_option('threshold')
+            .bind(lambda _: self.require_option('column_name'))
+            .bind(to_column_name)
+            .bind(validate)
+        )
     except Exception as e:
         return Failure(e)
 ```
@@ -907,14 +932,17 @@ return Failure(ValueError('Schema validation failed at line 42'))
 ### 8.3 Common Error Patterns
 
 ```python
+def to_required_opt(value: object) -> Result[str, Exception]:
+    # require_option() returns object, so narrow it with isinstance
+    if not isinstance(value, str):
+        return Failure(TypeError("Option 'required_option' must be str"))
+    return Success(value)
+
+
 def execute(self, df: FrameData) -> Result[FrameData, Exception]:
     try:
         # 1. Validate options (require_option() returns the required option as a Result)
-        required_opt_result = self.require_option('required_option').bind(
-            lambda value: Success(value)
-            if isinstance(value, str)
-            else Failure(TypeError("Option 'required_option' must be str"))
-        )
+        required_opt_result = self.require_option('required_option').bind(to_required_opt)
         if isinstance(required_opt_result, Failure):
             return required_opt_result
         required_opt = required_opt_result.unwrap()
@@ -1413,6 +1441,27 @@ class BasePlugin(ABC):
         if not path.is_absolute():
             path = self._config_dir / path
         return path.resolve()
+
+    def require_option(self, key: str) -> Result[object, Exception]:
+        """Look up a required option as a Result
+
+        Returns Failure when the value is absent (key missing, or value is None).
+        The value comes back as object, so callers narrow it with isinstance.
+
+        Args:
+            key: The option key to look up
+
+        Returns:
+            Success containing the value, or Failure(ValueError("Option '<key>' is required")) when missing
+
+        Example:
+            >>> self.require_option("input_path")
+            <Success: data/input.csv>
+        """
+        value = self.options.get(key)
+        if value is None:
+            return Failure(ValueError(f"Option '{key}' is required"))
+        return Success(value)
 
     @property
     @abstractmethod

@@ -205,6 +205,20 @@ class BasePlugin(ABC):
         if not path.is_absolute():
             path = self._config_dir / path
         return path.resolve()
+
+    def require_option(self, key: str) -> Result[object, Exception]:
+        """必須オプションを Result として取得
+
+        Args:
+            key: 取得するオプションのキー
+
+        Returns:
+            値を含む Success、欠落時は Failure(ValueError("Option '<key>' is required"))
+        """
+        value = self.options.get(key)
+        if value is None:
+            return Failure(ValueError(f"Option '{key}' is required"))
+        return Success(value)
 ```
 
 プラグインでの使用例:
@@ -221,8 +235,11 @@ class ParquetWriterPlugin(OutputPlugin):
         return self.require_option('output_path').bind(to_path)
 
     def execute(self, df: FrameData) -> Result[None, Exception]:
+        def write(output_path: Path) -> Result[None, Exception]:
+            # ... output_pathに書き込み
+            return Success(None)
+
         return self._resolve_output_path().bind(write)
-        # ... output_pathに書き込み
 ```
 
 #### メリット
