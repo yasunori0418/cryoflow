@@ -835,7 +835,8 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """新しいカラムを追加する処理"""
     try:
-        new_column = self.options.get('new_column_name', 'computed_value')
+        new_column_opt = self.options.get('new_column_name', 'computed_value')
+        new_column = new_column_opt if isinstance(new_column_opt, str) else 'computed_value'
 
         # 重複チェック
         if new_column in schema:
@@ -860,7 +861,8 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """カラムを削除する処理"""
     try:
-        drop_columns = self.options.get('drop_columns', [])
+        drop_columns_opt = self.options.get('drop_columns', [])
+        drop_columns = drop_columns_opt if isinstance(drop_columns_opt, list) else []
 
         # 存在チェック
         for col in drop_columns:
@@ -958,7 +960,8 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
             return Failure(ValueError(f"Column '{required_opt}' must be numeric, got {dtype}"))
 
         # 4. 値の範囲チェック
-        threshold = self.options.get('threshold', 0)
+        threshold_opt = self.options.get('threshold', 0)
+        threshold = threshold_opt if isinstance(threshold_opt, (int, float)) else 0
         if threshold < 0:
             return Failure(ValueError(f"Option 'threshold' must be non-negative, got {threshold}"))
 
@@ -1405,7 +1408,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 from cryoflow_plugin_collections.libs.polars import DataType
-from cryoflow_plugin_collections.libs.returns import Result
+from cryoflow_plugin_collections.libs.returns import Failure, Result, Success
 
 
 class BasePlugin(ABC):
