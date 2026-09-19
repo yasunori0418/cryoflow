@@ -12,7 +12,7 @@ cryoflow プロジェクトでは GitHub Actions を使用してCI/CDパイプ�
 ## アーキテクチャ全体図
 
 ```
-[プルリクエストの作成・更新]
+[プルリクエストの作成・更新 | main ブランチへのプッシュ]
         |
         v
     [Test] ← packages/**/*.py、examples/**、dev/flake.nix、pyproject.toml、uv.lock、**/*.md の変更時に実行
@@ -43,14 +43,15 @@ cryoflow プロジェクトでは GitHub Actions を使用してCI/CDパイプ�
 
 | 項目 | 内容 |
 |------|------|
-| トリガー | PR、手動実行 |
+| トリガー | PR、`main` ブランチへの push、手動実行 |
 | 対象パス | `packages/**/*.py`、`examples/**`、`dev/flake.nix`、`pyproject.toml`、`uv.lock`、`**/*.md` |
 | 実行環境 | `ubuntu-latest` |
 | ジョブ | `lint`、`pytest`（並列実行） |
 
 #### 概要
 
-プルリクエストの作成・更新時に、対象パスのファイルが変更された場合に静的解析とテストを実行します。
+プルリクエストの作成・更新時、および `main` ブランチへの push 時に、対象パスのファイルが変更された場合に静的解析とテストを実行します。
+`main` への push でも実行することで、個別の PR が緑でもマージ後の統合状態が未検証になる状況を防ぎます。
 Markdown を対象パスに含めているのは、`ruff format` がドキュメント内の Python コードブロックも整形対象とするためです。
 
 #### 実行内容

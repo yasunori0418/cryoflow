@@ -12,7 +12,7 @@ All workflows use Nix to standardize the build environment, installing Nix and c
 ## Architecture Overview
 
 ```
-[Pull Request opened / updated]
+[Pull Request opened / updated | Push to main branch]
         |
         v
     [Test] ← Runs when packages/**/*.py, examples/**, dev/flake.nix,
@@ -44,7 +44,7 @@ All workflows use Nix to standardize the build environment, installing Nix and c
 
 | Item | Content |
 |------|---------|
-| Trigger | PR, manual execution |
+| Trigger | PR, push to `main` branch, manual execution |
 | Target paths | `packages/**/*.py`, `examples/**`, `dev/flake.nix`, `pyproject.toml`, `uv.lock`, `**/*.md` |
 | Runner | `ubuntu-latest` |
 | Jobs | `lint`, `pytest` (run in parallel) |
@@ -52,7 +52,9 @@ All workflows use Nix to standardize the build environment, installing Nix and c
 #### Overview
 
 Runs static analysis and tests when any of the target paths change on pull request
-creation or update. Markdown is included because `ruff format` also formats the
+creation or update, or on push to the `main` branch. Running on pushes to `main`
+prevents the merged state from going unverified even when each pull request was
+green on its own. Markdown is included because `ruff format` also formats the
 Python code blocks embedded in the documentation.
 
 #### Steps
