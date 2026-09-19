@@ -71,7 +71,6 @@ class CryoflowConfig(BaseModel):
 ```python
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
 
 import polars as pl
 from returns.result import Result
@@ -85,7 +84,7 @@ DEFAULT_LABEL = 'default'
 class BasePlugin(ABC):
     """全てのプラグインの基底クラス"""
 
-    def __init__(self, options: dict[str, Any], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
+    def __init__(self, options: dict[str, object], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
         self.options = options
         self._config_dir = config_dir
         self.label = label  # マルチストリームルーティング用ラベル
@@ -195,7 +194,7 @@ cryoflowの設定ファイルで指定される全てのファイルパスは、
 
 ```python
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
+    def __init__(self, options: dict[str, object], config_dir: Path, label: str = DEFAULT_LABEL) -> None:
         self.options = options
         self._config_dir = config_dir
         self.label = label
@@ -211,10 +210,18 @@ class BasePlugin(ABC):
 プラグインでの使用例:
 ```python
 class ParquetWriterPlugin(OutputPlugin):
+    def _resolve_output_path(self) -> Result[Path, Exception]:
+        def to_path(value: object) -> Result[Path, Exception]:
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'output_path' must be str"))
+            # 設定ファイルディレクトリを基準に相対パスを解決
+            return Success(self.resolve_path(value))
+
+        # require_option() で必須オプションを Result として取得
+        return self.require_option('output_path').bind(to_path)
+
     def execute(self, df: FrameData) -> Result[None, Exception]:
-        output_path_opt = self.options.get('output_path')
-        # 設定ファイルディレクトリを基準に相対パスを解決
-        output_path = self.resolve_path(output_path_opt)
+        return self._resolve_output_path().bind(write)
         # ... output_pathに書き込み
 ```
 

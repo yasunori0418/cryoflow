@@ -101,7 +101,6 @@ Cryoflow には3種類のプラグインがあります。
 
 ```python
 from abc import ABC, abstractmethod
-from typing import Any
 
 from cryoflow_plugin_collections.libs.polars import pl, DataType
 from cryoflow_plugin_collections.libs.returns import Result
@@ -112,7 +111,7 @@ from cryoflow_plugin_collections.libs.core import FrameData
 
 
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
+    def __init__(self, options: dict[str, object], config_dir: Path) -> None:
         """プラグインの初期化
 
         Args:
@@ -252,6 +251,8 @@ InputPlugin(label='master') →  data_map['master'] →  TransformPlugin(label='
 ### 4.2 基本実装
 
 ```python
+from pathlib import Path
+
 from cryoflow_plugin_collections.libs.polars import pl
 from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 from cryoflow_plugin_collections.libs.core import InputPlugin, FrameData
@@ -263,37 +264,36 @@ class MyInputPlugin(InputPlugin):
         """プラグイン識別名（ログやエラーメッセージに使用）"""
         return 'my_input'
 
+    def _resolve_input_path(self) -> Result[Path, Exception]:
+        """input_path オプションを検証して解決する（execute / dry_run で共用）"""
+
+        def to_path(value: object) -> Result[Path, Exception]:
+            # require_option() が返すのは object なので isinstance で絞り込む
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'input_path' must be str"))
+
+            # self.resolve_path() で相対パスを設定ファイル基準で解決
+            input_path = self.resolve_path(value)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+            return Success(input_path)
+
+        # require_option() で必須オプションを Result として取得しチェーンする
+        return self.require_option('input_path').bind(to_path)
+
     def execute(self) -> Result[FrameData, Exception]:
         """データを読み込む（引数なし）"""
         try:
-            # self.options からオプションを取得
-            input_path_opt = self.options.get('input_path')
-            if input_path_opt is None:
-                return Failure(ValueError("Option 'input_path' is required"))
-
-            # self.resolve_path() で相対パスを設定ファイル基準で解決
-            input_path = self.resolve_path(input_path_opt)
-            if not input_path.exists():
-                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
-
             # LazyFrame を返す（collect() は呼ばない）
-            return Success(pl.scan_parquet(input_path))
+            return self._resolve_input_path().map(lambda path: pl.scan_parquet(path))
         except Exception as e:
             return Failure(e)
 
     def dry_run(self) -> Result[dict[str, pl.DataType], Exception]:
         """実データを読み込まずにスキーマを返す"""
         try:
-            input_path_opt = self.options.get('input_path')
-            if input_path_opt is None:
-                return Failure(ValueError("Option 'input_path' is required"))
-
-            input_path = self.resolve_path(input_path_opt)
-            if not input_path.exists():
-                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
-
             # スキーマのみ取得（実データは読み込まない）
-            return Success(dict(pl.scan_parquet(input_path).collect_schema()))
+            return self._resolve_input_path().map(lambda path: dict(pl.scan_parquet(path).collect_schema()))
         except Exception as e:
             return Failure(e)
 ```
@@ -304,6 +304,8 @@ CSV ファイルを読み込むプラグインの実装例です。
 
 ```python
 """CSV ファイル入力プラグイン"""
+
+from pathlib import Path
 
 from cryoflow_plugin_collections.libs.polars import pl
 from cryoflow_plugin_collections.libs.returns import Failure, Result, Success
@@ -323,21 +325,30 @@ class CsvScanPlugin(InputPlugin):
     def name(self) -> str:
         return 'csv_scan'
 
+    def _resolve_input_path(self) -> Result[Path, Exception]:
+        """input_path オプションを検証して解決する（execute / dry_run で共用）"""
+
+        def to_path(value: object) -> Result[Path, Exception]:
+            # require_option() が返すのは object なので isinstance で絞り込む
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'input_path' must be str"))
+
+            input_path = self.resolve_path(value)
+            if not input_path.exists():
+                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
+            return Success(input_path)
+
+        return self.require_option('input_path').bind(to_path)
+
     def execute(self) -> Result[FrameData, Exception]:
         """CSV ファイルを読み込む
 
         Returns:
             LazyFrame を含む Result、または失敗時の Exception
         """
-        try:
-            input_path_opt = self.options.get('input_path')
-            if input_path_opt is None:
-                return Failure(ValueError("Option 'input_path' is required"))
 
-            input_path = self.resolve_path(input_path_opt)
-            if not input_path.exists():
-                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
-
+        def scan(input_path: Path) -> Result[FrameData, Exception]:
+            # 任意オプションはデフォルト値つきで取得する
             separator = self.options.get('separator', ',')
             has_header = self.options.get('has_header', True)
 
@@ -348,6 +359,9 @@ class CsvScanPlugin(InputPlugin):
                     has_header=has_header,
                 )
             )
+
+        try:
+            return self._resolve_input_path().bind(scan)
         except Exception as e:
             return Failure(e)
 
@@ -357,15 +371,8 @@ class CsvScanPlugin(InputPlugin):
         Returns:
             スキーマ dict を含む Result、または失敗時の Exception
         """
-        try:
-            input_path_opt = self.options.get('input_path')
-            if input_path_opt is None:
-                return Failure(ValueError("Option 'input_path' is required"))
 
-            input_path = self.resolve_path(input_path_opt)
-            if not input_path.exists():
-                return Failure(FileNotFoundError(f'Input file not found: {input_path}'))
-
+        def collect_schema(input_path: Path) -> Result[dict[str, pl.DataType], Exception]:
             separator = self.options.get('separator', ',')
             has_header = self.options.get('has_header', True)
 
@@ -375,6 +382,9 @@ class CsvScanPlugin(InputPlugin):
                 has_header=has_header,
             ).collect_schema()
             return Success(dict(schema))
+
+        try:
+            return self._resolve_input_path().bind(collect_schema)
         except Exception as e:
             return Failure(e)
 ```
@@ -399,27 +409,32 @@ class MyTransformPlugin(TransformPlugin):
         """プラグイン識別名（ログやエラーメッセージに使用される）"""
         return 'my_transform'
 
+    def _resolve_column_name(self) -> Result[str, Exception]:
+        """column_name オプションを検証する（execute / dry_run で共用）"""
+
+        def to_column_name(value: object) -> Result[str, Exception]:
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'column_name' must be str"))
+            return Success(value)
+
+        return self.require_option('column_name').bind(to_column_name)
+
     def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         """データ変換処理の本体"""
-        try:
-            # self.options から設定を取得
-            column = self.options.get('column_name')
-            if column is None:
-                return Failure(ValueError("Option 'column_name' is required"))
 
+        def transform(column: str) -> Result[FrameData, Exception]:
             # データ変換処理
-            transformed = df.with_columns(pl.col(column).str.to_uppercase().alias(column))
-            return Success(transformed)
+            return Success(df.with_columns(pl.col(column).str.to_uppercase().alias(column)))
+
+        try:
+            return self._resolve_column_name().bind(transform)
         except Exception as e:
             return Failure(e)
 
     def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
         """スキーマ検証（実データを触らずに事前チェック）"""
-        try:
-            column = self.options.get('column_name')
-            if column is None:
-                return Failure(ValueError("Option 'column_name' is required"))
 
+        def validate(column: str) -> Result[dict[str, DataType], Exception]:
             # カラム存在チェック
             if column not in schema:
                 return Failure(ValueError(f"Column '{column}' not found in schema"))
@@ -430,6 +445,9 @@ class MyTransformPlugin(TransformPlugin):
 
             # このプラグインはスキーマを変更しないのでそのまま返す
             return Success(schema)
+
+        try:
+            return self._resolve_column_name().bind(validate)
         except Exception as e:
             return Failure(e)
 ```
@@ -451,12 +469,38 @@ class ColumnMultiplierPlugin(TransformPlugin):
 
     Options:
         column_name (str): 対象カラム名
-        multiplier (float | int): 乗算する係数
+        multiplier (int | float): 乗算する係数
     """
 
     @property
     def name(self) -> str:
         return 'column_multiplier'
+
+    def _resolve_options(self) -> Result[tuple[str, int | float], Exception]:
+        """column_name と multiplier を検証する（execute / dry_run で共用）"""
+
+        def to_column_name(value: object) -> Result[str, Exception]:
+            # require_option() が返すのは object なので isinstance で絞り込む
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'column_name' must be str"))
+            return Success(value)
+
+        def to_multiplier(value: object) -> Result[int | float, Exception]:
+            if not isinstance(value, (int, float)):
+                return Failure(TypeError("Option 'multiplier' must be int | float"))
+            return Success(value)
+
+        return (
+            self.require_option('column_name')
+            .bind(to_column_name)
+            .bind(
+                lambda column_name: (
+                    self.require_option('multiplier')
+                    .bind(to_multiplier)
+                    .map(lambda multiplier: (column_name, multiplier))
+                )
+            )
+        )
 
     def execute(self, df: FrameData) -> Result[FrameData, Exception]:
         """データフレームを変換する
@@ -467,19 +511,14 @@ class ColumnMultiplierPlugin(TransformPlugin):
         Returns:
             変換後のデータを含む Result、または失敗時の Exception
         """
-        try:
-            column_name = self.options.get('column_name')
-            multiplier = self.options.get('multiplier')
 
-            # オプション検証
-            if column_name is None:
-                return Failure(ValueError("Option 'column_name' is required"))
-            if multiplier is None:
-                return Failure(ValueError("Option 'multiplier' is required"))
-
+        def multiply(options: tuple[str, int | float]) -> Result[FrameData, Exception]:
+            column_name, multiplier = options
             # データ変換（LazyFrame の計算グラフに追加）
-            transformed = df.with_columns((pl.col(column_name) * multiplier).alias(column_name))
-            return Success(transformed)
+            return Success(df.with_columns((pl.col(column_name) * multiplier).alias(column_name)))
+
+        try:
+            return self._resolve_options().bind(multiply)
         except Exception as e:
             return Failure(e)
 
@@ -492,15 +531,9 @@ class ColumnMultiplierPlugin(TransformPlugin):
         Returns:
             出力スキーマを含む Result、または失敗時の Exception
         """
-        try:
-            column_name = self.options.get('column_name')
-            multiplier = self.options.get('multiplier')
 
-            # オプション検証
-            if column_name is None:
-                return Failure(ValueError("Option 'column_name' is required"))
-            if multiplier is None:
-                return Failure(ValueError("Option 'multiplier' is required"))
+        def validate_schema(options: tuple[str, int | float]) -> Result[dict[str, DataType], Exception]:
+            column_name, _ = options
 
             # カラム存在チェック
             if column_name not in schema:
@@ -525,6 +558,9 @@ class ColumnMultiplierPlugin(TransformPlugin):
 
             # このプラグインはスキーマを変更しない
             return Success(schema)
+
+        try:
+            return self._resolve_options().bind(validate_schema)
         except Exception as e:
             return Failure(e)
 ```
@@ -574,12 +610,22 @@ class MyOutputPlugin(OutputPlugin):
     def name(self) -> str:
         return 'my_output'
 
+    def _resolve_output_path(self) -> Result[Path, Exception]:
+        """output_path オプションを検証して解決する（execute / dry_run で共用）"""
+
+        def to_path(value: object) -> Result[Path, Exception]:
+            # require_option() が返すのは object なので isinstance で絞り込む
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'output_path' must be str"))
+            # resolve_path()を使用して、相対パスを設定ファイル基準で解決
+            return Success(self.resolve_path(value))
+
+        return self.require_option('output_path').bind(to_path)
+
     def execute(self, df: FrameData) -> Result[None, Exception]:
         """データを出力する（ここで初めて collect/sink が呼ばれる）"""
-        try:
-            # resolve_path()を使用して、相対パスを設定ファイル基準で解決
-            output_path = self.resolve_path(self.options.get('output_path'))
 
+        def write(output_path: Path) -> Result[None, Exception]:
             # ディレクトリ作成
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -590,15 +636,16 @@ class MyOutputPlugin(OutputPlugin):
                 df.write_parquet(output_path)
 
             return Success(None)
+
+        try:
+            return self._resolve_output_path().bind(write)
         except Exception as e:
             return Failure(e)
 
     def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
         """出力先の書き込み可能性を検証"""
-        try:
-            # resolve_path()を使用して、相対パスを設定ファイル基準で解決
-            output_path = self.resolve_path(self.options.get('output_path'))
 
+        def check_parent(output_path: Path) -> Result[dict[str, DataType], Exception]:
             # 親ディレクトリが作成可能かチェック
             try:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -607,6 +654,9 @@ class MyOutputPlugin(OutputPlugin):
 
             # OutputPlugin はスキーマを変更しない
             return Success(schema)
+
+        try:
+            return self._resolve_output_path().bind(check_parent)
         except Exception as e:
             return Failure(e)
 ```
@@ -627,12 +677,24 @@ class ParquetWriterPlugin(OutputPlugin):
     """データフレームを Parquet ファイルに出力する
 
     Options:
-        output_path (str | Path): 出力先 Parquet ファイルのパス
+        output_path (str): 出力先 Parquet ファイルのパス
     """
 
     @property
     def name(self) -> str:
         return 'parquet_writer'
+
+    def _resolve_output_path(self) -> Result[Path, Exception]:
+        """output_path オプションを検証して解決する（execute / dry_run で共用）"""
+
+        def to_path(value: object) -> Result[Path, Exception]:
+            # require_option() が返すのは object なので isinstance で絞り込む
+            if not isinstance(value, str):
+                return Failure(TypeError("Option 'output_path' must be str"))
+            # resolve_path()で相対パスを設定ファイル基準で解決
+            return Success(self.resolve_path(value))
+
+        return self.require_option('output_path').bind(to_path)
 
     def execute(self, df: FrameData) -> Result[None, Exception]:
         """データフレームを Parquet ファイルに書き込む
@@ -643,14 +705,8 @@ class ParquetWriterPlugin(OutputPlugin):
         Returns:
             成功時は None を含む Result、失敗時は Exception
         """
-        try:
-            output_path_opt = self.options.get('output_path')
-            if output_path_opt is None:
-                return Failure(ValueError("Option 'output_path' is required"))
 
-            # resolve_path()で相対パスを設定ファイル基準で解決
-            output_path = self.resolve_path(output_path_opt)
-
+        def write(output_path: Path) -> Result[None, Exception]:
             # 親ディレクトリの作成
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -662,6 +718,9 @@ class ParquetWriterPlugin(OutputPlugin):
                 df.write_parquet(output_path)
 
             return Success(None)
+
+        try:
+            return self._resolve_output_path().bind(write)
         except Exception as e:
             return Failure(e)
 
@@ -674,14 +733,8 @@ class ParquetWriterPlugin(OutputPlugin):
         Returns:
             入力スキーマをそのまま含む Result、または失敗時の Exception
         """
-        try:
-            output_path_opt = self.options.get('output_path')
-            if output_path_opt is None:
-                return Failure(ValueError("Option 'output_path' is required"))
 
-            # resolve_path()で相対パスを設定ファイル基準で解決
-            output_path = self.resolve_path(output_path_opt)
-
+        def check_parent(output_path: Path) -> Result[dict[str, DataType], Exception]:
             # 親ディレクトリが作成可能かチェック
             try:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -689,6 +742,9 @@ class ParquetWriterPlugin(OutputPlugin):
                 return Failure(ValueError(f'Cannot create parent directory for {output_path}: {e}'))
 
             return Success(schema)
+
+        try:
+            return self._resolve_output_path().bind(check_parent)
         except Exception as e:
             return Failure(e)
 ```
@@ -720,13 +776,17 @@ from cryoflow_plugin_collections.libs.returns import Result, Success, Failure
 def dry_run(self, schema: dict[str, DataType]) -> Result[dict[str, DataType], Exception]:
     """フィルタリングなど、スキーマを変えない処理"""
     try:
-        # オプション検証
-        threshold = self.options.get('threshold')
-        if threshold is None:
-            return Failure(ValueError("Option 'threshold' is required"))
+        # オプション検証（require_option() は必須オプションを Result で返す）
+        threshold_result = self.require_option('threshold')
+        if isinstance(threshold_result, Failure):
+            return threshold_result
+        threshold = threshold_result.unwrap()
 
         # カラム存在チェック
-        column = self.options.get('column_name')
+        column_result = self.require_option('column_name')
+        if isinstance(column_result, Failure):
+            return column_result
+        column = column_result.unwrap()
         if column not in schema:
             return Failure(ValueError(f"Column '{column}' not found"))
 
@@ -848,10 +908,15 @@ return Failure(ValueError('Schema validation failed at line 42'))
 ```python
 def execute(self, df: FrameData) -> Result[FrameData, Exception]:
     try:
-        # 1. オプションの検証
-        required_opt = self.options.get('required_option')
-        if required_opt is None:
-            return Failure(ValueError("Option 'required_option' is required"))
+        # 1. オプションの検証（require_option() は必須オプションを Result で返す）
+        required_opt_result = self.require_option('required_option').bind(
+            lambda value: Success(value)
+            if isinstance(value, str)
+            else Failure(TypeError("Option 'required_option' must be str"))
+        )
+        if isinstance(required_opt_result, Failure):
+            return required_opt_result
+        required_opt = required_opt_result.unwrap()
 
         # 2. カラムの存在チェック（Polars が例外を投げる）
         try:
@@ -1289,8 +1354,6 @@ enabled = true
 
 ```python
 # cryoflow_plugin_collections.libs から re-export されている型
-from typing import Any
-
 from cryoflow_plugin_collections.libs.polars import pl, DataType
 from cryoflow_plugin_collections.libs.returns import Result
 from cryoflow_plugin_collections.libs.core import FrameData
@@ -1302,7 +1365,7 @@ from cryoflow_plugin_collections.libs.core import FrameData
 Schema = dict[str, DataType]
 
 # プラグインオプション型
-PluginOptions = dict[str, Any]
+PluginOptions = dict[str, object]
 ```
 
 ### 12.2 基底クラス API
@@ -1312,14 +1375,13 @@ PluginOptions = dict[str, Any]
 ```python
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
 
 from cryoflow_plugin_collections.libs.polars import DataType
 from cryoflow_plugin_collections.libs.returns import Result
 
 
 class BasePlugin(ABC):
-    def __init__(self, options: dict[str, Any], config_dir: Path) -> None:
+    def __init__(self, options: dict[str, object], config_dir: Path) -> None:
         """プラグインの初期化
 
         Args:
