@@ -505,7 +505,7 @@ class ColumnMultiplierPlugin(TransformPlugin):
             return Success(value)
 
         def to_multiplier(value: object) -> Result[int | float, Exception]:
-            if not isinstance(value, (int, float)):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
                 return Failure(TypeError("Option 'multiplier' must be int | float"))
             return Success(value)
 
@@ -961,7 +961,9 @@ def execute(self, df: FrameData) -> Result[FrameData, Exception]:
 
         # 4. 値の範囲チェック
         threshold_opt = self.options.get('threshold', 0)
-        threshold = threshold_opt if isinstance(threshold_opt, (int, float)) else 0
+        threshold = (
+            threshold_opt if isinstance(threshold_opt, (int, float)) and not isinstance(threshold_opt, bool) else 0
+        )
         if threshold < 0:
             return Failure(ValueError(f"Option 'threshold' must be non-negative, got {threshold}"))
 
