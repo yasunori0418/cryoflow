@@ -123,8 +123,8 @@ The version from the root `pyproject.toml` is used as both the tag name and rele
 #### Overview
 
 Automatically triggered after the Release workflow succeeds, publishing all packages to PyPI.
-When run manually, a specific version can be published by specifying a tag name.
-When the same version is already on PyPI, the build and publish steps are skipped and the workflow succeeds, so a rerun of the Release workflow does not fail this one.
+Even for a manual run, the published version is the one in the checked-out `pyproject.toml`; the `tag_name` input does not select the version to publish.
+When the same version is already on PyPI, the build and publish steps are skipped and the workflow succeeds, so a rerun of the Release workflow does not fail this one (a manual run on an already published version publishes nothing and succeeds).
 
 #### Trigger Conditions
 
