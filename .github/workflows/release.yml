@@ -29,7 +29,19 @@ jobs:
           VERSION=$(nix shell 'nixpkgs#uv' -c uv version | awk '{print $2}')
           echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Check existing tag
+        id: tag_check
+        env:
+          VERSION: ${{ steps.version.outputs.tag }}
+        run: |
+          if [ -n "$(git tag -l "$VERSION")" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub Release
+        if: steps.tag_check.outputs.exists == 'false'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
