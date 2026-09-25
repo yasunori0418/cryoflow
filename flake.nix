@@ -57,7 +57,7 @@
 
           # 2. Constructing a base Python set
           pythonBase = pkgs.callPackage inputs.pyproject-nix.build.packages {
-            python = pkgs.python314;
+            python = pkgs.python311;
           };
 
           # 3. Generate Nix overlay from `uv.lock`
