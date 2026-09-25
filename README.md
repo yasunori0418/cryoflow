@@ -16,7 +16,7 @@ A plugin-driven columnar data processing CLI tool built on Polars LazyFrame.
 
 ## Prerequisites
 
-- Python 3.14 or higher
+- Python 3.11 or higher
 - [uv](https://docs.astral.sh/uv/) (recommended) or pip
 
 ## Installation
